@@ -117,7 +117,7 @@
         @csrf
         @if($mode === 'edit') @method('PUT') @endif
 
-        {{-- ── Row 1: Product Name / Datasheets / Brand ── --}}
+        {{-- ── Row 1: Product Name / Datasheet / Brand ── --}}
         <div class="form-grid-3">
             <div class="form-group">
                 <label class="form-label">Product Name <span>*</span></label>
@@ -126,12 +126,12 @@
                        value="{{ old('product_name', $record->product_name ?? '') }}" required/>
             </div>
             <div class="form-group">
-                <label class="form-label">Datasheets</label>
+                <label class="form-label">Datasheet</label>
                 <div class="form-file-wrap">
-                    <input type="file" name="datasheets[]" accept=".pdf,.jpg,.png,.webp" multiple/>
+                    <input type="file" name="datasheet" accept=".pdf,.jpg,.png,.webp"/>
                 </div>
-                @if(isset($record) && !empty($record->datasheets))
-                    <span class="form-hint">{{ count($record->datasheets) }} file(s) uploaded</span>
+                @if(isset($record) && !empty($record->datasheet))
+                    <span class="form-hint">{{ $record->datasheet['original_name'] ?? 'File uploaded' }}</span>
                 @endif
             </div>
             <div class="form-group">
@@ -148,33 +148,33 @@
             </div>
         </div>
 
-        {{-- ── Row 2: Main Menu / Sub Menu ── --}}
+        {{-- ── Row 2: Category / Sub Category ── --}}
         <div class="form-grid-2" style="margin-bottom:20px;">
             <div class="form-group">
-                <label class="form-label">Main Menu <span>*</span></label>
-                <select name="main_menu_id" id="mainMenuSelect" class="form-select" required
-                        onchange="handleMainMenuChange(this.value)">
-                    <option value="" disabled {{ old('main_menu_id', $record->main_menu_id ?? '') == '' ? 'selected' : '' }}>
-                        Select Main Menu
+                <label class="form-label">Category <span>*</span></label>
+                <select name="category_id" id="categorySelect" class="form-select" required
+                        onchange="handleCategoryChange(this.value)">
+                    <option value="" disabled {{ old('category_id', $record->category_id ?? '') == '' ? 'selected' : '' }}>
+                        Select Category
                     </option>
                     @foreach($mainMenus as $menu)
                         <option value="{{ $menu->id }}"
-                            {{ old('main_menu_id', $record->main_menu_id ?? '') == $menu->id ? 'selected' : '' }}>
+                            {{ old('category_id', $record->category_id ?? '') == $menu->id ? 'selected' : '' }}>
                             {{ $menu->name }}
                         </option>
                     @endforeach
                 </select>
             </div>
             <div class="form-group">
-                <label class="form-label">Sub Menu <span>*</span></label>
-                <select name="sub_menu_id" id="subMenuSelect" class="form-select" required
-                        onchange="handleSubMenuChange(this.value)">
-                    <option value="" disabled {{ old('sub_menu_id', $record->sub_menu_id ?? '') == '' ? 'selected' : '' }}>
-                        Select Sub Menu
+                <label class="form-label">Sub Category <span>*</span></label>
+                <select name="sub_category_id" id="subCategorySelect" class="form-select" required
+                        onchange="handleSubCategoryChange(this.value)">
+                    <option value="" disabled {{ old('sub_category_id', $record->sub_category_id ?? '') == '' ? 'selected' : '' }}>
+                        Select Sub Category
                     </option>
                     @foreach($subMenus as $menu)
                         <option value="{{ $menu->id }}"
-                            {{ old('sub_menu_id', $record->sub_menu_id ?? '') == $menu->id ? 'selected' : '' }}>
+                            {{ old('sub_category_id', $record->sub_category_id ?? '') == $menu->id ? 'selected' : '' }}>
                             {{ $menu->name }}
                         </option>
                     @endforeach
@@ -182,34 +182,32 @@
             </div>
         </div>
 
-        
-
-        {{-- ── Row 4: 1 Pallet / 1 Container ── --}}
+        {{-- ── Row 3: Pieces per Pallet / Pallets per Container ── --}}
         <div class="form-grid-2">
             <div class="form-group">
                 <label class="form-label">
                     1 Pallet =
                     <span title="Number of units per pallet" style="cursor:help; color:var(--primary-d); font-weight:400;">ℹ</span>
                 </label>
-                <input type="text" name="one_pallet" class="form-input"
+                <input type="text" name="pieces_per_pallet" class="form-input"
                        placeholder="e.g. 36 pcs"
-                       value="{{ old('one_pallet', $record->one_pallet ?? '') }}"/>
+                       value="{{ old('pieces_per_pallet', $record->pieces_per_pallet ?? '') }}"/>
             </div>
             <div class="form-group">
                 <label class="form-label">
                     1 Container =
                     <span title="Number of units per container" style="cursor:help; color:var(--primary-d); font-weight:400;">ℹ</span>
                 </label>
-                <input type="text" name="one_container" class="form-input"
+                <input type="text" name="pallets_per_container" class="form-input"
                        placeholder="e.g. 756 pcs"
-                       value="{{ old('one_container', $record->one_container ?? '') }}"/>
+                       value="{{ old('pallets_per_container', $record->pallets_per_container ?? '') }}"/>
             </div>
         </div>
 
         {{-- ── Product Description (Quill) ── --}}
         <div class="form-group" style="margin-bottom:20px;">
             <label class="form-label">Product Description</label>
-            <textarea name="description" id="descriptionInput" style="display:none;">{{ old('description', $record->description ?? '') }}</textarea>
+            <textarea name="product_description" id="descriptionInput" style="display:none;">{{ old('product_description', $record->product_description ?? '') }}</textarea>
             <div class="quill-wrapper"><div id="quillEditor"></div></div>
         </div>
 
@@ -294,7 +292,7 @@
                     </table>
                 @else
                     <div class="details-empty" id="detailsEmptyMsg">
-                        ← Please select a <strong>Sub Menu</strong> above to load product detail options.
+                        ← Please select a <strong>Sub Category</strong> above to load product detail options.
                     </div>
                 @endif
             </div>
@@ -356,17 +354,6 @@
                                value="{{ old('weight_unit', $m['weight_unit'] ?? '') }}"/>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Length</label>
-                    <div class="measure-row">
-                        <input type="number" name="length" class="form-input" step="0.01"
-                               placeholder="e.g. 1134"
-                               value="{{ old('length', $m['length'] ?? '') }}"/>
-                        <input type="text" name="length_unit" class="form-input unit-input"
-                               placeholder="mm"
-                               value="{{ old('length_unit', $m['length_unit'] ?? '') }}"/>
-                    </div>
-                </div>
             </div>
         </div>
 
@@ -419,18 +406,18 @@ function toggleSection(name) {
     toggle.textContent    = isHidden ? '−' : '+';
 }
 
-// ── Main Menu change: reload sub menus ────────────
-function handleMainMenuChange(mainMenuId) {
-    if (!mainMenuId) return;
+// ── Category change: reload sub categories ────────────
+function handleCategoryChange(categoryId) {
+    if (!categoryId) return;
 
-    const subSelect = document.getElementById('subMenuSelect');
+    const subSelect = document.getElementById('subCategorySelect');
 
-    fetch('{{ route("admin.products.sub-menus-by-main") }}?main_menu_id=' + mainMenuId, {
+    fetch('{{ route("admin.products.sub-menus-by-main") }}?main_menu_id=' + categoryId, {
         headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
     })
     .then(r => r.json())
     .then(data => {
-        subSelect.innerHTML = '<option value="" disabled selected>Select Sub Menu</option>';
+        subSelect.innerHTML = '<option value="" disabled selected>Select Sub Category</option>';
         data.subMenus.forEach(sm => {
             const id = sm.id || sm._id;
             subSelect.innerHTML += `<option value="${id}">${sm.name}</option>`;
@@ -440,9 +427,9 @@ function handleMainMenuChange(mainMenuId) {
     .catch(() => clearProductDetails());
 }
 
-// ── Sub Menu change: load product detail options ──
-function handleSubMenuChange(subMenuId) {
-    if (!subMenuId) {
+// ── Sub Category change: load product detail options ──
+function handleSubCategoryChange(subCategoryId) {
+    if (!subCategoryId) {
         clearProductDetails();
         return;
     }
@@ -450,17 +437,17 @@ function handleSubMenuChange(subMenuId) {
     const wrapper = document.getElementById('productDetailsWrapper');
     wrapper.innerHTML = '<div class="details-loading">⏳ Loading options...</div>';
 
-    fetch('{{ route("admin.products.options-by-submenu") }}?sub_menu_id=' + subMenuId, {
+    fetch('{{ route("admin.products.options-by-submenu") }}?sub_menu_id=' + subCategoryId, {
         headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
     })
     .then(r => r.json())
     .then(data => {
-    if (!data.options || data.options.length === 0) {
-        wrapper.innerHTML = '<div class="details-empty">No options found for this sub menu. Add options from the <strong>Product Detail Options</strong> page first.</div>';
-        return;
-    }
-    renderDetailsTable(data.options, savedDetails);
-})
+        if (!data.options || data.options.length === 0) {
+            wrapper.innerHTML = '<div class="details-empty">No options found for this sub category. Add options from the <strong>Product Detail Options</strong> page first.</div>';
+            return;
+        }
+        renderDetailsTable(data.options, savedDetails);
+    })
     .catch(() => {
         wrapper.innerHTML = '<div class="details-empty">Failed to load options. Please try again.</div>';
     });
@@ -468,7 +455,7 @@ function handleSubMenuChange(subMenuId) {
 
 function clearProductDetails() {
     document.getElementById('productDetailsWrapper').innerHTML =
-        '<div class="details-empty" id="detailsEmptyMsg">← Please select a <strong>Sub Menu</strong> above to load product detail options.</div>';
+        '<div class="details-empty" id="detailsEmptyMsg">← Please select a <strong>Sub Category</strong> above to load product detail options.</div>';
 }
 
 // Renders {label, value, unit} rows from AJAX options.
@@ -549,9 +536,10 @@ function renderDetailsTable(options, savedMap) {
     html += '</tbody></table>';
     document.getElementById('productDetailsWrapper').innerHTML = html;
 }
+
 document.addEventListener('DOMContentLoaded', function () {
-    @if($mode === 'edit' && isset($record) && $record->sub_menu_id)
-        handleSubMenuChange('{{ $record->sub_menu_id }}');
+    @if($mode === 'edit' && isset($record) && $record->sub_category_id)
+        handleSubCategoryChange('{{ $record->sub_category_id }}');
     @endif
 });
 </script>
@@ -676,7 +664,7 @@ document.addEventListener('DOMContentLoaded', function () {
     <table class="data-table">
         <thead>
             <tr>
-                <th class="center" style="width:70px;">S.No</th>           
+                <th class="center" style="width:70px;">S.No</th>
                 <th>Product Name</th>
                 <th style="width:120px;">Brand</th>
                 <th class="center" style="width:160px;">Verification Status</th>
@@ -755,7 +743,7 @@ document.addEventListener('DOMContentLoaded', function () {
             </tr>
             @empty
             <tr>
-                <td colspan="7">
+                <td colspan="6">
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>

@@ -58,7 +58,16 @@
             z-index: 100;
             box-shadow: 2px 0 12px rgba(14,165,233,.06);
             overflow: hidden;
+            transition: transform .25s ease;
         }
+
+        .sidebar.sidebar-hidden {
+    transform: translateX(-100%);
+}
+
+.main-wrap.main-expanded {
+    margin-left: 0;
+}
 
         .sidebar-logo {
             padding: 14px 18px;
@@ -269,25 +278,27 @@
             display: flex;
             flex-direction: column;
             min-height: 100vh;
+            transition: margin-left .25s ease;
         }
 
         /* ══════════════════════
            TOPBAR
         ══════════════════════ */
         .topbar {
-            height: var(--topbar-h);
-            background: white;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 24px;
-            position: sticky;
-            top: 0;
-            z-index: 50;
-            box-shadow: 0 1px 6px rgba(14,165,233,.06);
-        }
-
+    height: var(--topbar-h);
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    position: sticky;
+    top: 12px;
+    z-index: 50;
+    margin: 12px 16px 0 16px;
+    box-shadow: 0 4px 24px rgba(14,165,233,.10), 0 1px 4px rgba(0,0,0,.06);
+}
         .topbar-left { display: flex; align-items: center; gap: 12px; }
 
         .topbar-hamburger {
@@ -334,8 +345,9 @@
         }
 
         .topbar-bell:hover svg {
-            animation: bellRing .4s ease;
-        }
+    animation: bellRing .45s ease;
+    display: block;
+}
 
         @keyframes bellRing {
             0%   { transform: rotate(0deg); }
@@ -724,13 +736,13 @@
             <div class="topbar-right">
 
                 {{-- Bell --}}
-                <div class="topbar-bell">
+                <button class="topbar-bell" type="button" title="Notifications">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                         <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
                     </svg>
                     <span class="bell-dot"></span>
-                </div>
+                </button>
 
                 {{-- Avatar + Tooltip + Dropdown --}}
                 <div class="topbar-avatar-wrap">
@@ -881,6 +893,12 @@
     });
 
     document.addEventListener('click', () => avatarDropdown.classList.remove('open'));
+
+    // ── Sidebar toggle ──
+document.querySelector('.topbar-hamburger').addEventListener('click', () => {
+    document.querySelector('.sidebar').classList.toggle('sidebar-hidden');
+    document.querySelector('.main-wrap').classList.toggle('main-expanded');
+});
 
     // ── Theme functions ──
     function setTheme(theme) {

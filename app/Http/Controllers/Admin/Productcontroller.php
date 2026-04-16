@@ -15,20 +15,36 @@ use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
-    // ── Shared dropdown data ──────────────────────────
-    private function getDropdowns(?string $subMenuId = null): array
+    // ── SKU Generator ─────────────────────────────────
+    private function generateSku(string $categoryName): string
     {
-        $brands    = Brand::where('is_active', true)->orderBy('name')->get();
-        $mainMenus = MainMenu::orderBy('name')->get();
-        $subMenus  = SubMenu::orderBy('name')->get();
+        // Remove spaces, take first 3 letters of each word, uppercase
+        $words  = preg_split('/\s+/', trim($categoryName));
+        $prefix = '';
+        foreach ($words as $word) {
+            $prefix .= strtoupper(substr(preg_replace('/[^a-zA-Z]/', '', $word), 0, 1));
+        }
+        // Pad or trim to max 3 chars
+        $prefix    = substr($prefix, 0, 3);
+        $timestamp = now()->format('YmdHis');
+        $random    = str_pad(rand(0, 999), 3, '0', STR_PAD_LEFT);
 
-        // Filter options by selected sub_menu_id if provided
-        if ($subMenuId) {
-            $options = ProductDetailOption::where('sub_menu_id', $subMenuId)
+        return "{$prefix}-{$timestamp}-{$random}";
+    }
+
+    // ── Shared dropdown data ──────────────────────────
+    private function getDropdowns(?string $subCategoryId = null): array
+    {
+        $brands      = Brand::where('is_active', true)->orderBy('name')->get();
+        $mainMenus   = MainMenu::orderBy('name')->get();
+        $subMenus    = SubMenu::orderBy('name')->get();
+
+        if ($subCategoryId) {
+            $options = ProductDetailOption::where('sub_menu_id', $subCategoryId)
                                           ->orderBy('option_name')
                                           ->get();
         } else {
-            $options = collect(); // empty until sub menu selected
+            $options = collect();
         }
 
         return compact('brands', 'mainMenus', 'subMenus', 'options');
@@ -43,7 +59,8 @@ class ProductController extends Controller
             $s = $request->search;
             $query->where(function ($q) use ($s) {
                 $q->where('product_name', 'like', "%{$s}%")
-                  ->orWhere('brand_name',  'like', "%{$s}%");
+                  ->orWhere('brand_name',  'like', "%{$s}%")
+                  ->orWhere('sku_code',    'like', "%{$s}%");
             });
         }
 
@@ -69,51 +86,56 @@ class ProductController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'product_name'  => 'required|string|max:500',
-            'main_menu_id'  => 'required|string',
-            'sub_menu_id'   => 'required|string',
-            'brand_id'      => 'nullable|string',           
-            'one_pallet'    => 'nullable|string|max:100',
-            'one_container' => 'nullable|string|max:100',
-            'description'   => 'nullable|string',
+            'product_name'   => 'required|string|max:500',
+            'category_id'    => 'required|string',
+            'sub_category_id'=> 'required|string',
+            'brand_id'       => 'nullable|string',
+            'pieces_per_pallet'    => 'nullable|string|max:100',
+            'pallets_per_container'=> 'nullable|string|max:100',
+            'product_description'  => 'nullable|string',
         ]);
 
+        // Resolve display names
+        $category    = MainMenu::find($request->category_id);
+        $subCategory = SubMenu::find($request->sub_category_id);
+
         $data = [
-            'product_name'        => $request->product_name,
-            'main_menu_id'        => $request->main_menu_id,
-            'sub_menu_id'         => $request->sub_menu_id,
-            'brand_id'            => $request->brand_id,
-            'one_pallet'          => $request->one_pallet,
-            'one_container'       => $request->one_container,
-            'description'         => $request->description,
-            'is_popular'          => $request->boolean('is_popular'),
-            'real_time_price'     => $request->boolean('real_time_price'),
-            'verification_status' => Auth::user()->role === 'super_admin' ? 'verified' : 'pending',
-            'updated_by'          => Auth::user()->name,
+            'product_name'          => $request->product_name,
+            'product_description'   => $request->product_description,
+            'category_id'           => $request->category_id,
+            'category_name'         => $category?->name,
+            'sub_category_id'       => $request->sub_category_id,
+            'sub_category_name'     => $subCategory?->name,
+            'brand_id'              => $request->brand_id,
+            'pieces_per_pallet'     => $request->pieces_per_pallet,
+            'pallets_per_container' => $request->pallets_per_container,
+            'is_popular'            => $request->boolean('is_popular'),
+            'real_time_price'       => $request->boolean('real_time_price'),
+            'verification_status'   => Auth::user()->role === 'super_admin' ? 'verified' : 'pending',
+            'updated_by'            => Auth::user()->name,
         ];
 
-        // Resolve display names
-        $mainMenu = MainMenu::find($request->main_menu_id);
-        $subMenu  = SubMenu::find($request->sub_menu_id);
-        $data['main_menu_name'] = $mainMenu?->name;
-        $data['sub_menu_name']  = $subMenu?->name;
+        // Generate SKU using category name
+        $data['sku_code'] = $this->generateSku($category?->name ?? 'PRD');
 
         if ($request->brand_id) {
             $brand = Brand::find($request->brand_id);
             $data['brand_name'] = $brand?->name;
         }
 
-        
-        
-
-        // ── Datasheets ───────────────────────────────
-        if ($request->hasFile('datasheets')) {
-            $paths = [];
-            foreach ($request->file('datasheets') as $file) {
-                $paths[] = $file->store('products/datasheets', 'public');
-            }
-            $data['datasheets'] = $paths;
-        }
+        if ($request->hasFile('datasheet')) {
+    $file = $request->file('datasheet');
+    $path = $file->store('products/datasheets', 'public');
+    $data['datasheet'] = (object) [   // ← wrap with (object)
+        'filename'      => basename($path),
+        'original_name' => $file->getClientOriginalName(),
+        'path'          => $path,
+        'url'           => Storage::disk('public')->url($path),
+        'mime_type'     => $file->getClientMimeType(),
+        'size'          => $file->getSize(),
+        'uploaded_at'   => now()->toISOString(),
+    ];
+}
 
         // ── product_details: [{label, value, unit}] ──
         if ($request->has('product_details')) {
@@ -130,7 +152,7 @@ class ProductController extends Controller
             $data['product_details'] = $details;
         }
 
-        // ── measurement_details: {height, height_unit, …} ──
+        // ── measurement_details ───────────────────────
         $data['measurement_details'] = [
             'height'      => $request->height      ? (float) $request->height      : null,
             'height_unit' => $request->height_unit ?? null,
@@ -157,7 +179,7 @@ class ProductController extends Controller
 
         return view('admin.products.products', array_merge(
             ['mode' => 'edit', 'record' => $record],
-            $this->getDropdowns($record->sub_menu_id)
+            $this->getDropdowns($record->sub_category_id)
         ));
     }
 
@@ -167,42 +189,54 @@ class ProductController extends Controller
         $product = Product::findOrFail($id);
 
         $request->validate([
-            'product_name' => 'required|string|max:500',
-            'main_menu_id' => 'required|string',
-            'sub_menu_id'  => 'required|string',
+            'product_name'    => 'required|string|max:500',
+            'category_id'     => 'required|string',
+            'sub_category_id' => 'required|string',
         ]);
 
-        $data = [
-            'product_name'    => $request->product_name,
-            'main_menu_id'    => $request->main_menu_id,
-            'sub_menu_id'     => $request->sub_menu_id,
-            'brand_id'        => $request->brand_id,
-            'one_pallet'      => $request->one_pallet,
-            'one_container'   => $request->one_container,
-            'description'     => $request->description,
-            'is_popular'      => $request->boolean('is_popular'),
-            'real_time_price' => $request->boolean('real_time_price'),
-            'updated_by'      => Auth::user()->name,
-        ];
+        $category    = MainMenu::find($request->category_id);
+        $subCategory = SubMenu::find($request->sub_category_id);
 
-        // Resolve display names
-        $mainMenu = MainMenu::find($request->main_menu_id);
-        $subMenu  = SubMenu::find($request->sub_menu_id);
-        $data['main_menu_name'] = $mainMenu?->name;
-        $data['sub_menu_name']  = $subMenu?->name;
+        $data = [
+            'product_name'          => $request->product_name,
+            'product_description'   => $request->product_description,
+            'category_id'           => $request->category_id,
+            'category_name'         => $category?->name,
+            'sub_category_id'       => $request->sub_category_id,
+            'sub_category_name'     => $subCategory?->name,
+            'brand_id'              => $request->brand_id,
+            'pieces_per_pallet'     => $request->pieces_per_pallet,
+            'pallets_per_container' => $request->pallets_per_container,
+            'is_popular'            => $request->boolean('is_popular'),
+            'real_time_price'       => $request->boolean('real_time_price'),
+            'updated_by'            => Auth::user()->name,
+        ];
 
         if ($request->brand_id) {
             $brand = Brand::find($request->brand_id);
             $data['brand_name'] = $brand?->name;
         }
 
-        // ── Image ────────────────────────────────────
-        if ($request->hasFile('image')) {
-            if ($product->image) Storage::disk('public')->delete($product->image);
-            $data['image'] = $request->file('image')->store('products', 'public');
+        // ── Datasheet (replace if new file uploaded) ──
+        if ($request->hasFile('datasheet')) {
+            // Delete old file
+            if (!empty($product->datasheet['path'])) {
+                Storage::disk('public')->delete($product->datasheet['path']);
+            }
+            $file = $request->file('datasheet');
+            $path = $file->store('products/datasheets', 'public');
+            $data['datasheet'] = [
+                'filename'      => basename($path),
+                'original_name' => $file->getClientOriginalName(),
+                'path'          => $path,
+                'url'           => Storage::disk('public')->url($path),
+                'mime_type'     => $file->getClientMimeType(),
+                'size'          => $file->getSize(),
+                'uploaded_at'   => now()->toISOString(),
+            ];
         }
 
-        // ── product_details: [{label, value, unit}] ──
+        // ── product_details ───────────────────────────
         if ($request->has('product_details')) {
             $details = [];
             foreach ($request->product_details as $row) {
@@ -217,7 +251,7 @@ class ProductController extends Controller
             $data['product_details'] = $details;
         }
 
-        // ── measurement_details: {height, height_unit, …} ──
+        // ── measurement_details ───────────────────────
         $data['measurement_details'] = [
             'height'      => $request->height      ? (float) $request->height      : null,
             'height_unit' => $request->height_unit ?? null,
@@ -237,42 +271,38 @@ class ProductController extends Controller
                          ->with('success', 'Product updated.');
     }
 
-    // ── AJAX: Get options by sub_menu_id ──────────────
-    // Returns option names as label suggestions for the product_details rows.
-    // unit_ids are no longer needed since unit is stored as a plain string.
+    // ── AJAX: Get options by sub_category_id ──────────
     public function getOptionsBySubMenu(Request $request)
-{
-    $subMenuId = $request->input('sub_menu_id');
+    {
+        $subCategoryId = $request->input('sub_menu_id');
 
-    $options = ProductDetailOption::where('sub_menu_id', $subMenuId)
-                                  ->orderBy('option_name')
-                                  ->get(['_id', 'option_name', 'unit_ids']);
+        $options = ProductDetailOption::where('sub_menu_id', $subCategoryId)
+                                      ->orderBy('option_name')
+                                      ->get(['_id', 'option_name', 'unit_ids']);
 
-    $options = $options->map(function ($option) {
-        $unitIds = $option->unit_ids ?? [];
+        $options = $options->map(function ($option) {
+            $unitIds = $option->unit_ids ?? [];
+            $units   = collect();
+            if (!empty($unitIds)) {
+                $units = Unit::whereIn('_id', $unitIds)
+                             ->orderBy('unit_name')
+                             ->get(['_id', 'unit_name'])
+                             ->map(fn($u) => ['unit_name' => $u->unit_name]);
+            }
+            return [
+                'option_name' => $option->option_name,
+                'units'       => $units,
+            ];
+        });
 
-        $units = collect();
-        if (!empty($unitIds)) {
-            $units = Unit::whereIn('_id', $unitIds)
-                         ->orderBy('unit_name')
-                         ->get(['_id', 'unit_name'])
-                         ->map(fn($u) => ['unit_name' => $u->unit_name]);
-        }
+        return response()->json(['options' => $options]);
+    }
 
-        return [
-            'option_name' => $option->option_name,
-            'units'       => $units,
-        ];
-    });
-
-    return response()->json(['options' => $options]);
-}
-
-    // ── AJAX: Get sub menus by main_menu_id ───────────
+    // ── AJAX: Get sub categories by category_id ───────
     public function getSubMenusByMainMenu(Request $request)
     {
-        $mainMenuId = $request->input('main_menu_id');
-        $subMenus   = SubMenu::where('main_menu_id', $mainMenuId)->orderBy('name')->get(['_id', 'name']);
+        $categoryId  = $request->input('main_menu_id');
+        $subMenus    = SubMenu::where('main_menu_id', $categoryId)->orderBy('name')->get(['_id', 'name']);
         return response()->json(['subMenus' => $subMenus]);
     }
 
@@ -300,7 +330,9 @@ class ProductController extends Controller
     public function destroy($id)
     {
         $product = Product::findOrFail($id);
-        if ($product->image) Storage::disk('public')->delete($product->image);
+        if (!empty($product->datasheet['path'])) {
+            Storage::disk('public')->delete($product->datasheet['path']);
+        }
         $product->delete();
         return redirect()->route('admin.products.index')->with('success', 'Product deleted.');
     }

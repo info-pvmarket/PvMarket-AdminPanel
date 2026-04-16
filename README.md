@@ -62,5 +62,5 @@ The Laravel framework is open-sourced software licensed under the [MIT license](
 
 git status
 git add .
-git commit -m "Fixed product details table alignment"
+git commit -m "commit message"
 git push

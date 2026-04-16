@@ -1,4 +1,5 @@
 <header class="topbar">
+<div style="background:red;color:white;padding:4px;">OLD TOPBAR</div>
     <div class="topbar-left">
         <div>
             <div class="topbar-title">@yield('title', 'Dashboard')</div>

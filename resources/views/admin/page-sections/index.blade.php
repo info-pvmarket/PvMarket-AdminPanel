@@ -1,8 +1,38 @@
 @extends('layouts.admin')
 @section('title', 'Page Sections')
 @section('content')
+<style>
 
-<h1 style="font-size:22px; font-weight:800; margin-bottom:24px;">Page Templates</h1>
+.btn-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 9px 18px;
+        background: var(--primary-d);
+        color: white;
+        border-radius: 8px;
+        font-size: 13.5px;
+        font-weight: 600;
+        text-decoration: none;
+        white-space: nowrap;
+        flex: 0 0 auto;
+        margin-left: auto;
+        transition: background .15s, transform .1s, box-shadow .2s;
+    }
+
+    .btn-back:hover {
+        background: var(--primary);
+        box-shadow: 0 4px 12px rgba(14,165,233,.3);
+        transform: translateY(-1px);
+    }
+
+    .btn-back:active { transform: scale(.97); }
+</style>
+
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+    <h1 style="font-size:22px; font-weight:800; color:var(--text);">Page Templates</h1>
+    <a href="{{ route('admin.dashboard') }}" class="btn-back">← Back</a>
+</div>
 
 <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:20px;">
     @foreach($pages as $key => $label)
