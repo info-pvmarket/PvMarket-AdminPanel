@@ -843,6 +843,8 @@
 </div>
 
 <script>
+document.addEventListener('DOMContentLoaded', function () {
+
     const CSRF = document.querySelector('meta[name="csrf-token"]').content;
 
     // ── Sidebar submenus ──
@@ -858,21 +860,30 @@
     const avatarToggle   = document.getElementById('avatarToggle');
     const avatarDropdown = document.getElementById('avatarDropdown');
 
-    avatarToggle.addEventListener('click', e => {
-        e.stopPropagation();
-        avatarDropdown.classList.toggle('open');
-    });
+    if (avatarToggle && avatarDropdown) {
+        avatarToggle.addEventListener('click', function (e) {
+            e.stopPropagation();
+            avatarDropdown.classList.toggle('open');
+        });
 
-    document.addEventListener('click', () => avatarDropdown.classList.remove('open'));
+        document.addEventListener('click', function (e) {
+            if (!avatarDropdown.contains(e.target) && !avatarToggle.contains(e.target)) {
+                avatarDropdown.classList.remove('open');
+            }
+        });
+    }
 
     // ── Sidebar toggle ──
-    document.querySelector('.topbar-hamburger').addEventListener('click', () => {
-        document.querySelector('.sidebar').classList.toggle('sidebar-hidden');
-        document.querySelector('.main-wrap').classList.toggle('main-expanded');
-    });
+    const hamburger = document.querySelector('.topbar-hamburger');
+    if (hamburger) {
+        hamburger.addEventListener('click', () => {
+            document.querySelector('.sidebar').classList.toggle('sidebar-hidden');
+            document.querySelector('.main-wrap').classList.toggle('main-expanded');
+        });
+    }
 
     // ── Theme functions ──
-    function setTheme(theme) {
+    window.setTheme = function (theme) {
         if (theme === 'orange') {
             document.documentElement.setAttribute('data-theme', 'orange');
         } else {
@@ -882,44 +893,41 @@
         document.querySelectorAll('.theme-btn').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.theme === theme);
         });
-    }
+    };
 
     // ── Settings modal ──
-    function openSettingsModal() {
+    window.openSettingsModal = function () {
         document.getElementById('settingsOverlay').classList.add('open');
 
-        // Restore theme selection
         const current = localStorage.getItem('pvmarket_theme') || 'blue';
         document.querySelectorAll('.theme-btn').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.theme === current);
         });
 
-        // Restore saved timer value from localStorage
         const savedTimer = localStorage.getItem('visit_timer_seconds');
         if (savedTimer) {
             document.getElementById('visitTimerInput').value = savedTimer;
         }
 
-        // Clear any previous message
         const msg = document.getElementById('visitTimerMsg');
         msg.textContent = '';
         msg.style.color = '';
-    }
+    };
 
-    function closeSettingsModal() {
+    window.closeSettingsModal = function () {
         document.getElementById('settingsOverlay').classList.remove('open');
-    }
+    };
 
-    function closeOnBackdrop(e) {
+    window.closeOnBackdrop = function (e) {
         if (e.target === document.getElementById('settingsOverlay')) closeSettingsModal();
-    }
+    };
 
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') closeSettingsModal();
     });
 
     // ── Visit Timer Save ──
-    async function saveVisitTimer() {
+    window.saveVisitTimer = async function () {
         const input   = document.getElementById('visitTimerInput');
         const msg     = document.getElementById('visitTimerMsg');
         const seconds = parseInt(input.value);
@@ -944,21 +952,21 @@
             const data = await res.json();
 
             if (data.success) {
-                // Persist in localStorage so frontend can read it too
                 localStorage.setItem('visit_timer_seconds', seconds);
                 msg.style.color = '#059669';
                 msg.textContent = '✓ Timer saved successfully.';
-                // Clear message after 3 seconds
                 setTimeout(() => { msg.textContent = ''; }, 3000);
             } else {
                 msg.style.color = '#DC2626';
                 msg.textContent = '✕ Failed to save. Please try again.';
             }
-        } catch (e) {
+        } catch (err) {
             msg.style.color = '#DC2626';
             msg.textContent = '✕ Network error. Please try again.';
         }
-    }
+    };
+
+});
 </script>
 
 @yield('scripts')
