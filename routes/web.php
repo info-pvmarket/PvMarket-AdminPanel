@@ -279,18 +279,18 @@ Route::prefix('admin/products/detail-options')->name('admin.products.detail-opti
     Route::patch('/{id}/toggle', [App\Http\Controllers\Admin\RoleController::class, 'toggle']) ->name('toggle');
     Route::delete('/{id}',       [App\Http\Controllers\Admin\RoleController::class, 'destroy'])->name('destroy');
 });
-
-
  
-Route::prefix('admin/sales')->name('admin.sales.')->group(function () {
-    Route::get('/',                        [SalesController::class, 'index'])               ->name('index');
-    Route::post('/{id}/verify-payment',    [SalesController::class, 'markPaymentVerified']) ->name('verify-payment');
-    Route::post('/{id}/status',            [SalesController::class, 'updateStatus'])        ->name('update-status');
-    Route::get('/{id}/proof',              [SalesController::class, 'viewProof'])           ->name('proof');
-});
 
 Route::middleware(['auth'])->group(function () {
  
+    Route::prefix('admin/sales')->name('admin.sales.')->group(function () {
+        Route::get('/',                        [SalesController::class, 'index'])               ->name('index');
+        Route::post('/{id}/verify-payment',    [SalesController::class, 'markPaymentVerified']) ->name('verify-payment');
+        Route::post('/{id}/status',            [SalesController::class, 'updateStatus'])        ->name('update-status');
+        Route::post('/{id}/note',              [SalesController::class, 'updateNote'])          ->name('update-note');
+        Route::get('/{id}/proof',              [SalesController::class, 'viewProof'])           ->name('proof');
+    });
+
     Route::prefix('user/listings')->name('product_listing.')->group(function () {
  
         Route::get('/',               [ProductListingController::class, 'index'])        ->name('index');

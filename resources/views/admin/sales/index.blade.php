@@ -173,6 +173,8 @@
     font-weight: 600;
     text-decoration: none;
     cursor: pointer;
+    display: block;
+    gap: 4px;
 }
 
 .order-id-link:hover { text-decoration: underline; }
@@ -327,16 +329,425 @@
     justify-content: space-between;
 }
 
-/* ── Status update dropdown ── */
+/* ── Order row expand ── */
+.order-id-chevron {
+    font-size: 10px;
+    color: var(--muted);
+    transition: transform .2s;
+}
+
+.order-id-link.expanded .order-id-chevron { transform: rotate(180deg); }
+
+.order-detail-row td {
+    padding: 0 !important;
+    background: #F8FAFC;
+    border-bottom: 1px solid var(--border);
+}
+
+.order-detail-panel {
+    padding: 16px 20px;
+    text-align: left;
+}
+
+.collapse-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 8px;
+    padding: 6px 12px;
+    background: #F1F5F9;
+    color: var(--primary-d);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+}
+
+.collapse-trigger:hover {
+    background: #EFF6FF;
+    border-color: var(--primary);
+}
+
+.collapse-trigger .collapse-chevron {
+    font-size: 9px;
+    transition: transform .2s;
+}
+
+.collapse-trigger.expanded .collapse-chevron { transform: rotate(180deg); }
+
+.collapse-panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+@media (max-width: 900px) {
+    .collapse-panel { grid-template-columns: 1fr; }
+}
+
+.collapse-section {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.collapse-section-head {
+    padding: 12px 16px;
+    background: #F8FAFC;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--primary-d);
+    text-transform: uppercase;
+    letter-spacing: .35px;
+}
+
+.collapse-section-body {
+    padding: 16px;
+}
+
+.status-update-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.status-update-form .field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.status-update-form label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .3px;
+}
+
+.status-update-form .field {
+    width: 100%;
+}
+
 .status-select {
-    padding: 4px 8px;
+    padding: 6px 10px;
     border: 1.5px solid var(--border);
     border-radius: 6px;
-    font-size: 11px;
+    font-size: 12px;
     font-family: inherit;
     cursor: pointer;
     outline: none;
+    width: 100%;
+    background: white;
     margin-top: 6px;
+}
+
+.status-select:focus { border-color: var(--primary); }
+
+.status-note-input {
+    padding: 6px 10px;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: inherit;
+    outline: none;
+    width: 100%;
+    resize: vertical;
+    min-height: 50px;
+    box-sizing: border-box;
+    margin-top: 6px;
+}
+
+.status-note-input:focus { border-color: var(--primary); }
+
+.btn-save-note {
+    margin-top: 6px;
+    padding: 5px 12px;
+    background: var(--primary-d);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+    width: 100%;
+}
+
+.btn-save-note:hover { background: var(--primary); }
+.btn-save-note:disabled { opacity: .6; cursor: not-allowed; }
+
+/* ── Notes history collapse ── */
+.notes-collapse-trigger {
+    margin-top: 8px;
+    padding: 0;
+    background: transparent;
+    color: #f97316;
+    border: none;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    width: fit-content;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.notes-collapse-trigger:hover {
+    background: transparent;
+    border-color: transparent;
+    text-decoration: underline;
+}
+
+.notes-collapse-trigger.expanded .collapse-chevron {
+    transform: rotate(180deg);
+}
+
+.notes-collapse-trigger .collapse-chevron {
+    font-size: 9px;
+    transition: transform .2s;
+    margin-left: 6px;
+}
+
+.val-bottom { vertical-align: bottom; }
+
+.order-status-cell {
+    display: flex;
+    flex-direction: column;
+    min-width: 180px;
+}
+
+.order-status-bottom {
+    margin-top: auto;
+    width: fit-content;
+    text-align: left;
+}
+
+.notes-trigger-cell {
+    padding: 8px 16px;
+    background: #FAFBFD;
+    border-top: 1px solid var(--border);
+    text-align: left;
+}
+
+.notes-cell {
+    padding: 10px 16px !important;
+    background: #F8FAFC;
+    border: 1px solid var(--border);
+    border-top: none;
+    text-align: left;
+}
+
+.notes-empty {
+    font-size: 12px;
+    color: var(--muted);
+    font-style: italic;
+    text-align: center;
+    padding: 8px 0;
+}
+
+.notes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 280px;
+    overflow-y: auto;
+    padding: 4px 0;
+}
+
+.note-item {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: #FAFBFD;
+    padding: 8px 12px;
+    overflow: hidden;
+    flex: 1 1 100%;
+    min-width: 0;
+}
+
+.note-item-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.note-item-body {
+    margin: 0;
+    padding: 0;
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-word;
+    flex: 1 1 auto;
+    min-width: 120px;
+}
+
+.note-item-body.muted { color: var(--muted); font-style: italic; }
+
+.note-item-head {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    padding: 4px 0 0;
+    flex-wrap: wrap;
+}
+
+.note-item-date {
+    font-size: 10px;
+    color: var(--muted);
+    white-space: nowrap;
+}
+
+.note-item-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 6px 8px;
+    background: white;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+}
+
+.note-item-date {
+    font-size: 10px;
+    color: var(--muted);
+    white-space: nowrap;
+}
+
+.note-item-body {
+    margin: 0;
+    padding: 6px 8px;
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-word;
+    text-align: left;
+}
+
+.note-item-body.muted {
+    color: var(--muted);
+    font-style: italic;
+}
+
+.btn-update-status {
+    padding: 8px 18px;
+    background: var(--primary-d);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+}
+
+.btn-update-status:hover { background: var(--primary); }
+.btn-update-status:disabled { opacity: .6; cursor: not-allowed; }
+
+.notes-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.notes-history-empty {
+    font-size: 13px;
+    color: var(--muted);
+    font-style: italic;
+    text-align: center;
+    padding: 12px 0;
+}
+
+.note-history-item {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: #FAFBFD;
+}
+
+.note-history-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px;
+    background: white;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+}
+
+.note-history-date {
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+}
+
+.note-history-body {
+    margin: 0;
+    padding: 10px 12px;
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.note-history-body.muted {
+    color: var(--muted);
+    font-style: italic;
+}
+
+.history-collapse-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 12px 16px;
+    background: #F8FAFC;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--primary-d);
+    text-transform: uppercase;
+    letter-spacing: .35px;
+    cursor: pointer;
+    text-align: left;
+}
+
+.history-collapse-trigger:hover { background: #EFF6FF; }
+
+.history-collapse-trigger .collapse-chevron {
+    font-size: 9px;
+    transition: transform .2s;
+}
+
+.history-collapse-trigger.expanded .collapse-chevron { transform: rotate(180deg); }
+
+.history-collapse-body {
+    border-top: none;
+}
+
+.history-collapse-body .collapse-section-body {
+    padding-top: 12px;
 }
 </style>
 @endsection
@@ -400,8 +811,8 @@
                 <th onclick="sortTable(3)"><span class="th-sort">Total Cost </span></th>
                 <th>Payment Method</th>
                 <th>Partial Payment Amount</th>
-                <th onclick="sortTable(6)"><span class="th-sort">Buyer Company </span></th>
-                <th onclick="sortTable(7)"><span class="th-sort">Seller Company </span></th>
+                <th onclick="sortTable(6)"><span class="th-sort">Buyer </span></th>
+                <th onclick="sortTable(7)"><span class="th-sort">Seller </span></th>
                 <th>Order Status</th>
                 <th>Delivery Charge</th>
                 <th onclick="sortTable(10)"><span class="th-sort">Ordered At </span></th>
@@ -411,33 +822,42 @@
             @forelse($orders as $order)
             @php
                 $product   = $order->product_info;
-                $imgUrl    = $product && $product->images ? asset('storage/' . (is_array($product->images) ? $product->images[0] : $product->images)) : null;
-                $currency  = (!empty($order->payment_currency) && $order->payment_currency !== 'null')
-             ? $order->payment_currency
-             : ((!empty($order->purchased_currency) && $order->purchased_currency !== 'null')
-                ? $order->purchased_currency : 'USD');
+                // Get first image from listing images array
+                $listingImages = $order->listing_images ?? [];
+                $imgUrl = null;
+                if (!empty($listingImages) && is_array($listingImages)) {
+                    $firstImg = $listingImages[0] ?? null;
+                    if (is_array($firstImg) && !empty($firstImg['url'])) {
+                        $imgUrl = $firstImg['url'];
+                    } elseif (is_array($firstImg) && !empty($firstImg['path'])) {
+                        $imgUrl = asset('storage/' . $firstImg['path']);
+                    }
+                }
 
-$total     = (!empty($order->payment_currency_total) && $order->payment_currency_total !== 'null')
-             ? $order->payment_currency_total
-             : (floatval($order->each_qty_price ?? 0) * intval($order->total_qty ?? 0));
-                $statusColor = match((int)$order->order_status) {
-                    0 => 'status-orange', 1 => 'status-blue', 2 => 'status-purple',
-                    3 => 'status-green',  4 => 'status-red',  default => 'status-orange'
-                };
-                $statusLabel = match((int)$order->order_status) {
-                    0 => 'Pending under payment verification',
-                    1 => 'Confirmed',
-                    2 => 'Shipped',
-                    3 => 'Delivered',
-                    4 => 'Cancelled',
-                    default => 'Pending'
-                };
+                $currency  = (!empty($order->payment_currency) && $order->payment_currency !== 'null')
+                             ? $order->payment_currency
+                             : ((!empty($order->purchased_currency) && $order->purchased_currency !== 'null')
+                                ? $order->purchased_currency : 'USD');
+
+                $total     = (!empty($order->payment_currency_total) && $order->payment_currency_total !== 'null')
+                             ? $order->payment_currency_total
+                             : (floatval($order->each_qty_price ?? 0) * intval($order->total_qty ?? 0));
+
+                $statusColor = \App\Models\Order::statusColorClass($order->order_status);
+                $statusLabel  = \App\Models\Order::statusLabelFromMixed($order->order_status);
+                $statusInt    = \App\Models\Order::statusToInt($order->order_status);
+            @endphp
+            @php
+                $statusHistory = $order->status_notes ?? [];
+                if (!is_array($statusHistory)) $statusHistory = [];
+                $statusHistory = array_reverse($statusHistory);
+                $historyCount  = count($statusHistory);
             @endphp
             <tr data-id="{{ $order->id }}">
 
                 {{-- Order ID --}}
                 <td>
-                    <span class="order-id-link">{{ $order->unique_id ?? 'Order' . str_pad($order->id, 5, '0', STR_PAD_LEFT) }}</span>
+                    <span class="order-id-link">{{ $order->unique_id ?? 'ORD-' . substr($order->id, -6) }}</span>
                 </td>
 
                 {{-- Product --}}
@@ -450,10 +870,10 @@ $total     = (!empty($order->payment_currency_total) && $order->payment_currency
                             <div class="product-img-placeholder">No img</div>
                         @endif
                         @if($product)
-    <span class="product-code">
-        {{ $product->product_name }}
-    </span>
-@endif
+                            <span class="product-code">
+                                {{ $product->product_name }}
+                            </span>
+                        @endif
                     </div>
                 </td>
 
@@ -527,29 +947,42 @@ $total     = (!empty($order->payment_currency_total) && $order->payment_currency
                     @endif
                 </td>
 
-                {{-- Buyer Company --}}
+                {{-- Buyer --}}
                 <td class="company-name">
-                    {{ $order->buyer_company_name ?? '-' }}
+                    {{ $order->buyer_name ?? '-' }}
                 </td>
 
-                {{-- Seller Company --}}
+                {{-- Seller --}}
                 <td class="company-name">
-                    {{ $order->seller_company_name ?? '-' }}
+                    {{ $order->seller_name ?? '-' }}
                 </td>
 
                 {{-- Order Status --}}
-                <td>
-                    <span class="badge-order-status {{ $statusColor }}">
-                        {{ $statusLabel }}
-                    </span>
-                    <br/>
-                    <select class="status-select" onchange="updateStatus('{{ $order->id }}', this.value)">
-                        <option value="0" {{ $order->order_status == 0 ? 'selected' : '' }}>Pending</option>
-                        <option value="1" {{ $order->order_status == 1 ? 'selected' : '' }}>Confirmed</option>
-                        <option value="2" {{ $order->order_status == 2 ? 'selected' : '' }}>Shipped</option>
-                        <option value="3" {{ $order->order_status == 3 ? 'selected' : '' }}>Delivered</option>
-                        <option value="4" {{ $order->order_status == 4 ? 'selected' : '' }}>Cancelled</option>
-                    </select>
+                <td class="order-status-cell val-bottom">
+                    <div class="order-status-top">
+                        <span class="badge-order-status {{ $statusColor }}" id="status-badge-{{ $order->id }}">
+                            {{ $statusLabel }}
+                        </span>
+                        <br/>
+                        <select class="status-select"
+                                id="status-select-{{ $order->id }}"
+                                onchange="updateStatus('{{ $order->id }}', this.value)">
+                            <option value="Pending" {{ $statusInt === 0 ? 'selected' : '' }}>Pending</option>
+                            <option value="Confirmed" {{ $statusInt === 1 ? 'selected' : '' }}>Confirmed</option>
+                            <option value="Shipped" {{ $statusInt === 2 ? 'selected' : '' }}>Shipped</option>
+                            <option value="Delivered" {{ $statusInt === 3 ? 'selected' : '' }}>Delivered</option>
+                            <option value="Cancelled" {{ $statusInt === 4 ? 'selected' : '' }}>Cancelled</option>
+                        </select>
+                        <textarea class="status-note-input"
+                                  id="status-note-{{ $order->id }}"
+                                  rows="2"
+                                  placeholder="Add a note…"></textarea>
+                        <button type="button"
+                                class="btn-save-note"
+                                onclick="updateNote('{{ $order->id }}')">
+                            Save note
+                        </button>
+                    </div>
                 </td>
 
                 {{-- Delivery Charge --}}
@@ -567,6 +1000,60 @@ $total     = (!empty($order->payment_currency_total) && $order->payment_currency
                     @endif
                 </td>
 
+            </tr>
+
+            {{-- Notes trigger row --}}
+            <tr id="notes-trigger-row-{{ $order->id }}">
+                <td colspan="11" class="notes-trigger-cell">
+                    <button type="button"
+                            class="notes-collapse-trigger"
+                            id="notes-trigger-{{ $order->id }}"
+                            onclick="toggleNotesPanel('{{ $order->id }}')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="8 6 12 2 16 6"></polyline>
+                            <polyline points="8 10 12 6 16 10"></polyline>
+                            <polyline points="8 14 12 10 16 14"></polyline>
+                            <polyline points="8 18 12 14 16 18"></polyline>
+                        </svg>
+                        <span id="notes-count-{{ $order->id }}">View notes ({{ $historyCount }})</span>
+                        <span class="collapse-chevron">▼</span>
+                    </button>
+                </td>
+            </tr>
+
+            {{-- Notes panel row (hidden by default) --}}
+            <tr id="notes-row-{{ $order->id }}" style="display:none;">
+                <td colspan="11" class="notes-cell">
+                    <div class="notes-list" id="notes-list-{{ $order->id }}">
+                        @forelse($statusHistory as $entry)
+                            @php
+                                $entryStatus = $entry['order_status'] ?? 0;
+                                $entryNote   = trim((string) ($entry['note'] ?? ''));
+                                $entryAt     = $entry['created_at'] ?? null;
+                                if ($entryAt && !($entryAt instanceof \Carbon\Carbon)) {
+                                    try { $entryAt = \Carbon\Carbon::parse($entryAt); } catch (\Exception $e) { $entryAt = null; }
+                                }
+                            @endphp
+                            <div class="note-item">
+                                <div class="note-item-row">
+                                    <span class="badge-order-status {{ \App\Models\Order::statusColorClassFromMixed($entryStatus) }}">
+                                        {{ \App\Models\Order::statusLabelFromMixed($entryStatus) }}
+                                    </span>
+                                    <p class="note-item-body {{ $entryNote === '' ? 'muted' : '' }}">
+                                        {{ $entryNote !== '' ? $entryNote : 'No note provided.' }}
+                                    </p>
+                                </div>
+                                <div class="note-item-head">
+                                    @if($entryAt)
+                                        <span class="note-item-date">{{ $entryAt->format('d-m-Y h:i A') }}</span>
+                                    @endif
+                                </div>
+                            </div>
+                        @empty
+                            <div class="notes-empty">No notes yet.</div>
+                        @endforelse
+                    </div>
+                </td>
             </tr>
             @empty
             <tr>
@@ -618,7 +1105,7 @@ $total     = (!empty($order->payment_currency_total) && $order->payment_currency
 
 @section('scripts')
 <script>
-const CSRF = document.querySelector('meta[name="csrf-token"]').content;
+const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').content;
 
 // ── Filter by product dropdown ──
 function filterByProduct(productId) {
@@ -633,7 +1120,7 @@ function filterByProduct(productId) {
 
 // ── Search filter (client-side) ──
 function filterTable(query) {
-    const rows  = document.querySelectorAll('#salesTableBody tr');
+    const rows  = document.querySelectorAll('#salesTableBody tr[data-id]');
     const q     = query.toLowerCase();
     let visible = 0;
 
@@ -641,11 +1128,17 @@ function filterTable(query) {
         const text = row.textContent.toLowerCase();
         const show = text.includes(q);
         row.style.display = show ? '' : 'none';
+        const detail = document.getElementById('order-detail-' + row.dataset.id);
+        if (detail) {
+            if (!show) {
+                detail.style.display = 'none';
+            } else {
+                const trigger = row.querySelector('.collapse-trigger') || row.querySelector('.order-id-link');
+                detail.style.display = trigger?.classList.contains('expanded') ? '' : 'none';
+            }
+        }
         if (show) visible++;
     });
-
-    document.getElementById('countLabel').textContent =
-        `1–${visible} of ${rows.length} entries`;
 }
 
 // ── Change page size (reload with param) ──
@@ -659,7 +1152,7 @@ function changePageSize(size) {
 let sortDir = {};
 function sortTable(colIndex) {
     const tbody = document.getElementById('salesTableBody');
-    const rows  = Array.from(tbody.querySelectorAll('tr'));
+    const rows  = Array.from(tbody.querySelectorAll('tr[data-id]'));
     const dir   = sortDir[colIndex] === 'asc' ? 'desc' : 'asc';
     sortDir[colIndex] = dir;
 
@@ -671,7 +1164,11 @@ function sortTable(colIndex) {
             : bText.localeCompare(aText, undefined, { numeric: true });
     });
 
-    rows.forEach(r => tbody.appendChild(r));
+    rows.forEach(r => {
+        tbody.appendChild(r);
+        const detail = document.getElementById('order-detail-' + r.dataset.id);
+        if (detail) tbody.appendChild(detail);
+    });
 }
 
 // ── Mark payment verified ──
@@ -684,7 +1181,7 @@ async function markVerified(orderId, btn) {
     try {
         const res  = await fetch(`/admin/sales/${orderId}/verify-payment`, {
             method:  'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF_TOKEN },
         });
         const data = await res.json();
 
@@ -710,19 +1207,201 @@ async function markVerified(orderId, btn) {
     }
 }
 
+const STATUS_LABELS = {
+    0: 'Pending under payment verification',
+    1: 'Confirmed',
+    2: 'Shipped',
+    3: 'Delivered',
+    4: 'Cancelled',
+};
+
+const STATUS_COLORS = {
+    0: 'status-orange',
+    1: 'status-blue',
+    2: 'status-purple',
+    3: 'status-green',
+    4: 'status-red',
+};
+
+const STATUS_SHORT = {
+    0: 'Pending',
+    1: 'Confirmed',
+    2: 'Shipped',
+    3: 'Delivered',
+    4: 'Cancelled',
+};
+
+function resolveStatusColor(status) {
+    if (typeof status === 'string') {
+        const lower = status.toLowerCase().trim();
+        const map = {
+            'pending under payment verification': 'status-orange',
+            'pending': 'status-orange',
+            'confirmed': 'status-blue',
+            'shipped': 'status-purple',
+            'delivered': 'status-green',
+            'cancelled': 'status-red',
+        };
+        return map[lower] || 'status-orange';
+    }
+    return STATUS_COLORS[parseInt(status, 10)] || 'status-orange';
+}
+
+function resolveStatusLabel(status) {
+    if (typeof status === 'string') {
+        return status;
+    }
+    return STATUS_SHORT[parseInt(status, 10)] || 'Unknown';
+}
+
 // ── Update order status ──
 async function updateStatus(orderId, status) {
     try {
         const res = await fetch(`/admin/sales/${orderId}/status`, {
             method:  'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF_TOKEN },
             body:    JSON.stringify({ order_status: status }),
         });
         const data = await res.json();
-        if (!data.success) alert('Failed to update status');
+
+        if (!res.ok || !data.success) {
+            alert(data.message || 'Failed to update status');
+            return;
+        }
+
+        const badge = document.getElementById('status-badge-' + orderId);
+        if (badge) {
+            badge.textContent = data.status_label || resolveStatusLabel(status);
+            badge.className = 'badge-order-status ' + (data.status_color || resolveStatusColor(status));
+        }
     } catch (e) {
         alert('Network error updating status');
     }
+}
+
+// ── Save note with current status ──
+window.updateNote = async function updateNote(orderId) {
+    const noteEl   = document.getElementById('status-note-' + orderId);
+    const selectEl = document.getElementById('status-select-' + orderId);
+    const btn      = noteEl?.parentElement?.querySelector('.btn-save-note');
+    const note     = (noteEl?.value ?? '').trim();
+    const status   = selectEl?.value ?? 'Pending';
+
+    if (!note) {
+        alert('Please write a note before saving.');
+        noteEl?.focus();
+        return;
+    }
+
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+
+    try {
+        const res = await fetch(`/admin/sales/${orderId}/note`, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF_TOKEN },
+            body:    JSON.stringify({ status_note: note, order_status: status }),
+        });
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+            alert(data.message || 'Failed to save note');
+            if (btn) { btn.disabled = false; btn.textContent = 'Save note'; }
+            return;
+        }
+
+        // Clear textarea and update the badge to reflect the saved status
+        if (noteEl) noteEl.value = '';
+        const badge = document.getElementById('status-badge-' + orderId);
+        if (badge) {
+            badge.textContent = data.status_label || resolveStatusLabel(status);
+            badge.className = 'badge-order-status ' + (data.status_color || resolveStatusColor(status));
+        }
+
+        // Re-render the notes panel
+        renderNotesList(orderId, data.status_notes || []);
+
+        // Auto-expand the notes row so the user sees the new entry
+        const row     = document.getElementById('notes-row-' + orderId);
+        const trigger = document.getElementById('notes-trigger-' + orderId);
+        if (row && trigger) {
+            row.style.display = 'table-row';
+            trigger.classList.add('expanded');
+        }
+
+        if (btn) {
+            btn.textContent = 'Saved ✓';
+            setTimeout(() => { btn.textContent = 'Save note'; btn.disabled = false; }, 1200);
+        }
+    } catch (e) {
+        alert('Network error saving note');
+        if (btn) { btn.disabled = false; btn.textContent = 'Save note'; }
+    }
+}
+
+// ── Toggle the notes history panel ──
+function toggleNotesPanel(orderId) {
+    const panel   = document.getElementById('notes-row-' + orderId);
+    const trigger = document.getElementById('notes-trigger-' + orderId);
+    if (!panel || !trigger) return;
+
+    const isHidden = panel.style.display === 'none';
+    panel.style.display = isHidden ? 'table-row' : 'none';
+    trigger.classList.toggle('expanded', isHidden);
+}
+
+// ── Re-render the notes list (newest first) ──
+function renderNotesList(orderId, history) {
+    const list    = document.getElementById('notes-list-' + orderId);
+    const countEl = document.getElementById('notes-count-' + orderId);
+    if (!list) return;
+
+    // Server returns oldest→newest; show newest first
+    const items = (history || []).slice().reverse();
+
+    if (countEl) countEl.textContent = 'View notes (' + items.length + ')';
+
+    if (!items.length) {
+        list.innerHTML = '<div class="notes-empty">No notes yet.</div>';
+        return;
+    }
+
+    list.innerHTML = items.map(entry => {
+        const st    = entry.order_status ?? 0;
+        const note  = (entry.note || '').trim();
+        const color = resolveStatusColor(st);
+        const label = resolveStatusLabel(st);
+        const date  = entry.created_at ? formatNoteDate(entry.created_at) : '';
+
+        return `<div class="note-item">
+            <div class="note-item-row">
+                <span class="badge-order-status ${color}">${escapeHtml(label)}</span>
+                <p class="note-item-body ${note ? '' : 'muted'}">${note ? escapeHtml(note) : 'No note provided.'}</p>
+            </div>
+            <div class="note-item-head">
+                ${date ? `<span class="note-item-date">${escapeHtml(date)}</span>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function formatNoteDate(iso) {
+    try {
+        const d = new Date(iso);
+        return d.toLocaleString('en-GB', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit', hour12: true,
+        });
+    } catch {
+        return '';
+    }
+}
+
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
 }
 </script>
 @endsection
