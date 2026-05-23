@@ -14,21 +14,36 @@ class MainMenuController extends Controller
     public function __construct(protected TranslationService $translator) {}
 
     public function index(Request $request)
-    {
-        $query = MainMenu::query();
+{
+    $query = MainMenu::query();
 
-        if ($request->filled('search')) {
-            $query->where('category_name', 'like', '%' . $request->search . '%');
-        }
-
-        $menus = $query->orderBy('created_at', 'desc')
-                       ->paginate($request->get('entries', 10));
-
-        return view('admin.setup.main-menu.main-menu', [
-            'mode'  => 'index',
-            'menus' => $menus,
-        ]);
+    if ($request->filled('search')) {
+        $query->where('category_name', 'like', '%' . $request->search . '%');
     }
+
+    $menus = $query->orderBy('sort_order', 'asc')   // ← was created_at desc
+                   ->orderBy('created_at', 'asc')   // fallback for nulls
+                   ->paginate($request->get('entries', 10));
+
+    return view('admin.setup.main-menu.main-menu', [
+        'mode'  => 'index',
+        'menus' => $menus,
+    ]);
+}
+public function reorder(Request $request)
+{
+    $request->validate([
+        'order'   => 'required|array',
+        'order.*' => 'string', // MongoDB IDs are strings
+    ]);
+
+    foreach ($request->order as $position => $id) {
+        MainMenu::where('_id', $id)
+                ->update(['sort_order' => $position + 1]);
+    }
+
+    return response()->json(['success' => true]);
+}
 
     public function create()
     {

@@ -25,6 +25,7 @@ class MainMenu extends Model
         'meta_description',
         'meta_image',
         'content',
+         'sort_order',
     ];
 
     protected $casts = [

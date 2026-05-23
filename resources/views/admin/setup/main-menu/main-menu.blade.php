@@ -467,17 +467,21 @@ function renumberRows() {
 
     <table class="data-table">
         <thead>
-            <tr>
-                <th class="center" style="width:70px;">S.No</th>
-                <th class="center" style="width:120px;">Category Icon</th>
-                <th>Category Name</th>
-                <th class="center" style="width:140px;">Value of Stocks</th>
-                <th class="center" style="width:100px;">Action</th>
-            </tr>
-        </thead>
+    <tr>
+        <th class="center" style="width:50px;"></th>  {{-- drag handle --}}
+        <th class="center" style="width:70px;">S.No</th>
+        <th class="center" style="width:120px;">Category Icon</th>
+        <th>Category Name</th>
+        <th class="center" style="width:140px;">Value of Stocks</th>
+        <th class="center" style="width:100px;">Action</th>
+    </tr>
+</thead>
         <tbody>
             @forelse($menus as $index => $menu)
-            <tr>
+            <tr data-id="{{ $menu->id }}">
+    <td class="center drag-handle" style="cursor:grab; color:#CBD5E1; font-size:18px;" title="Drag to reorder">
+        ⠿
+    </td>
                 <td class="center" style="font-weight:700; color:var(--muted); font-size:13px;">
                     {{ $menus->firstItem() + $index }}
                 </td>
@@ -555,7 +559,7 @@ function renumberRows() {
             </tr>
             @empty
             <tr>
-                <td colspan="5">
+                <td colspan="6">
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                             <path d="M4 6h16M4 12h16M4 18h7"/>
@@ -598,6 +602,48 @@ function renumberRows() {
     @endif
 </div>
 </div>
+@endsection
 
+@section('scripts')
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script>
+(function () {
+    const tbody = document.querySelector('.data-table tbody');
+    if (!tbody) return;
+
+    Sortable.create(tbody, {
+        handle: '.drag-handle',
+        animation: 150,
+        ghostClass: 'drag-ghost',
+        onEnd: function () {
+            const order = [...tbody.querySelectorAll('tr[data-id]')]
+                            .map(tr => tr.dataset.id);
+
+            fetch('{{ route('admin.setup.main-menus.reorder') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                },
+                body: JSON.stringify({ order }),
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    tbody.querySelectorAll('tr[data-id]').forEach((tr, i) => {
+                        const cells = tr.querySelectorAll('td');
+                        if (cells[1]) cells[1].textContent = i + 1; // S.No is 2nd td
+                    });
+                }
+            })
+            .catch(err => console.error('Reorder failed:', err));
+        }
+    });
+})();
+</script>
+<style>
+    .drag-ghost { opacity:0.4; background:#E0F2FE !important; }
+    .drag-handle:hover { color:#94A3B8 !important; }
+</style>
 @endsection
 @endif

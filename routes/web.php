@@ -370,8 +370,8 @@ Route::get('/setup/main-menus/{id}/edit',        [MainMenuController::class, 'ed
 Route::put('/setup/main-menus/{id}',             [MainMenuController::class, 'update'])->name('admin.setup.main-menus.update');
 Route::patch('/setup/main-menus/{id}/toggle',    [MainMenuController::class, 'toggleStatus'])->name('admin.setup.main-menus.toggle');
 Route::delete('/setup/main-menus/{id}',          [MainMenuController::class, 'destroy'])->name('admin.setup.main-menus.destroy');
-Route::patch('main-menus/{id}/stock-toggle', [MainMenuController::class, 'toggleStock'])
-     ->name('admin.setup.main-menus.stock-toggle');
+Route::patch('main-menus/{id}/stock-toggle', [MainMenuController::class, 'toggleStock'])->name('admin.setup.main-menus.stock-toggle');
+Route::post('/setup/main-menus/reorder', [MainMenuController::class, 'reorder'])->name('admin.setup.main-menus.reorder');
 
     // News
     Route::get   ('admin/knowledge-hub/news',           [NewsController::class, 'index'])  ->name('admin.knowledge-hub.news.index');

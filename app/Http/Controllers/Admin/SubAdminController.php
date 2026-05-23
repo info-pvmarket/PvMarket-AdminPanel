@@ -12,7 +12,7 @@ class SubAdminController extends Controller
 {
     public function index(Request $request)
     {
-        $query = User::where('role', 'sub_admin');
+        $query = User::whereNotNull('role_id');
 
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
@@ -21,38 +21,40 @@ class SubAdminController extends Controller
             });
         }
 
-        $subAdmins = $query->orderBy('created_at', 'desc')
-                           ->paginate($request->get('entries', 10));
-
+        $subAdmins = $query->with('role')->orderBy('created_at', 'desc')
+                   ->paginate($request->get('entries', 10));
         return view('admin.setup.sub-admins.sub-admins', [
-            'mode'      => 'index',
-            'subAdmins' => $subAdmins,
-        ]);
+    'mode'      => 'index',
+    'subAdmins' => $subAdmins,
+    'roles'     => \App\Models\Role::orderBy('role')->get(),
+]);
     }
 
     public function create()
     {
         return view('admin.setup.sub-admins.sub-admins', [
-            'mode'   => 'create',
-            'record' => null,
-        ]);
+    'mode'   => 'create',
+    'record' => null,
+    'roles'  => \App\Models\Role::orderBy('role')->get(),
+]);
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|email|unique:mongodb.users,email',
-            'password' => 'required|string|min:8',
-        ]);
+    'name'     => 'required|string|max:255',
+    'email'    => 'required|email|unique:mongodb.users,email',
+    'password' => 'required|string|min:8',
+    'role_id'  => 'required|string',
+]);
 
-        User::create([
-            'name'      => $request->name,
-            'email'     => $request->email,
-            'password'  => Hash::make($request->password),
-            'role'      => 'sub_admin',
-            'is_active' => true,
-        ]);
+User::create([
+    'name'      => $request->name,
+    'email'     => $request->email,
+    'password'  => Hash::make($request->password),
+    'role_id'   => new \MongoDB\BSON\ObjectId($request->role_id),
+    'is_active' => true,
+]);
 
         return redirect()->route('admin.setup.sub-admins.index')
                          ->with('success', 'Sub Admin created successfully.');
@@ -60,12 +62,13 @@ class SubAdminController extends Controller
 
     public function edit($id)
     {
-        $record = User::where('role', 'sub_admin')->findOrFail($id);
+        $record = User::findOrFail($id);
 
         return view('admin.setup.sub-admins.sub-admins', [
-            'mode'   => 'edit',
-            'record' => $record,
-        ]);
+    'mode'   => 'edit',
+    'record' => $record->load('role'),
+    'roles'  => \App\Models\Role::orderBy('role')->get(),
+]);
     }
 
     public function update(Request $request, $id)
@@ -73,15 +76,17 @@ class SubAdminController extends Controller
         $record = User::where('role', 'sub_admin')->findOrFail($id);
 
         $request->validate([
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|email|unique:mongodb.users,email,' . $id . ',_id',
-            'password' => 'nullable|string|min:8',
-        ]);
+    'name'     => 'required|string|max:255',
+    'email'    => 'required|email|unique:mongodb.users,email,' . $id . ',_id',
+    'password' => 'nullable|string|min:8',
+    'role_id'  => 'required|string',
+]);
 
-        $data = [
-            'name'  => $request->name,
-            'email' => $request->email,
-        ];
+$data = [
+    'name'    => $request->name,
+    'email'   => $request->email,
+    'role_id' => new \MongoDB\BSON\ObjectId($request->role_id),
+];
 
         if ($request->filled('password')) {
             $data['password'] = Hash::make($request->password);
@@ -95,7 +100,7 @@ class SubAdminController extends Controller
 
     public function destroy($id)
     {
-        User::where('role', 'sub_admin')->findOrFail($id)->delete();
+        User::findOrFail($id)->delete();
 
         return redirect()->route('admin.setup.sub-admins.index')
                          ->with('success', 'Sub Admin deleted.');

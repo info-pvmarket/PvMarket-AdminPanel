@@ -182,6 +182,7 @@
                        value="{{ old('name') }}"
                        placeholder="Full name" required/>
             </div>
+            
 
             {{-- Password with Generate button --}}
             <div class="form-group">
@@ -197,6 +198,18 @@
                 </div>
                 <span class="form-hint">Hint: min length 8 characters</span>
             </div>
+            {{-- Role --}}
+<div class="form-group">
+    <label class="form-label">Role: <span>*</span></label>
+    <select name="role_id" class="form-input" required>
+        <option value=""> Select Role </option>
+        @foreach($roles as $role)
+            <option value="{{ $role->id }}" {{ old('role_id') == $role->id ? 'selected' : '' }}>
+                {{ $role->role }}
+            </option>
+        @endforeach
+    </select>
+</div>
 
         </div>
 
@@ -326,6 +339,18 @@
                 </div>
                 <span class="form-hint">Hint: min length 8 characters</span>
             </div>
+            {{-- Role --}}
+<div class="form-group">
+    <label class="form-label">Role: <span>*</span></label>
+    <select name="role_id" class="form-input" required>
+        <option value=""> Select Role </option>
+        @foreach($roles as $role)
+            <option value="{{ $role->id }}" {{ old('role_id') == $role->id ? 'selected' : '' }}>
+                {{ $role->role }}
+            </option>
+        @endforeach
+    </select>
+</div>
 
         </div>
 
@@ -496,8 +521,9 @@
             <tr>
                 <th class="center" style="width:80px;">S.No</th>
                 <th>Name</th>
-                <th>Email</th>          
-                <th class="center" style="width:120px;">Action</th>
+                <th>Email</th>
+<th style="width:140px;">Role</th>
+<th class="center" style="width:120px;">Action</th>
             </tr>
         </thead>
         <tbody>
@@ -508,8 +534,15 @@
                 </td>
                 <td style="font-weight:600;">{{ $admin->name }}</td>
                 <td>{{ $admin->email }}</td>
-                <td>
-                    <div class="action-btns">
+<td>
+    @if($admin->role)
+        <span class="role-badge">{{ $admin->role->role }}</span>
+    @else
+        <span style="color:#CBD5E1; font-size:12px;">—</span>
+    @endif
+</td>
+<td>
+    <div class="action-btns">
                         <a href="{{ route('admin.setup.sub-admins.edit', $admin->id) }}"
                            class="action-icon edit" title="Edit">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
