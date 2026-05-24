@@ -276,10 +276,11 @@
     font-weight: 600;
     cursor: pointer;
     font-family: inherit;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 4px;
-    margin: 0 auto;
+    margin-top: 4px;
+    padding: 0;
 }
 
 .mark-verified-btn:hover { text-decoration: underline; }
@@ -930,20 +931,20 @@
                 <td>
                     @if($order->partial_payment_amount)
                         <div class="partial-amount">
-    {{ $order->partial_payment_amount }}({{ $currency }})
-</div>
-                        <span class="badge-verified {{ $order->payment_verified ? 'badge-is-verified' : 'badge-not-verified' }}">
-                            {{ $order->payment_verified ? 'Verified' : 'Not Verified' }}
-                        </span>
-                        @if(!$order->payment_verified)
-                            <br/>
-                            <button class="mark-verified-btn"
-                                    onclick="markVerified('{{ $order->id }}', this)">
-                                Mark Verified ✓
-                            </button>
-                        @endif
-                    @else
-                        <span class="dash">-</span>
+                            {{ $order->partial_payment_amount }}({{ $currency }})
+                        </div>
+                    @endif
+
+                    <span class="badge-verified {{ $order->payment_verified ? 'badge-is-verified' : 'badge-not-verified' }}">
+                        {{ $order->payment_verified ? 'Verified' : 'Not Verified' }}
+                    </span>
+
+                    @if(!$order->payment_verified)
+                        <br/>
+                        <button class="mark-verified-btn"
+                                onclick="markVerified('{{ $order->id }}', this)">
+                            Mark Verified ✓
+                        </button>
                     @endif
                 </td>
 

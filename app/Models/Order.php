@@ -68,7 +68,7 @@ class Order extends Model
         'deleted_by'       => AsObjectId::class,
         'is_active'        => 'integer',
         'payment_method'   => 'integer',
-        'payment_verified' => 'integer',
+        'payment_verified' => 'boolean',
         'payment_status'   => 'integer',
         'payment_platform' => 'integer',
         'price_type'       => 'integer',
