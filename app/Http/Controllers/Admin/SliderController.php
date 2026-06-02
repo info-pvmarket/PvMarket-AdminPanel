@@ -6,6 +6,7 @@ use App\Models\Slider;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use App\Services\TranslationService;
+use App\Models\Location;
 
 class SliderController extends ResourceController
 {
@@ -28,6 +29,7 @@ class SliderController extends ResourceController
     public function store(Request $request)
     {
         $request->validate([
+    'sliders.*.location_id' => 'required',
     'sliders'                 => 'required|array|min:1',
     'sliders.*.name'          => 'required|string|max:255',
     'sliders.*.slider_type'   => 'required|string|in:top,bottom,side,popup',
@@ -41,6 +43,7 @@ class SliderController extends ResourceController
 
         foreach ($request->sliders as $i => $data) {
             $row = [
+                'location_id'   => $data['location_id'],
                 'name'          => $data['name'],
                 'alt_tag'       => $data['alt_tag']       ?? null,
                 'redirect_link' => $data['redirect_link'] ?? null,
@@ -66,6 +69,7 @@ class SliderController extends ResourceController
         $slider = Slider::findOrFail($id);
 
         $request->validate([
+            'location_id' => 'required',
             'name'          => 'required|string|max:255',
             'alt_tag'       => 'nullable|string|max:255',
             'redirect_link' => 'nullable|url',
@@ -73,7 +77,13 @@ class SliderController extends ResourceController
             'slider_type'   => 'required|string|in:top,advertisement',
         ]);
 
-        $data = $request->only(['name', 'alt_tag', 'redirect_link', 'slider_type']);
+        $data = $request->only([
+    'name',
+    'alt_tag',
+    'redirect_link',
+    'slider_type',
+    'location_id'
+]);
 
         if ($request->hasFile('image')) {
             if ($slider->image) Storage::disk('public')->delete($slider->image);
@@ -135,4 +145,25 @@ class SliderController extends ResourceController
 
         return $data;
     }
+    public function create()
+{
+    $locations = Location::orderBy('country_name')->get();
+
+    return view($this->view, [
+        'mode' => 'create',
+        'locations' => $locations,
+    ]);
+}
+public function edit($id)
+{
+    $record = Slider::findOrFail($id);
+
+    $locations = Location::orderBy('country_name')->get();
+
+    return view($this->view, [
+        'mode' => 'edit',
+        'record' => $record,
+        'locations' => $locations,
+    ]);
+}
 }

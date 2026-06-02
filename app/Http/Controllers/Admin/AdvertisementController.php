@@ -6,7 +6,8 @@ use App\Models\Advertisement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\Controller;
-use App\Services\TranslationService;    
+use App\Services\TranslationService;
+use App\Models\Location;    
 
 class AdvertisementController extends ResourceController
 {
@@ -16,13 +17,19 @@ class AdvertisementController extends ResourceController
     protected string $route  = 'admin.setup.advertisements';
 
     protected array $rules = [
-        'title'         => 'required|string|max:255',
-        'alt_tag'       => 'nullable|string|max:255',
-        'redirect_link' => 'nullable|url',
-        'image'         => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
-    ];
+    'title'         => 'required|string|max:255',
+    'location_id'   => 'required',
+    'alt_tag'       => 'nullable|string|max:255',
+    'redirect_link' => 'nullable|url',
+    'image'         => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+];
 
-    protected array $fields = ['title', 'alt_tag', 'redirect_link'];
+    protected array $fields = [
+    'title',
+    'alt_tag',
+    'redirect_link',
+    'location_id'
+];
 
     // Override store/update to handle image upload
     public function store(Request $request)
@@ -90,5 +97,20 @@ class AdvertisementController extends ResourceController
     }
 
     return $data;
+}
+public function create()
+{
+    return view($this->view, [
+        'mode'      => 'create',
+        'locations' => Location::orderBy('country_name')->get(),
+    ]);
+}
+public function edit($id)
+{
+    return view($this->view, [
+        'mode'      => 'edit',
+        'record'    => Advertisement::findOrFail($id),
+        'locations' => Location::orderBy('country_name')->get(),
+    ]);
 }
 }

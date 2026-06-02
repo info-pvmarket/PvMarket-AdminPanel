@@ -13,11 +13,12 @@
     :paginator="$records"
 >
     <x-slot name="columns">
-        <th class="center">Advertisement Image</th>
-        <th>Advertisement</th>
-        <th>Redirect Link</th>
-        <th class="center" style="width:130px;">Action</th>
-    </x-slot>
+    <th class="center">Advertisement Image</th>
+    <th>Advertisement</th>
+    <th class="center">Location</th>
+    <th>Redirect Link</th>
+    <th class="center" style="width:130px;">Action</th>
+</x-slot>
 
     <x-slot name="rows">
         @forelse ($records as $index => $ad)
@@ -39,6 +40,13 @@
                 @endif
             </td>
             <td style="font-weight:600;">{{ $ad->title }}</td>
+            <td class="center">
+    @php
+        $location = \App\Models\Location::find($ad->location_id);
+    @endphp
+
+    {{ $location->country_name ?? '-' }}
+</td>
             <td>
                 @if($ad->redirect_link)
                     <a href="{{ $ad->redirect_link }}" target="_blank" class="redirect-link">Link</a>
@@ -80,7 +88,7 @@
         </tr>
         @empty
         <tr>
-            <td colspan="5">
+            <td colspan="6">
                 <div class="empty-state">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                         <rect x="3" y="3" width="18" height="18" rx="2"/>
@@ -136,6 +144,25 @@
             <input type="text" name="title" class="form-input" placeholder="Enter advertisement title" value="{{ old('title') }}" required/>
         </div>
         <div class="form-group">
+    <label class="form-label">
+        Country <span>*</span>
+    </label>
+
+    <select
+        name="location_id"
+        class="form-input"
+        required
+    >
+        <option value="">Select Country</option>
+
+        @foreach($locations as $location)
+            <option value="{{ (string)$location->_id }}">
+                {{ $location->country_name }}
+            </option>
+        @endforeach
+    </select>
+</div>
+        <div class="form-group">
             <label class="form-label">Advertisement Image</label>
             <div class="form-file-wrap"><input type="file" name="image" accept="image/*"/></div>
             <span class="form-hint">Recommended: 550×200px (JPG, PNG)</span>
@@ -164,6 +191,28 @@
             <label class="form-label">Title <span>*</span></label>
             <input type="text" name="title" class="form-input" placeholder="Enter advertisement title" value="{{ old('title', $record->title) }}" required/>
         </div>
+        <div class="form-group">
+    <label class="form-label">
+        Country <span>*</span>
+    </label>
+
+    <select
+        name="location_id"
+        class="form-input"
+        required
+    >
+        <option value="">Select Country</option>
+
+        @foreach($locations as $location)
+            <option
+                value="{{ (string)$location->_id }}"
+                {{ (string)$record->location_id === (string)$location->_id ? 'selected' : '' }}
+            >
+                {{ $location->country_name }}
+            </option>
+        @endforeach
+    </select>
+</div>
         <div class="form-group">
             <label class="form-label">Advertisement Image</label>
             @if($record->image)

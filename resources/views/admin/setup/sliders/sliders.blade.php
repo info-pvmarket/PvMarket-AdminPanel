@@ -28,6 +28,7 @@
         <th class="center">Slider Image</th>
         <th>Slider</th>
         <th class="center">Slider Type</th>
+        <th class="center">Location</th>
         <th>Redirect Link</th>
         <th class="center" style="width:130px;">Action</th>
     </x-slot>
@@ -48,6 +49,7 @@
                     </svg>
                 </div>
             </td>
+            
             {{-- S.No --}}
             <td class="center" style="font-weight:700; color:var(--muted); font-size:13px;">
                 {{ $records->firstItem() + $index }}
@@ -91,6 +93,14 @@
     @else
         <span style="color:#CBD5E1;">—</span>
     @endif
+</td>
+{{-- Location --}}
+<td class="center">
+    @php
+        $location = \App\Models\Location::find($slider->location_id);
+    @endphp
+
+    {{ $location->country_name ?? '-' }}
 </td>
             {{-- Link --}}
             <td>
@@ -140,7 +150,7 @@
         </tr>
         @empty
         <tr>
-            <td colspan="7">
+            <td colspan="8">
                 <div class="empty-state">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                         <rect x="3" y="3" width="18" height="18" rx="2"/>
@@ -221,7 +231,9 @@
     <th style="min-width:200px;">Slider Image</th>
     <th style="min-width:160px;">Alt Tag</th>
     <th style="min-width:200px;">Redirect Link</th>
-    <th style="min-width:140px;">Slider Type <span style="color:#EF4444;">*</span></th>  {{-- ✅ Added --}}
+    <th style="min-width:140px;">Slider Type <span style="color:#EF4444;">*</span></th>
+    <th style="min-width:160px;">Location <span style="color:#EF4444;">*</span></th>
+    {{-- ✅ Added --}}
 </x-slot>
 
     <x-slot name="row">
@@ -246,6 +258,17 @@
             <option value="advertisement">Advertisement</option>
         </select>
     </td>
+    <td>
+    <select name="sliders[{INDEX}][location_id]" required>
+        <option value="">Select Country</option>
+
+        @foreach($locations as $location)
+            <option value="{{ (string)$location->_id }}">
+                {{ $location->country_name }}
+            </option>
+        @endforeach
+    </select>
+</td>
 </x-slot>
 
 </x-admin.table-form-page>
@@ -359,6 +382,29 @@ document.addEventListener('DOMContentLoaded', function () {
                 value="{{ old('redirect_link', $record->redirect_link) }}"
             />
         </div>
+        <div class="form-group">
+    <label class="form-label">
+        Country <span>*</span>
+    </label>
+
+    <select
+        name="location_id"
+        class="form-input"
+        required
+    >
+        <option value="">Select Country</option>
+
+        @foreach($locations as $location)
+            <option
+                value="{{ (string)$location->_id }}"
+                {{ (string)$record->location_id === (string)$location->_id ? 'selected' : '' }}
+            >
+                {{ $location->country_name }}
+            </option>
+        @endforeach
+
+    </select>
+</div>
 
     </div>
 </x-admin.form-page>

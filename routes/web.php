@@ -35,6 +35,7 @@ use App\Http\Controllers\Admin\ProductListingController;
 use App\Http\Controllers\Admin\CommissionController;
 use App\Http\Controllers\Admin\InventoryController;
 use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\LocationController;
 
  
 
@@ -404,6 +405,26 @@ Route::prefix('admin/page-sections')->name('admin.page-sections.')->group(functi
     Route::put('/{page}',     [PageSectionController::class, 'update'])->name('update');
 });
 
+Route::prefix('admin/setup/locations')->name('admin.setup.locations.')->group(function () {
+
+    Route::get('/', [LocationController::class, 'index'])
+        ->name('index');
+
+    Route::get('/create', [LocationController::class, 'create'])
+        ->name('create');
+
+    Route::post('/', [LocationController::class, 'store'])
+        ->name('store');
+
+    Route::get('/{id}/edit', [LocationController::class, 'edit'])
+        ->name('edit');
+
+    Route::put('/{id}', [LocationController::class, 'update'])
+        ->name('update');
+
+    Route::delete('/{id}', [LocationController::class, 'destroy'])
+        ->name('destroy');
+});
 // ── Warehouses ────────────────────────────────────────
 Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
  

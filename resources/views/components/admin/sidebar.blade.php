@@ -38,6 +38,10 @@
                class="nav-sub-item {{ request()->routeIs('admin.setup.units.*') ? 'active' : '' }}">
                Units
             </a>
+            <a href="{{ route('admin.setup.locations.index') }}"
+               class="nav-sub-item {{ request()->routeIs('admin.setup.locations.*') ? 'active' : '' }}">
+               Locations
+            </a>
             <a href="{{ route('admin.setup.sliders.index') }}"
                class="nav-sub-item {{ request()->routeIs('admin.setup.sliders.*') ? 'active' : '' }}">
                Sliders
