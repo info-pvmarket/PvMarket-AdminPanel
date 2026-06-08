@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
+use App\Services\TranslationService;
 
 class UserController extends Controller
 {
+    public function __construct(protected TranslationService $translator) {}
     public function index(Request $request)
     {
         $query = User::where('role', '!=', 'super_admin')
@@ -43,12 +45,14 @@ class UserController extends Controller
             'mobile' => 'nullable|string|max:30',
         ]);
 
-        $user->update([
-    'name'   => $request->name,
-    'email'  => $request->email,
-    'mobile' => $request->mobile ?? null,
-]);
+        $data = [
+            'name'   => $request->name,
+            'email'  => $request->email,
+            'mobile' => $request->mobile ?? null,
+        ];
 
+        $data = $this->attachTranslations($data, $user);
+        $user->update($data);
         return redirect()->route('admin.users.edit', $id)
                          ->with('success', 'Basic details updated.')
                          ->with('active_tab', 'basic');
@@ -144,4 +148,28 @@ foreach ($users as $i => $user) {
  
     return response()->stream($callback, 200, $headers);
 }
+private function attachTranslations(array $data, $modelInstance): array
+    {
+        $languages    = array_keys(config('languages.available'));
+        $translatable = $modelInstance->translatable ?? [];
+
+        foreach ($languages as $locale) {
+            if ($locale === 'en') continue;
+
+            $translated = [];
+            foreach ($translatable as $field) {
+                if (!empty($data[$field])) {
+                    $translated[$field] = $this->translator->translateText(
+                        $data[$field], $locale, 'en'
+                    );
+                }
+            }
+
+            if (!empty($translated)) {
+                $data[$locale] = $translated;
+            }
+        }
+
+        return $data;
+    }
 }

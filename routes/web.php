@@ -330,16 +330,15 @@ Route::prefix('admin/knowledge-hub/pv-spot-price')->name('admin.knowledge-hub.pv
 
 
  
-Route::prefix('setup')->name('admin.setup.')->group(function () {
- 
-    
- 
-    Route::get   ('languages',            [LanguageController::class, 'index'])      ->name('languages.index');
-    Route::post  ('languages',            [LanguageController::class, 'store'])      ->name('languages.store');
-    Route::put   ('languages/{code}',     [LanguageController::class, 'update'])     ->name('languages.update');
-    Route::delete('languages/{code}',     [LanguageController::class, 'destroy'])    ->name('languages.destroy');
-    Route::post  ('languages/set-default',[LanguageController::class, 'setDefault'])->name('languages.set-default');
- 
+Route::prefix('admin/setup')->name('admin.setup.')->group(function () {
+
+    Route::get   ('languages',                    [LanguageController::class, 'index'])     ->name('languages.index');
+    Route::post  ('languages',                    [LanguageController::class, 'store'])     ->name('languages.store');
+    Route::post  ('languages/set-default',        [LanguageController::class, 'setDefault'])->name('languages.set-default');
+    Route::post  ('languages/{code}/translate',   [LanguageController::class, 'translate']) ->name('languages.translate');
+    Route::put   ('languages/{code}',             [LanguageController::class, 'update'])   ->name('languages.update');
+    Route::delete('languages/{code}',             [LanguageController::class, 'destroy'])  ->name('languages.destroy');
+
 });
 
 

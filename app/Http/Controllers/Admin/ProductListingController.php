@@ -11,9 +11,11 @@ use App\Models\SubMenu;
 use App\Models\Product;
 use App\Models\Warehouse;
 use App\Models\Commission;
+use App\Services\TranslationService;
 
 class ProductListingController extends Controller
 {
+    public function __construct(protected TranslationService $translator) {}
     // ── Index (My Listings page) ────────────────────────────────────
 
     public function index(Request $request)
@@ -211,6 +213,7 @@ $validated['slots'] = $slotsAsObjects;
     }
     $validated['images'] = $images;
 
+    $validated = $this->attachTranslations($validated, new ProductListing());
     ProductListing::create($validated);
 
     return redirect()->route('product_listing.index')
@@ -363,7 +366,8 @@ $validated['slots'] = $slotsAsObjects;
     }
     $validated['images'] = $images;
 
-        $listing->update($validated);
+        $validated = $this->attachTranslations($validated, $listing);
+    $listing->update($validated);
 
         return redirect()->route('product_listing.index')
                          ->with('success', 'Listing updated successfully.');
@@ -437,4 +441,28 @@ public function getWarehouses()
 {
     return response()->json(Warehouse::all(['id', 'name']));
 }
+private function attachTranslations(array $data, $modelInstance): array
+    {
+        $languages    = array_keys(config('languages.available'));
+        $translatable = $modelInstance->translatable ?? [];
+
+        foreach ($languages as $locale) {
+            if ($locale === 'en') continue;
+
+            $translated = [];
+            foreach ($translatable as $field) {
+                if (!empty($data[$field])) {
+                    $translated[$field] = $this->translator->translateText(
+                        $data[$field], $locale, 'en'
+                    );
+                }
+            }
+
+            if (!empty($translated)) {
+                $data[$locale] = $translated;
+            }
+        }
+
+        return $data;
+    }
 }

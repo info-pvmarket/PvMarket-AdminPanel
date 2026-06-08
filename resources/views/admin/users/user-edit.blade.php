@@ -429,7 +429,7 @@
                 <div class="form-col">
                     <label class="form-label">Name:</label>
                     <input type="text" name="name" class="form-input"
-                           value="{{ old('name', $user->name) }}" required/>
+       value="{{ old('name', lang($user, 'name')) }}" required/>
                 </div>
                 <div class="form-col">
                     <label class="form-label">Mobile:</label>

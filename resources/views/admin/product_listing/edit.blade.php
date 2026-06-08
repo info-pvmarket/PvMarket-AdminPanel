@@ -779,12 +779,12 @@
                         <div class="form-group">
                             <label class="form-label">Main Category</label>
                             <input type="text" class="form-control"
-       value="{{ $mainCategory?->category_name ?? $listing->main_category_id }}" disabled>
+       value="{{ lang($mainCategory, 'category_name') ?? $listing->main_category_id }}" disabled>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Sub Category</label>
                             <input type="text" class="form-control"
-       value="{{ $subCategory?->sub_category_name ?? $listing->sub_category_id }}" disabled>
+       value="{{ lang($subCategory, 'sub_category_name') ?? $listing->sub_category_id }}" disabled>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Product</label>

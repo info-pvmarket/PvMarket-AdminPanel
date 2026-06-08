@@ -174,6 +174,8 @@
     .btn-danger:hover { background:#fecaca; }
     .btn-success { background:#d1fae5; color:#065f46; border:1px solid #6ee7b7; }
     .btn-success:hover { background:#a7f3d0; }
+    .btn-translate { background:#ede9fe; color:#5b21b6; border:1px solid #c4b5fd; }
+.btn-translate:hover { background:#ddd6fe; }
 
     /* ── Table ── */
     .lang-table-wrap { overflow-x: auto; }
@@ -299,10 +301,8 @@
                         <select class="form-control" id="iso-picker" onchange="fillFromIso(this)">
                             <option value=""> select a language </option>
                             @foreach($isoLanguages as $code => $name)
-                                @if(!isset($available[$code]))
-                                    <option value="{{ $code }}" data-name="{{ $name }}">{{ $name }} ({{ $code }})</option>
-                                @endif
-                            @endforeach
+    <option value="{{ $code }}" data-name="{{ $name }}">{{ $name }} ({{ $code }})</option>
+@endforeach
                         </select>
                     </div>
 
@@ -428,6 +428,14 @@
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                     Edit
                                 </button>
+                                <button type="button" class="btn btn-sm"
+        style="background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd;"
+        onclick="openTranslateModal('{{ $code }}', '{{ addslashes($name) }}')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M5 8l6 6"/><path d="M4 14l6-6 2-2M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6"/>
+    </svg>
+    Translate
+</button>
 
                                 @if($default !== $code)
                                 <form method="POST" action="{{ route('admin.setup.languages.destroy', $code) }}"
@@ -480,6 +488,60 @@ return [
         </div>
     </div>-->
 
+    {{-- ═══ TRANSLATE MODAL ═══ --}}
+<div id="translateModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999;align-items:center;justify-content:center;padding:20px;"
+     onclick="if(event.target===this)closeTranslateModal()">
+    <div style="background:var(--bg-card,#fff);border-radius:12px;border:1px solid var(--border,#e5e7eb);width:100%;max-width:520px;max-height:82vh;display:flex;flex-direction:column;overflow:hidden;">
+
+        {{-- Modal Header --}}
+        <div style="padding:16px 20px;border-bottom:1px solid var(--border,#e5e7eb);display:flex;align-items:center;justify-content:space-between;background:var(--bg-subtle,#f9fafb);">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:32px;height:32px;border-radius:8px;background:#7c3aed;display:grid;place-items:center;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" style="width:16px;height:16px;"><path d="M5 8l6 6"/><path d="M4 14l6-6 2-2M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6"/></svg>
+                </div>
+                <div>
+                    <div style="font-size:.9rem;font-weight:600;color:var(--text-primary,#111);">
+                        Translate to <span id="tm-lang-name">—</span>
+                    </div>
+                    <div style="font-size:.75rem;color:var(--text-muted,#6b7280);">Select pages to translate</div>
+                </div>
+            </div>
+            <button onclick="closeTranslateModal()" style="width:28px;height:28px;border-radius:8px;border:none;background:transparent;cursor:pointer;display:grid;place-items:center;color:var(--text-muted,#6b7280);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+
+        {{-- Select All bar --}}
+        <div style="padding:10px 16px;border-bottom:1px solid var(--border,#e5e7eb);display:flex;align-items:center;justify-content:space-between;background:var(--bg-subtle,#f9fafb);">
+            <label style="display:flex;align-items:center;gap:8px;font-size:.8rem;font-weight:600;cursor:pointer;color:var(--text-primary,#111);">
+                <input type="checkbox" id="tm-select-all" onchange="tmToggleAll(this)"> Select all pages
+            </label>
+            <span id="tm-count-label" style="font-size:.75rem;color:var(--text-muted,#6b7280);">0 selected</span>
+        </div>
+
+        {{-- Page list --}}
+        <div style="overflow-y:auto;flex:1;padding:12px 16px;" id="tm-page-list"></div>
+
+        {{-- Footer --}}
+        <div style="padding:14px 20px;border-top:1px solid var(--border,#e5e7eb);display:flex;align-items:center;justify-content:space-between;gap:10px;">
+            <span style="font-size:.8rem;color:var(--text-muted,#6b7280);"><strong id="tm-footer-count" style="color:var(--text-primary,#111);">0</strong> pages selected</span>
+            <div style="display:flex;gap:8px;">
+                <button class="btn btn-ghost btn-sm" onclick="closeTranslateModal()">Cancel</button>
+                <form id="tm-form" method="POST" action="" style="display:inline;">
+                    @csrf
+                    <input type="hidden" id="tm-lang-code" name="language">
+                    <div id="tm-hidden-pages"></div>
+                    <button type="submit" id="tm-submit" class="btn btn-sm" disabled
+                            style="background:#7c3aed;color:#fff;border-color:#7c3aed;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M5 8l6 6"/><path d="M4 14l6-6 2-2M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6"/></svg>
+                        Translate selected
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 </div>
 
 <script>
@@ -488,8 +550,6 @@ function fillFromIso(el) {
     if (!opt.value) return;
     document.getElementById('add-code').value = opt.value;
     document.getElementById('add-name').value = opt.getAttribute('data-name');
-
-    // Auto-check RTL for known RTL codes
     const rtlCodes = ['ar','ur','he','fa','ps','sd','ug','yi','ku'];
     document.getElementById('add-rtl').checked = rtlCodes.includes(opt.value);
 }
@@ -498,12 +558,124 @@ function toggleEdit(code, open) {
     const display  = document.getElementById('display-' + code);
     const editForm = document.getElementById('edit-' + code);
     if (open) {
-        display.style.display  = 'none';
+        display.style.display = 'none';
         editForm.classList.add('open');
     } else {
-        display.style.display  = '';
+        display.style.display = '';
         editForm.classList.remove('open');
     }
+}
+
+/* ── Translate Modal ── */
+const TM_PAGES = [
+    { group: 'Setting', items: [
+        { id: 'categories',      label: 'Categories' },
+        { id: 'sub-categories',  label: 'Sub Categories' },
+        { id: 'brands',          label: 'Brands' },
+        { id: 'units',           label: 'Units' },
+        { id: 'locations',       label: 'Locations' },
+        { id: 'sliders',         label: 'Sliders' },
+        { id: 'advertisements',  label: 'Advertisements' },
+        { id: 'charges',         label: 'Charges Setup' },
+        { id: 'commissions',     label: 'Commissions Setup' },
+        { id: 'countries',       label: 'Countries' },
+        { id: 'coupons',         label: 'Coupons Management' },
+        { id: 'incoterms',       label: 'Incoterms' },
+        { id: 'sub-admins',      label: 'Sub Admins' },
+        { id: 'roles',           label: 'User Roles' },
+    ]},
+    { group: 'Knowledge Hub', items: [
+        { id: 'news',             label: 'News' },
+        { id: 'events',           label: 'Events' },
+        { id: 'blogs',            label: 'Blogs' },
+        { id: 'price-promotions', label: 'Price Promotions' },
+        { id: 'pv-spot-price',    label: 'PV Spot Price' },
+    ]},
+    { group: 'Products', items: [
+        { id: 'products',         label: 'Products' },
+        { id: 'specifications',   label: 'Specifications' },
+    ]},
+    { group: 'Other Pages', items: [
+        { id: 'static-pages',     label: 'Static Pages' },
+        { id: 'offers',           label: 'Offers' },
+        { id: 'warehouses',       label: 'Warehouses' },
+        { id: 'manage-listings',  label: 'Manage Listings' },
+        { id: 'inventory',        label: 'Inventory' },
+        { id: 'sales',            label: 'Sales' },
+        { id: 'leads',            label: 'Leads' },
+        { id: 'bids',             label: 'Bid/Fair Requests' },
+        { id: 'schedules',        label: 'Schedules' },
+        { id: 'users',            label: 'User Management' },
+    ]},
+];
+
+function openTranslateModal(code, name) {
+    document.getElementById('tm-lang-name').textContent = name;
+    document.getElementById('tm-lang-code').value = code;
+    document.getElementById('tm-form').action = '{{ url("admin/setup/languages") }}/' + code + '/translate';
+
+    const list = document.getElementById('tm-page-list');
+    list.innerHTML = '';
+    TM_PAGES.forEach(group => {
+        const grpDiv = document.createElement('div');
+        grpDiv.style.cssText = 'margin-bottom:14px;';
+        grpDiv.innerHTML = `<div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;margin-bottom:6px;">${group.group}</div>`;
+        group.items.forEach(page => {
+            const lbl = document.createElement('label');
+            lbl.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;margin-bottom:2px;';
+            lbl.innerHTML = `
+                <input type="checkbox" data-tm-page="${page.id}" value="${page.id}" style="accent-color:#7c3aed;width:15px;height:15px;">
+                <span style="font-size:.85rem;color:var(--text-primary,#111);">${page.label}</span>`;
+            const chk = lbl.querySelector('input');
+            chk.addEventListener('change', function() {
+                lbl.style.background = this.checked ? '#f5f3ff' : '';
+                tmUpdateCount();
+            });
+            lbl.onmouseenter = () => { if (!chk.checked) lbl.style.background = 'var(--bg-subtle,#f9fafb)'; };
+            lbl.onmouseleave = () => { if (!chk.checked) lbl.style.background = ''; };
+            grpDiv.appendChild(lbl);
+        });
+        list.appendChild(grpDiv);
+    });
+
+    document.getElementById('tm-select-all').checked = false;
+    document.getElementById('tm-select-all').indeterminate = false;
+    document.getElementById('translateModal').style.display = 'flex';
+    tmUpdateCount();
+}
+
+function closeTranslateModal() {
+    document.getElementById('translateModal').style.display = 'none';
+}
+
+function tmToggleAll(cb) {
+    document.querySelectorAll('[data-tm-page]').forEach(chk => {
+        chk.checked = cb.checked;
+        chk.closest('label').style.background = cb.checked ? '#f5f3ff' : '';
+    });
+    tmUpdateCount();
+}
+
+function tmUpdateCount() {
+    const all     = document.querySelectorAll('[data-tm-page]');
+    const checked = document.querySelectorAll('[data-tm-page]:checked');
+    const n = checked.length, total = all.length;
+
+    document.getElementById('tm-count-label').textContent = `${n} of ${total} selected`;
+    document.getElementById('tm-footer-count').textContent = n;
+    document.getElementById('tm-submit').disabled = n === 0;
+
+    const sa = document.getElementById('tm-select-all');
+    sa.indeterminate = n > 0 && n < total;
+    sa.checked = n === total && total > 0;
+
+    const container = document.getElementById('tm-hidden-pages');
+    container.innerHTML = '';
+    checked.forEach(chk => {
+        const inp = document.createElement('input');
+        inp.type = 'hidden'; inp.name = 'pages[]'; inp.value = chk.value;
+        container.appendChild(inp);
+    });
 }
 </script>
 @endsection

@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use MongoDB\Laravel\Eloquent\Model;
+use App\Traits\HasTranslations;
 
 class ProductListing extends Model
 {
+    use HasTranslations;
     protected $connection = 'mongodb';
     protected $collection = 'product_listing';
 
@@ -42,8 +44,9 @@ class ProductListing extends Model
     'lead_time'      => 'integer',
     'total_quantity' => 'integer',
     
-    
-    
+];
+public array $translatable = [
+    'incoterm',
 ];
 
     // ── Relationships ───────────────────────────────────────────────

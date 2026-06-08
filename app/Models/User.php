@@ -5,9 +5,12 @@ namespace App\Models;
 use MongoDB\Laravel\Auth\User as Authenticatable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Notifications\Notifiable;
+use App\Traits\HasTranslations;
+
 
 class User extends Authenticatable
 {
+    use HasTranslations;
     use HasApiTokens, Notifiable;
 
     protected $connection = 'mongodb';
@@ -36,6 +39,10 @@ protected $casts = [
     'email_verified_at'  => 'datetime',
     'password'           => 'hashed',
 ];
+public array $translatable = [
+    'name',
+];  
+
     public function role()
     {
         return $this->belongsTo(Role::class, 'role_id', '_id');

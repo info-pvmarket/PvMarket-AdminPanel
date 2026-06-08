@@ -829,7 +829,7 @@ src="{{ $firstImage && !empty($firstImage['path']) ? asset('storage/' . $firstIm
                 <div class="listing-meta">
                     <div class="meta-item">
                         <label>Warehouse</label>
-                        <span>{{ $warehouse?->warehouse_name ?? $listing->warehouse_id }}</span>
+                        <span>{{ lang($warehouse, 'warehouse_name') ?? $listing->warehouse_id }}</span>
                     </div>
                     <div class="meta-item">
                         <label>Lead Time</label>

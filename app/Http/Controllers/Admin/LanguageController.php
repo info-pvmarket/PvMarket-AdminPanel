@@ -3,62 +3,69 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Language;
 use Illuminate\Http\Request;
 
 class LanguageController extends Controller
 {
     /**
-     * The path to the languages config file.
-     */
-    protected string $configPath;
-
-    public function __construct()
-    {
-        $this->configPath = config_path('languages.php');
-    }
-
-    /**
      * Display the language management page.
      */
     public function index()
     {
-        $config    = config('languages');
-        $available = $config['available'] ?? [];
-        $rtl       = $config['rtl'] ?? [];
-        $default   = $config['default'] ?? 'en';
+        $languages = Language::active()
+            ->orderByDesc('is_default')
+            ->orderBy('name')
+            ->get();
 
-        // Full ISO list for the "add language" dropdown
-        $isoLanguages = $this->isoLanguages();
+        $available    = $languages->pluck('name', 'code')->all();
+        $rtl          = $languages->where('rtl', true)->pluck('code')->values()->all();
+        $default      = $languages->firstWhere('is_default', true)?->code ?? 'en';
+
+        // Dropdown: all languages in DB that are not yet active
+        $isoLanguages = Language::inactiveMap();
 
         return view('admin.setup.languages.index', compact('available', 'rtl', 'default', 'isoLanguages'));
     }
 
     /**
-     * Add a language.
+     * Enable a language (flip is_active to true).
+     * If somehow it doesn't exist yet, create it.
      */
     public function store(Request $request)
     {
         $request->validate([
-            'code' => ['required', 'string', 'size:2', 'regex:/^[a-z]{2}$/'],
+            'code' => ['required', 'string', 'regex:/^[a-z]{2,3}$/'],
             'name' => ['required', 'string', 'max:60'],
             'rtl'  => ['nullable', 'boolean'],
         ]);
 
-        $config = config('languages');
-        $code   = strtolower(trim($request->code));
+        $code = strtolower(trim($request->code));
 
-        if (isset($config['available'][$code])) {
-            return back()->with('error', "Language code '{$code}' already exists.");
+        // Check it's not already active
+        $existing = Language::where('code', $code)->first();
+
+        if ($existing && $existing->is_active) {
+            return back()->with('error', "Language '{$code}' is already active.");
         }
 
-        $config['available'][$code] = trim($request->name);
-
-        if ($request->boolean('rtl')) {
-            $config['rtl'][] = $code;
-            $config['rtl']   = array_unique($config['rtl']);
+        if ($existing) {
+            // Was seeded but inactive — just enable it, update name/rtl in case edited
+            $existing->update([
+                'name'      => trim($request->name),
+                'rtl'       => $request->boolean('rtl'),
+                'is_active' => true,
+            ]);
+        } else {
+            // Not in DB at all — create it fresh
+            Language::create([
+                'code'       => $code,
+                'name'       => trim($request->name),
+                'rtl'        => $request->boolean('rtl'),
+                'is_default' => false,
+                'is_active'  => true,
+            ]);
         }
-
-        $this->writeConfig($config);
 
         return back()->with('success', "Language '{$request->name}' added successfully.");
     }
@@ -73,22 +80,12 @@ class LanguageController extends Controller
             'rtl'  => ['nullable', 'boolean'],
         ]);
 
-        $config = config('languages');
+        $language = Language::where('code', $code)->firstOrFail();
 
-        if (!isset($config['available'][$code])) {
-            return back()->with('error', "Language '{$code}' not found.");
-        }
-
-        $config['available'][$code] = trim($request->name);
-
-        // Rebuild RTL list
-        $rtl = array_diff($config['rtl'] ?? [], [$code]);
-        if ($request->boolean('rtl')) {
-            $rtl[] = $code;
-        }
-        $config['rtl'] = array_values(array_unique($rtl));
-
-        $this->writeConfig($config);
+        $language->update([
+            'name' => trim($request->name),
+            'rtl'  => $request->boolean('rtl'),
+        ]);
 
         return back()->with('success', "Language '{$code}' updated.");
     }
@@ -102,134 +99,50 @@ class LanguageController extends Controller
             'default' => ['required', 'string', 'size:2'],
         ]);
 
-        $config = config('languages');
-        $code   = strtolower(trim($request->default));
+        $language = Language::where('code', $request->input('default'))->firstOrFail();
+        $language->makeDefault();
 
-        if (!isset($config['available'][$code])) {
-            return back()->with('error', "Language '{$code}' is not in the available list.");
-        }
-
-        $config['default'] = $code;
-        $this->writeConfig($config);
-
-        return back()->with('success', "Default language set to '{$code}'.");
+        return back()->with('success', "Default language set to '{$language->code}'.");
     }
 
     /**
-     * Remove a language.
+     * Deactivate a language (flip is_active to false — keeps it in DB for re-adding).
      */
     public function destroy(string $code)
     {
-        $config = config('languages');
+        $language = Language::where('code', $code)->firstOrFail();
 
-        if ($config['default'] === $code) {
+        if ($language->is_default) {
             return back()->with('error', 'Cannot remove the default language.');
         }
 
-        unset($config['available'][$code]);
-        $config['rtl'] = array_values(array_diff($config['rtl'] ?? [], [$code]));
-
-        $this->writeConfig($config);
+        // Deactivate instead of delete — it will reappear in the dropdown
+        $language->update(['is_active' => false]);
 
         return back()->with('success', "Language '{$code}' removed.");
     }
 
-    // ─────────────────────────────────────────────
-    //  Private helpers
-    // ─────────────────────────────────────────────
-
     /**
-     * Serialize the config array and write it to disk,
-     * then clear the config cache so the app picks it up immediately.
+     * Run page translations for the given language.
      */
-    private function writeConfig(array $config): void
+    public function translate(Request $request, string $code)
     {
-        // Normalise RTL to a plain list
-        $config['rtl'] = array_values(array_unique($config['rtl'] ?? []));
+        $request->validate([
+            'pages'   => ['required', 'array', 'min:1'],
+            'pages.*' => ['string'],
+        ]);
 
-        $php  = "<?php\n\nreturn [\n";
-        $php .= "    'default' => '{$config['default']}',\n\n";
-        $php .= "    'rtl' => " . $this->exportArray($config['rtl'], 1) . ",\n\n";
-        $php .= "    'available' => [\n";
-        foreach ($config['available'] as $code => $name) {
-            $escapedName = str_replace("'", "\\'", $name);
-            $php .= "        '{$code}' => '{$escapedName}',\n";
-        }
-        $php .= "    ],\n];\n";
+        $language = Language::where('code', $code)->firstOrFail();
+        $pages    = $request->input('pages', []);
 
-        file_put_contents($this->configPath, $php);
-
-        // Flush runtime config so we don't need to restart the server
-        app('config')->set('languages', $config);
-
-        // Optionally clear the file-based config cache (artisan config:cache)
-        $cached = app()->getCachedConfigPath();
-        if (file_exists($cached)) {
-            @unlink($cached);
-        }
-    }
-
-    /**
-     * Render a simple PHP array for writing to the config file.
-     */
-    private function exportArray(array $arr, int $depth): string
-    {
-        if (empty($arr)) {
-            return '[]';
+        foreach ($pages as $page) {
+            (new \App\Jobs\TranslatePageJob($code, $page))->handle(
+                app(\App\Services\TranslationService::class)
+            );
         }
 
-        $pad  = str_repeat('    ', $depth);
-        $pad2 = str_repeat('    ', $depth + 1);
-        $out  = "[\n";
-        foreach ($arr as $value) {
-            $out .= "{$pad2}'" . str_replace("'", "\\'", $value) . "',\n";
-        }
-        $out .= "{$pad}]";
-
-        return $out;
-    }
-
-    /**
-     * Common ISO 639-1 language list for the "add" dropdown.
-     * Extend as needed.
-     */
-    private function isoLanguages(): array
-    {
-        return [
-            'af' => 'Afrikaans',   'sq' => 'Albanian',    'am' => 'Amharic',
-            'ar' => 'Arabic',      'hy' => 'Armenian',    'az' => 'Azerbaijani',
-            'eu' => 'Basque',      'be' => 'Belarusian',  'bn' => 'Bengali',
-            'bs' => 'Bosnian',     'bg' => 'Bulgarian',   'ca' => 'Catalan',
-            'ceb'=> 'Cebuano',     'zh' => 'Chinese',     'co' => 'Corsican',
-            'hr' => 'Croatian',    'cs' => 'Czech',       'da' => 'Danish',
-            'nl' => 'Dutch',       'en' => 'English',     'eo' => 'Esperanto',
-            'et' => 'Estonian',    'fi' => 'Finnish',     'fr' => 'French',
-            'gl' => 'Galician',    'ka' => 'Georgian',    'de' => 'German',
-            'el' => 'Greek',       'gu' => 'Gujarati',    'ht' => 'Haitian Creole',
-            'ha' => 'Hausa',       'he' => 'Hebrew',      'hi' => 'Hindi',
-            'hu' => 'Hungarian',   'is' => 'Icelandic',   'id' => 'Indonesian',
-            'ga' => 'Irish',       'it' => 'Italian',     'ja' => 'Japanese',
-            'kn' => 'Kannada',     'kk' => 'Kazakh',      'km' => 'Khmer',
-            'ko' => 'Korean',      'ku' => 'Kurdish',     'ky' => 'Kyrgyz',
-            'lo' => 'Lao',         'la' => 'Latin',       'lv' => 'Latvian',
-            'lt' => 'Lithuanian',  'lb' => 'Luxembourgish','mk' => 'Macedonian',
-            'mg' => 'Malagasy',    'ms' => 'Malay',       'ml' => 'Malayalam',
-            'mt' => 'Maltese',     'mi' => 'Maori',       'mr' => 'Marathi',
-            'mn' => 'Mongolian',   'my' => 'Myanmar',     'ne' => 'Nepali',
-            'no' => 'Norwegian',   'ny' => 'Nyanja',      'or' => 'Odia',
-            'ps' => 'Pashto',      'fa' => 'Persian',     'pl' => 'Polish',
-            'pt' => 'Portuguese',  'pa' => 'Punjabi',     'ro' => 'Romanian',
-            'ru' => 'Russian',     'sm' => 'Samoan',      'gd' => 'Scots Gaelic',
-            'sr' => 'Serbian',     'st' => 'Sesotho',     'sn' => 'Shona',
-            'sd' => 'Sindhi',      'si' => 'Sinhala',     'sk' => 'Slovak',
-            'sl' => 'Slovenian',   'so' => 'Somali',      'es' => 'Spanish',
-            'su' => 'Sundanese',   'sw' => 'Swahili',     'sv' => 'Swedish',
-            'tg' => 'Tajik',       'ta' => 'Tamil',       'tt' => 'Tatar',
-            'te' => 'Telugu',      'th' => 'Thai',        'tr' => 'Turkish',
-            'tk' => 'Turkmen',     'uk' => 'Ukrainian',   'ur' => 'Urdu',
-            'ug' => 'Uyghur',      'uz' => 'Uzbek',       'vi' => 'Vietnamese',
-            'cy' => 'Welsh',       'xh' => 'Xhosa',       'yi' => 'Yiddish',
-            'yo' => 'Yoruba',      'zu' => 'Zulu',
-        ];
+        return back()->with('success',
+            count($pages) . ' page(s) translated to ' . $language->name . ' successfully.'
+        );
     }
 }
