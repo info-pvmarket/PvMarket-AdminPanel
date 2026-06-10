@@ -4,9 +4,11 @@ namespace App\Models;
 
 use MongoDB\Laravel\Eloquent\Model;
 use App\Casts\AsObjectId;
+use App\Traits\HasTranslations;
 
 class Commission extends Model
 {
+    use HasTranslations;
     protected $connection = 'mongodb';
     protected $collection = 'commissions';
 
@@ -24,5 +26,8 @@ class Commission extends Model
         'created_by'              => AsObjectId::class,
         'updated_by'              => AsObjectId::class,
         'commission_percentage'   => 'float',
+    ];
+    public array $translatable = [
+        'category_name',
     ];
 }

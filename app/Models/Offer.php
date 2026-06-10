@@ -4,9 +4,11 @@ namespace App\Models;
 
 use MongoDB\Laravel\Eloquent\Model;
 use App\Casts\AsObjectId;
+use App\Traits\HasTranslations;
 
 class Offer extends Model
 {
+    use HasTranslations;
     protected $connection = 'mongodb';
     protected $collection = 'offers';
 
@@ -25,5 +27,9 @@ class Offer extends Model
         'is_active'    => 'boolean',
         'product_id'   => AsObjectId::class,
         'warehouse_id' => AsObjectId::class,
+    ];
+    public array $translatable = [
+        'product_name',
+        'warehouse_name',
     ];
 }

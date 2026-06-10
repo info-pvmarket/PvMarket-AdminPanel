@@ -12,9 +12,11 @@ use App\Models\SubMenu;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use App\Services\TranslationService;
 
 class ProductController extends Controller
 {
+    public function __construct(protected TranslationService $translator) {}
     // ── SKU Generator ─────────────────────────────────
     private function generateSku(string $categoryName): string
     {
@@ -179,6 +181,7 @@ return view('admin.products.products', [
             
         ];
 
+        $data = $this->attachTranslations($data, new Product());
         Product::create($data);
 
         return redirect()->route('admin.products.index')
@@ -277,6 +280,7 @@ return view('admin.products.products', [
             
         ];
 
+        $data = $this->attachTranslations($data, $product);
         $product->update($data);
 
         return redirect()->route('admin.products.index')
@@ -348,4 +352,46 @@ return view('admin.products.products', [
         $product->delete();
         return redirect()->route('admin.products.index')->with('success', 'Product deleted.');
     }
+    private function attachTranslations(array $data, $modelInstance): array
+{
+    $languages    = array_keys(config('languages.available'));
+    $translatable = $modelInstance->translatable ?? [];
+
+    foreach ($languages as $locale) {
+        if ($locale === 'en') continue;
+
+        $existing   = $modelInstance->exists ? ($modelInstance->{$locale} ?? []) : [];
+        $translated = is_array($existing) ? $existing : [];
+
+        foreach ($translatable as $field) {
+            // Skip if already translated
+            if (!empty($translated[$field])) continue;
+
+            $original = $data[$field] ?? null;
+
+            // Must be a non-empty string, not numeric, not an object
+            if (empty($original) || !is_string($original) || is_numeric($original)) continue;
+
+            // Skip if it's just whitespace or HTML tags with no real content
+            if (strlen(trim(strip_tags($original))) < 2) continue;
+
+            try {
+                $result = $this->translator->translateText($original, $locale, 'en');
+                if ($result && $result !== $original) {
+                    $translated[$field] = $result;
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error(
+                    "attachTranslations [{$locale}][{$field}]: " . $e->getMessage()
+                );
+            }
+        }
+
+        if (!empty($translated)) {
+            $data[$locale] = $translated;
+        }
+    }
+
+    return $data;
+}
 }

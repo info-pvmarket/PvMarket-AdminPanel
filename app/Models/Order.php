@@ -4,9 +4,11 @@ namespace App\Models;
 
 use MongoDB\Laravel\Eloquent\Model;
 use App\Casts\AsObjectId;
+use App\Traits\HasTranslations;
 
 class Order extends Model
 {
+    use HasTranslations;
     protected $connection = 'mongodb';
     protected $collection = 'orders';
 
@@ -41,5 +43,9 @@ class Order extends Model
         'order_status' => 'integer',
         'payment_method' => 'integer',
         'payment_verified' => 'integer',
+    ];
+    public array $translatable = [
+        'buyer_company_name',
+        'seller_company_name',
     ];
 }

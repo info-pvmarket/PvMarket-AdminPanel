@@ -4,9 +4,11 @@ namespace App\Models;
 
 use MongoDB\Laravel\Eloquent\Model;
 use App\Casts\AsObjectId;
+use App\Traits\HasTranslations;
 
 class BidRequest extends Model
 {
+    use HasTranslations;
     protected $connection = 'mongodb';
     protected $collection = 'bid_requests';
 
@@ -47,6 +49,10 @@ class BidRequest extends Model
         'lead_time'        => 'integer',
         'status'           => 'integer',
         'is_active'        => 'integer',
+    ];
+    public array $translatable = [
+        'product_name',
+        'company_name',
     ];
 
     // ── Accessors ─────────────────────────────────────────────────

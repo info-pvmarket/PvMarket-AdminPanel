@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use MongoDB\Laravel\Eloquent\Model;
+use App\Traits\HasTranslations;
 
 class ProductDetailOption extends Model
 {
+    use HasTranslations;
     protected $connection = 'mongodb';
     protected $collection = 'specifications';
 
@@ -28,5 +30,11 @@ class ProductDetailOption extends Model
     protected $casts = [
         'unit_ids'   => 'array',
         'unit_names' => 'array',
+    ];
+    public array $translatable = [
+        'option_name',
+        'category_name',
+        'sub_category_name',
+        'unit_names',
     ];
 }

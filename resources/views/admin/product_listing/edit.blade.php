@@ -779,24 +779,24 @@
                         <div class="form-group">
                             <label class="form-label">Main Category</label>
                             <input type="text" class="form-control"
-       value="{{ lang($mainCategory, 'category_name') ?? $listing->main_category_id }}" disabled>
+       value="{{ $mainCategory ? lang($mainCategory, 'category_name') : $listing->main_category_id }}" disabled>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Sub Category</label>
                             <input type="text" class="form-control"
-       value="{{ lang($subCategory, 'sub_category_name') ?? $listing->sub_category_id }}" disabled>
+       value="{{ $subCategory ? lang($subCategory, 'sub_category_name') : $listing->sub_category_id }}" disabled>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Product</label>
                             <input type="text" class="form-control"
-       value="{{ $product?->product_name ?? $listing->product_id }}" disabled>
+       value="{{ $product ? lang($product, 'product_name') : $listing->product_id }}" disabled>
                         </div>
                     </div>
                     <div class="form-row cols-1" style="margin-top:16px;">
                         <div class="form-group">
                             <label class="form-label">Warehouse</label>
                             <input type="text" class="form-control"
-       value="{{ $warehouse?->warehouse_name ?? $listing->warehouse_id }}" disabled>
+       value="{{ $warehouse ? lang($warehouse, 'warehouse_name') : $listing->warehouse_id }}" disabled>
                         </div>
                     </div>
                 </div>
@@ -967,7 +967,7 @@
                         <svg width="15" height="15" fill="none" stroke="#6B7280" stroke-width="1.8" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3 10.5V19a1 1 0 001 1h16a1 1 0 001-1v-8.5M3 10.5L12 4l9 6.5M3 10.5h18"/>
                         </svg>
-                        {{ $warehouse?->warehouse_name ?? $listing->warehouse_id }}
+                        {{ $warehouse ? lang($warehouse, 'warehouse_name') : $listing->warehouse_id }}
                     </div>
 
                     <div class="form-row cols-3">
@@ -1254,11 +1254,11 @@
                 <div class="summary-body">
                     <div class="summary-row">
                         <span class="summary-key">Product</span>
-                        <span class="summary-val">{{ $product?->product_name ?? $listing->product_id }}</span>
+                        <span class="summary-val">{{ $product ? lang($product, 'product_name') : $listing->product_id }}</span>
                     </div>
                     <div class="summary-row">
                         <span class="summary-key">Warehouse</span>
-                        <span class="summary-val">{{ $warehouse?->warehouse_name ?? $listing->warehouse_id }}</span>
+                        <span class="summary-val">{{ $warehouse ? lang($warehouse, 'warehouse_name') : $listing->warehouse_id }}</span>
                     </div>
                     <div class="summary-row">
                         <span class="summary-key">Sell Type</span>

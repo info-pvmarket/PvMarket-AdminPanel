@@ -295,8 +295,8 @@
                     {{ $offers->firstItem() + $index }}
                 </td>
                 <td><span class="unique-id">{{ $offer->unique_id }}</span></td>
-                <td style="font-weight:500;">{{ $offer->product_name }}</td>
-                <td style="color:var(--muted);">{{ $offer->warehouse_name }}</td>
+                <td style="font-weight:500;">{{ lang($offer, 'product_name') }}</td>
+                <td style="color:var(--muted);">{{ lang($offer, 'warehouse_name') }}</td>
                 <td class="center">
                     <span class="badge badge-{{ $offer->payment_status ?? 'pending' }}">
                         {{ ucfirst($offer->payment_status ?? 'pending') }}

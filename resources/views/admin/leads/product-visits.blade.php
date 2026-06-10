@@ -224,9 +224,9 @@
                 {{-- Product --}}
                 <td>
                     @if($product)
-                        <span class="product-name-cell" title="{{ $product->product_name }}">
-                            {{ Str::limit($product->product_name, 30) }}...
-                        </span>
+                        <span class="product-name-cell" title="{{ lang($product, 'product_name') }}">
+    {{ Str::limit(lang($product, 'product_name'), 30) }}...
+</span>
                     @else
                         <span style="color:var(--muted);">-</span>
                     @endif

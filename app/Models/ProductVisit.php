@@ -5,8 +5,10 @@ namespace App\Models;
 use MongoDB\Laravel\Eloquent\Model;
 use App\Casts\AsObjectId;
 
+
 class ProductVisit extends Model
 {
+    
     protected $connection = 'mongodb';
     protected $collection = 'product_visits';
 
@@ -26,4 +28,5 @@ class ProductVisit extends Model
         'no_of_times' => 'integer',
         'is_active'   => 'integer',
     ];
+    
 }

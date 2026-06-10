@@ -678,8 +678,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 <td class="center" style="font-weight:700; color:var(--muted); font-size:13px;">
                     {{ $products->firstItem() + $index }}
                 </td>
-                <td style="font-weight:600; max-width:300px;">{{ $product->product_name }}</td>
-                <td style="color:var(--muted);">{{ $product->brand_name ?? '—' }}</td>
+                <td style="font-weight:600; max-width:300px;">{{ lang($product, 'product_name') }}</td>
+                <td style="color:var(--muted);">{{ $product->brand_name ? lang($product, 'brand_name') : '—' }}</td>
                 <td class="center">
                     <span class="badge badge-{{ $product->verification_status ?? 'pending' }}">
                         {{ ucfirst($product->verification_status ?? 'pending') }}

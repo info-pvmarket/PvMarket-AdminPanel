@@ -47,28 +47,59 @@ class TranslatePageJob implements ShouldQueue
                 $needsSave   = false;
 
                 foreach ($fields as $field) {
-                    // Skip if already translated
-                    if (!empty($existing[$field])) {
-                        continue;
-                    }
+    // Skip if already translated
+    if (!empty($existing[$field])) {
+        continue;
+    }
 
-                    $original = (string) ($record->{$field} ?? '');
-                    if (empty(trim($original))) continue;
+    $raw = $record->{$field} ?? null;
 
-                    try {
-                        $translated = $translator->translateText($original, $locale, 'en');
+    // ── Array fields (e.g. unit_names) ──
+    if (is_array($raw)) {
+        $translatedArray = [];
+        $arrayChanged    = false;
 
-                        if ($translated && $translated !== $original) {
-                            $existing[$field] = $translated;
-                            $needsSave = true;
-                        }
+        foreach ($raw as $item) {
+            if (empty(trim((string) $item))) {
+                $translatedArray[] = $item;
+                continue;
+            }
+            try {
+                $result = $translator->translateText((string) $item, $locale, 'en');
+                $translatedArray[] = ($result && $result !== $item) ? $result : $item;
+                if ($result && $result !== $item) $arrayChanged = true;
+                usleep(150000);
+            } catch (\Exception $e) {
+                Log::error("TranslatePageJob: array field '{$field}' on {$modelClass}#{$record->_id}: {$e->getMessage()}");
+                $translatedArray[] = $item;
+            }
+        }
 
-                        usleep(150000); // 0.15s — respect API rate limits
+        if ($arrayChanged) {
+            $existing[$field] = $translatedArray;
+            $needsSave = true;
+        }
+        continue;
+    }
 
-                    } catch (\Exception $e) {
-                        Log::error("TranslatePageJob: field '{$field}' on {$modelClass}#{$record->_id}: {$e->getMessage()}");
-                    }
-                }
+    // ── String fields ──
+    $original = (string) ($raw ?? '');
+    if (empty(trim($original))) continue;
+
+    try {
+        $translated = $translator->translateText($original, $locale, 'en');
+
+        if ($translated && $translated !== $original) {
+            $existing[$field] = $translated;
+            $needsSave = true;
+        }
+
+        usleep(150000);
+
+    } catch (\Exception $e) {
+        Log::error("TranslatePageJob: field '{$field}' on {$modelClass}#{$record->_id}: {$e->getMessage()}");
+    }
+}
 
                 if ($needsSave) {
                     try {
@@ -113,11 +144,15 @@ class TranslatePageJob implements ShouldQueue
             'price-promotions' => \App\Models\PricePromotion::class,
             'pv-spot-price'    => \App\Models\PvSpotPrice::class,
             'products'         => \App\Models\Product::class,
-            'specifications'   => \App\Models\DetailOption::class,
+            'specifications'  => \App\Models\ProductDetailOption::class,
             'static-pages'     => \App\Models\PageSection::class,
             'offers'           => \App\Models\Offer::class,
             'warehouses'       => \App\Models\Warehouse::class,
             'manage-listings'  => \App\Models\ProductListing::class,
+            'product-listings'  => \App\Models\ProductListing::class,
+            'product'              => \App\Models\Product::class,
+            'roles'                => \App\Models\Role::class,
+            'inventory-transactions' => \App\Models\InventoryTransaction::class,
             default            => null,
         };
     }

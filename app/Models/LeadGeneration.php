@@ -4,8 +4,10 @@ namespace App\Models;
 
 use MongoDB\Laravel\Eloquent\Model;
 
+
 class LeadGeneration extends Model
 {
+    
     protected $connection = 'mongodb';
     protected $collection = 'lead_generations';
 
@@ -29,6 +31,8 @@ class LeadGeneration extends Model
         'lead_device' => 'integer',
         'status'      => 'integer',
     ];
+
+    
 
     public function getLeadTypeLabelAttribute(): string
     {

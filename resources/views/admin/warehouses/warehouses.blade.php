@@ -260,7 +260,7 @@
                 <td class="center" style="font-weight:700; color:var(--muted); font-size:13px;">
                     {{ $warehouses->firstItem() + $index }}
                 </td>
-                <td style="font-weight:500;">{{ $warehouse->name }}</td>
+                <td style="font-weight:500;">{{ lang($warehouse, 'warehouse_name') }}</td>
                 <td class="center">
                     <span class="badge badge-{{ $warehouse->payment_status ?? 'pending' }}">
                         {{ ucfirst($warehouse->payment_status ?? 'pending') }}

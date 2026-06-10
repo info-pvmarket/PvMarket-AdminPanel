@@ -32,6 +32,21 @@ class TranslationService
     'coupon'        => [\App\Models\Coupon::class,        ['code', 'description']],
     'incoterm'      => [\App\Models\Incoterm::class,      ['name', 'description']],
     'charge'        => [\App\Models\Charge::class,        ['name', 'description']],
+    'product-specification' => [\App\Models\DetailOption::class, ['name', 'description']],
+    'product-listing' => [\App\Models\ProductListing::class, ['incoterm']],
+    'user'          => [\App\Models\User::class,          ['name']],
+    'role'          => [\App\Models\Role::class,          ['name']],
+    'sub-admin'     => [\App\Models\SubAdmin::class,     ['name']],
+    'warehouse'     => [\App\Models\Warehouse::class,     ['name', 'location']],
+    'offer'         => [\App\Models\Offer::class,         ['name', 'description']],
+    'specification' => [\App\Models\DetailOption::class, ['name', 'description']],
+    'static-page'   => [\App\Models\PageSection::class, ['title', 'subtitle', 'description', 'button_text']],
+    'commission'    => [\App\Models\Commission::class,    ['name', 'description']],
+    'inventory'     => [\App\Models\Inventory::class,     ['name', 'description']],
+    'inventory-transaction' => [\App\Models\InventoryTransaction::class, ['notes']],
+    'location'      => [\App\Models\Location::class,      ['name', 'description']],
+    'product-detail-option' => [\App\Models\ProductDetailOption::class, ['option_name', 'category_name', 'sub_category_name', 'unit_names']],
+
 ];
 
     public static array $languages = [

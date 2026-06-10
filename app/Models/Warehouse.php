@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use MongoDB\Laravel\Eloquent\Model;
+use App\Traits\HasTranslations;
 
 class Warehouse extends Model
 {
+        use HasTranslations;
     protected $connection = 'mongodb';
     protected $collection = 'warehouses';
 
@@ -31,6 +33,12 @@ class Warehouse extends Model
         'is_paid'                   => 'boolean',
         'ddp_deliverable_countries' => 'array',
     ];
+    
+    public array $translatable = [
+    'warehouse_name',
+    'city',
+    'country',
+];
 
     public function getNameAttribute(): ?string
 {

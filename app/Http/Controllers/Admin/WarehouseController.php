@@ -7,9 +7,11 @@ use App\Models\Warehouse;
 use App\Models\Country;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Services\TranslationService;
 
 class WarehouseController extends Controller
 {
+    public function __construct(protected TranslationService $translator) {}
     // ── Index ─────────────────────────────────────────
     public function index(Request $request)
     {
@@ -57,7 +59,7 @@ class WarehouseController extends Controller
             'ddp_deliverable_countries.*' => 'string',
         ]);
 
-        Warehouse::create([
+        $data = [
             'user_id'                   => (string) Auth::id(),
             'warehouse_name'            => $request->name,
             'country'                   => $request->country,
@@ -72,7 +74,10 @@ class WarehouseController extends Controller
             'is_paid'                   => false,
             'is_active'                 => true,
             'updated_by'                => Auth::user()->name,
-        ]);
+        ];
+
+        $data = $this->attachTranslations($data, new Warehouse());
+        Warehouse::create($data);
 
         return redirect()->route('admin.warehouses.index')
                          ->with('success', 'Warehouse created successfully.');
@@ -108,7 +113,9 @@ class WarehouseController extends Controller
             'ddp_deliverable_countries.*' => 'string',
         ]);
 
-        Warehouse::findOrFail($id)->update([
+        $warehouse = Warehouse::findOrFail($id);
+
+        $data = [
             'warehouse_name'            => $request->name,
             'country'                   => $request->country,
             'zip_code'                  => $request->zip_code,
@@ -120,7 +127,10 @@ class WarehouseController extends Controller
             'contact_mobile'            => $request->contact_mobile,
             'ddp_deliverable_countries' => $request->ddp_deliverable_countries ?? [],
             'updated_by'                => Auth::user()->name,
-        ]);
+        ];
+
+        $data = $this->attachTranslations($data, $warehouse);
+        $warehouse->update($data);
 
         return redirect()->route('admin.warehouses.index')
                          ->with('success', 'Warehouse updated.');
@@ -158,5 +168,29 @@ class WarehouseController extends Controller
 
         return redirect()->route('admin.warehouses.index')
                          ->with('success', 'Warehouse deleted.');
+    }
+    private function attachTranslations(array $data, $modelInstance): array
+    {
+        $languages    = array_keys(config('languages.available'));
+        $translatable = $modelInstance->translatable ?? [];
+
+        foreach ($languages as $locale) {
+            if ($locale === 'en') continue;
+
+            $translated = [];
+            foreach ($translatable as $field) {
+                if (!empty($data[$field])) {
+                    $translated[$field] = $this->translator->translateText(
+                        $data[$field], $locale, 'en'
+                    );
+                }
+            }
+
+            if (!empty($translated)) {
+                $data[$locale] = $translated;
+            }
+        }
+
+        return $data;
     }
 }

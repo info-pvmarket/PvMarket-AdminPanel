@@ -9,9 +9,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use MongoDB\BSON\ObjectId;
 use App\Models\StockAlert;
+use App\traits\HasTranslations;
 
 class InventoryController extends Controller
 {
+    public function __construct(protected TranslationService $translator) {}
     // ── Index ─────────────────────────────────────────────────────────────────
 
     public function index(Request $request)
@@ -122,19 +124,22 @@ $listing->alert_record_id     = $alert ? (string) $alert->_id : null;
             }
         }
 
-        InventoryTransaction::create([
-            'listing_id'       => new ObjectId((string) $listing->_id),
-            'product_id'       => new ObjectId((string) $listing->product_id),
-            'warehouse_id'     => (string) $listing->warehouse_id ? new ObjectId((string) $listing->warehouse_id) : null,
-            'user_id'          => new ObjectId(Auth::id()),
-            'created_by'       => new ObjectId(Auth::id()),
-            'transaction_type' => $transactionType,
-            'quantity'         => $quantity,
-            'reference_type'   => 'listing',
-            'reference_id'     => (string) $listing->_id,
-            'notes'            => $request->notes,
-            'created_by'       => new ObjectId(Auth::id()),
-        ]);
+        $txData = [
+    'listing_id'       => new ObjectId((string) $listing->_id),
+    'product_id'       => new ObjectId((string) $listing->product_id),
+    'warehouse_id'     => (string) $listing->warehouse_id ? new ObjectId((string) $listing->warehouse_id) : null,
+    'user_id'          => new ObjectId(Auth::id()),
+    'created_by'       => new ObjectId(Auth::id()),
+    'transaction_type' => $transactionType,
+    'quantity'         => $quantity,
+    'reference_type'   => 'listing',
+    'reference_id'     => (string) $listing->_id,
+    'notes'            => $request->notes,
+];
+
+$txData = $this->attachTranslations($txData, new InventoryTransaction());
+
+InventoryTransaction::create($txData);
 
         $newStock = InventoryTransaction::currentStock($listingId);
 
@@ -299,5 +304,42 @@ public function saveGlobalAlert(Request $request)
         'message' => "Global alert applied to {$updated} listing(s).",
         'updated' => $updated,
     ]);
+}
+private function attachTranslations(array $data, $modelInstance): array
+{
+    $languages    = array_keys(config('languages.available'));
+    $translatable = $modelInstance->translatable ?? [];
+
+    foreach ($languages as $locale) {
+        if ($locale === 'en') continue;
+
+        $existing   = $modelInstance->exists ? ($modelInstance->{$locale} ?? []) : [];
+        $translated = is_array($existing) ? $existing : [];
+
+        foreach ($translatable as $field) {
+            if (!empty($translated[$field])) continue;
+
+            $original = $data[$field] ?? null;
+            if (empty($original) || !is_string($original) || is_numeric($original)) continue;
+            if (strlen(trim(strip_tags($original))) < 2) continue;
+
+            try {
+                $result = $this->translator->translateText($original, $locale, 'en');
+                if ($result && $result !== $original) {
+                    $translated[$field] = $result;
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error(
+                    "attachTranslations [{$locale}][{$field}]: " . $e->getMessage()
+                );
+            }
+        }
+
+        if (!empty($translated)) {
+            $data[$locale] = $translated;
+        }
+    }
+
+    return $data;
 }
 }

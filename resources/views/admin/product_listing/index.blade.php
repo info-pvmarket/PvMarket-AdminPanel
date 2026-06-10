@@ -715,7 +715,7 @@ src="{{ $firstImage && !empty($firstImage['path']) ? asset('storage/' . $firstIm
             <div class="listing-body">
                 <div class="listing-top">
                     <div>
-                        <h5 class="listing-name">{{ $product?->product_name ?? $product?->name ?? $listing->product_id }}</h5>
+                        <h5 class="listing-name">{{ $product ? lang($product, 'product_name') : $listing->product_id }}</h5>
                         <div class="listing-sku">SKU: {{ $listing->sku_code }}</div>
                         @if($lister)
                         <div class="lister-info-box" style="display:flex; align-items:center; gap:16px; margin-top:8px; padding:8px 12px; background:#EFF6FF; border-radius:8px; border:1px solid #BFDBFE; transition: background .2s, border-color .2s, box-shadow .2s; flex-wrap:wrap;" 
@@ -726,7 +726,7 @@ src="{{ $firstImage && !empty($firstImage['path']) ? asset('storage/' . $firstIm
                                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                                     <circle cx="12" cy="7" r="4"/>
                                 </svg>
-                                <span style="font-weight:600; color:#111827;">{{ $lister->name }}</span>
+                                <span style="font-weight:600; color:#111827;">{{ lang($lister, 'name') }}</span>
                             </div>
                             <div style="display:flex; align-items:center; gap:6px; font-size:12px; color:#6B7280;">
                                 <svg width="13" height="13" fill="none" stroke="#6B7280" stroke-width="2" viewBox="0 0 24 24">
@@ -844,7 +844,7 @@ src="{{ $firstImage && !empty($firstImage['path']) ? asset('storage/' . $firstIm
                         <span>
                             @if($warehouse?->country)
                                 <span class="country-cell">
-                                    {{ $warehouse->city }}, {{ $warehouse->country }}
+                                    {{ lang($warehouse, 'city') }}, {{ lang($warehouse, 'country') }}
                                 </span>
                             @else
                                 {{ $listing->warehouse_id }}
@@ -866,7 +866,7 @@ src="{{ $firstImage && !empty($firstImage['path']) ? asset('storage/' . $firstIm
                     <div class="slots-footer">
                         <span class="slots-hint">
                             📦 {{ count($slots) }} price {{ count($slots) === 1 ? 'tier' : 'tiers' }}
-                            &nbsp;·&nbsp; Incoterm: {{ $listing->incoterm ?? '—' }}
+                            &nbsp;·&nbsp; Incoterm: {{ lang($listing, 'incoterm') ?? '—' }}
                         </span>
                         <button class="view-slots-btn" onclick="toggleSlots('{{ $listing->id }}')">
                             View Slots ({{ count($slots) }})

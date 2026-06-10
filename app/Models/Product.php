@@ -4,9 +4,11 @@ namespace App\Models;
 
 use MongoDB\Laravel\Eloquent\Model;
 use MongoDB\Laravel\Casts\AsArrayObject;
+use App\Traits\HasTranslations;
 
 class Product extends Model
 {
+    use HasTranslations;
     protected $connection = 'mongodb';
     protected $collection = 'products';
 
@@ -38,4 +40,20 @@ class Product extends Model
     
     
 ];
+public array $translatable = [
+    'product_name',
+    'product_description',
+    'category_name',
+    'sub_category_name',
+    'brand_name',
+    'pieces_per_pallet',
+    'pallets_per_container',
+];
+
+    // ── Relationships ───────────────────────────────────────────────
+
+    public function listings()
+    {
+        return $this->hasMany(ProductListing::class, 'product_id', '_id');
+    }
 }

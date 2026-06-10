@@ -7,9 +7,11 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Http\Request;
+use App\Services\TranslationService;
 
 class SalesController extends Controller
 {
+    public function __construct(protected TranslationService $translator) {}
     public function index(Request $request)
 {
     $query = Order::where('is_active', 1);
@@ -124,5 +126,47 @@ class SalesController extends Controller
     }
 
     abort(404, 'Proof file not found on server.');
+}
+private function attachTranslations(array $data, $modelInstance): array
+{
+    $languages    = array_keys(config('languages.available'));
+    $translatable = $modelInstance->translatable ?? [];
+
+    foreach ($languages as $locale) {
+        if ($locale === 'en') continue;
+
+        $existing   = $modelInstance->exists ? ($modelInstance->{$locale} ?? []) : [];
+        $translated = is_array($existing) ? $existing : [];
+
+        foreach ($translatable as $field) {
+            // Skip if already translated
+            if (!empty($translated[$field])) continue;
+
+            $original = $data[$field] ?? null;
+
+            // Must be a non-empty string, not numeric, not an object
+            if (empty($original) || !is_string($original) || is_numeric($original)) continue;
+
+            // Skip if it's just whitespace or HTML tags with no real content
+            if (strlen(trim(strip_tags($original))) < 2) continue;
+
+            try {
+                $result = $this->translator->translateText($original, $locale, 'en');
+                if ($result && $result !== $original) {
+                    $translated[$field] = $result;
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error(
+                    "attachTranslations [{$locale}][{$field}]: " . $e->getMessage()
+                );
+            }
+        }
+
+        if (!empty($translated)) {
+            $data[$locale] = $translated;
+        }
+    }
+
+    return $data;
 }
 }

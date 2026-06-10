@@ -9,9 +9,11 @@ use App\Models\Warehouse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Services\TranslationService;
 
 class OfferController extends Controller
 {
+    public function __construct(protected TranslationService $translator) {}
     // ── Index ─────────────────────────────────────────
     public function index(Request $request)
     {
@@ -60,7 +62,7 @@ class OfferController extends Controller
         $product   = Product::findOrFail($request->product_id);
         $warehouse = Warehouse::findOrFail($request->warehouse_id);
 
-        Offer::create([
+        $data = [
             'unique_id'      => $this->generateUniqueId(),
             'product_id'     => $request->product_id,
             'product_name'   => $product->product_name,
@@ -69,7 +71,10 @@ class OfferController extends Controller
             'payment_status' => 'pending',
             'is_active'      => true,
             'updated_by'     => Auth::user()->name,
-        ]);
+        ];
+
+        $data = $this->attachTranslations($data, new Offer());
+        Offer::create($data);
 
         return redirect()->route('admin.offers.index')
                          ->with('success', 'Offer created successfully.');
@@ -103,13 +108,16 @@ class OfferController extends Controller
         $product   = Product::findOrFail($request->product_id);
         $warehouse = Warehouse::findOrFail($request->warehouse_id);
 
-        $offer->update([
+        $data = [
             'product_id'     => $request->product_id,
             'product_name'   => $product->product_name,
             'warehouse_id'   => $request->warehouse_id,
             'warehouse_name' => $warehouse->warehouse_name,
             'updated_by'     => Auth::user()->name,
-        ]);
+        ];
+
+        $data = $this->attachTranslations($data, $offer);
+        $offer->update($data);
 
         return redirect()->route('admin.offers.index')
                          ->with('success', 'Offer updated.');
@@ -156,5 +164,38 @@ class OfferController extends Controller
         } while (Offer::where('unique_id', $id)->exists());
 
         return $id;
+    }
+    private function attachTranslations(array $data, $modelInstance): array
+    {
+        $languages    = array_keys(config('languages.available'));
+        $translatable = $modelInstance->translatable ?? [];
+
+        foreach ($languages as $locale) {
+            if ($locale === 'en') continue;
+
+            $translated = [];
+
+            foreach ($translatable as $field) {
+                $original = $data[$field] ?? null;
+
+                if (empty($original) || !is_string($original)) continue;
+                if (strlen(trim($original)) < 2) continue;
+
+                try {
+                    $result = $this->translator->translateText($original, $locale, 'en');
+                    if ($result) {
+                        $translated[$field] = $result;
+                    }
+                } catch (\Exception $e) {
+                    Log::error("OfferController attachTranslations [{$locale}][{$field}]: " . $e->getMessage());
+                }
+            }
+
+            if (!empty($translated)) {
+                $data[$locale] = $translated;
+            }
+        }
+
+        return $data;
     }
 }

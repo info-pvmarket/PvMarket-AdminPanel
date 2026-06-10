@@ -4,9 +4,11 @@ namespace App\Models;
 
 use MongoDB\Laravel\Eloquent\Model;
 use App\Casts\AsObjectId;
+use App\Traits\HasTranslations;
 
 class InventoryTransaction extends Model
 {
+    use HasTranslations;
     protected $connection = 'mongodb';
     protected $collection = 'inventory_transactions';
 
@@ -32,6 +34,9 @@ class InventoryTransaction extends Model
         'reference_id'        => AsObjectId::class,
         'created_by'          => AsObjectId::class,
         'quantity'            => 'integer',
+    ];
+    public array $translatable = [
+        'notes',
     ];
 
     // ── Relationships ────────────────────────────────────────────────────────
