@@ -36,6 +36,7 @@ use App\Http\Controllers\Admin\CommissionController;
 use App\Http\Controllers\Admin\InventoryController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\LocationController;
+use App\Http\Controllers\Admin\RfqRequestController;
 
  
 
@@ -143,6 +144,14 @@ Route::prefix('admin/bids')->name('admin.bids.')->group(function () {
     Route::get('/{id}',         [BidRequestController::class, 'show'])         ->name('show');
     Route::post('/{id}/status', [BidRequestController::class, 'updateStatus']) ->name('update-status');
     Route::delete('/{id}',      [BidRequestController::class, 'destroy'])      ->name('destroy');
+});
+
+// RFQ Requests
+Route::prefix('admin/rfq-requests')->name('admin.rfq-requests.')->group(function () {
+    Route::get('/',             [RfqRequestController::class, 'index'])        ->name('index');
+    Route::get('/{id}',         [RfqRequestController::class, 'show'])         ->name('show');
+    Route::post('/{id}/status', [RfqRequestController::class, 'updateStatus']) ->name('update-status');
+    Route::delete('/{id}',      [RfqRequestController::class, 'destroy'])      ->name('destroy');
 });
 
  
