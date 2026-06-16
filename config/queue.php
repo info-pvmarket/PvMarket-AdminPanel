@@ -44,6 +44,16 @@ return [
             'after_commit' => false,
         ],
 
+        // MongoDB-backed queue (provided by mongodb/laravel-mongodb).
+        // The `jobs` collection is created automatically on first dispatch.
+        'mongodb' => [
+            'driver' => 'mongodb',
+            'connection' => 'mongodb',
+            'table' => 'jobs',
+            'queue' => 'default',
+            'retry_after' => 900, // > job timeout (600) so running jobs aren't retried
+        ],
+
         'beanstalkd' => [
             'driver' => 'beanstalkd',
             'host' => env('BEANSTALKD_QUEUE_HOST', 'localhost'),

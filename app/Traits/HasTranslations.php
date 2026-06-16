@@ -54,4 +54,28 @@ trait HasTranslations
 
         return (string) ($translated ?? $original);
     }
+
+    /**
+     * Read a translated ARRAY field (e.g. PageSection.extra).
+     *
+     * Returns the stored translation for the locale merged over the
+     * English original, so any key that was not translated (paths,
+     * links, numbers, or newly-added keys) falls back to the original.
+     */
+    public function transArray(string $field, ?string $locale = null): array
+    {
+        $original = is_array($this->{$field}) ? $this->{$field} : [];
+
+        $locale = $locale ?? session('admin_lang', 'en');
+        if ($locale === 'en') return $original;
+
+        $translations = $this->{$locale};
+        if (is_array($translations)
+            && isset($translations[$field])
+            && is_array($translations[$field])) {
+            return array_replace_recursive($original, $translations[$field]);
+        }
+
+        return $original;
+    }
 }

@@ -135,14 +135,16 @@ class LanguageController extends Controller
         $language = Language::where('code', $code)->firstOrFail();
         $pages    = $request->input('pages', []);
 
+        // Translation calls AWS for every changed string (throttled), which is
+        // far too slow to run in the request. Queue one background job per page;
+        // a worker (php artisan queue:work) processes them.
         foreach ($pages as $page) {
-            (new \App\Jobs\TranslatePageJob($code, $page))->handle(
-                app(\App\Services\TranslationService::class)
-            );
+            \App\Jobs\TranslatePageJob::dispatch($code, $page);
         }
 
         return back()->with('success',
-            count($pages) . ' page(s) translated to ' . $language->name . ' successfully.'
+            count($pages) . ' page(s) queued for translation to ' . $language->name
+            . '. Translations will appear shortly.'
         );
     }
 }

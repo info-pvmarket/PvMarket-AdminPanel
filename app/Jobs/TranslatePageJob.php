@@ -14,7 +14,7 @@ class TranslatePageJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $timeout = 300;
+    public int $timeout = 600;   // must stay below the connection's retry_after
     public int $tries   = 3;
 
     public function __construct(
@@ -40,77 +40,16 @@ class TranslatePageJob implements ShouldQueue
             return;
         }
 
-        // Stream records in chunks to avoid memory issues
+        // Stream records in chunks to avoid memory issues. translateAndSave
+        // handles nested arrays (e.g. PageSection.extra) recursively and only
+        // (re)translates fields whose English source changed since last run —
+        // so clicking Translate again updates edited content.
         $modelClass::chunk(50, function ($records) use ($translator, $fields, $locale, $modelClass) {
             foreach ($records as $record) {
-                $existing    = is_array($record->{$locale}) ? $record->{$locale} : [];
-                $needsSave   = false;
-
-                foreach ($fields as $field) {
-    // Skip if already translated
-    if (!empty($existing[$field])) {
-        continue;
-    }
-
-    $raw = $record->{$field} ?? null;
-
-    // ── Array fields (e.g. unit_names) ──
-    if (is_array($raw)) {
-        $translatedArray = [];
-        $arrayChanged    = false;
-
-        foreach ($raw as $item) {
-            if (empty(trim((string) $item))) {
-                $translatedArray[] = $item;
-                continue;
-            }
-            try {
-                $result = $translator->translateText((string) $item, $locale, 'en');
-                $translatedArray[] = ($result && $result !== $item) ? $result : $item;
-                if ($result && $result !== $item) $arrayChanged = true;
-                usleep(150000);
-            } catch (\Exception $e) {
-                Log::error("TranslatePageJob: array field '{$field}' on {$modelClass}#{$record->_id}: {$e->getMessage()}");
-                $translatedArray[] = $item;
-            }
-        }
-
-        if ($arrayChanged) {
-            $existing[$field] = $translatedArray;
-            $needsSave = true;
-        }
-        continue;
-    }
-
-    // ── String fields ──
-    $original = (string) ($raw ?? '');
-    if (empty(trim($original))) continue;
-
-    try {
-        $translated = $translator->translateText($original, $locale, 'en');
-
-        if ($translated && $translated !== $original) {
-            $existing[$field] = $translated;
-            $needsSave = true;
-        }
-
-        usleep(150000);
-
-    } catch (\Exception $e) {
-        Log::error("TranslatePageJob: field '{$field}' on {$modelClass}#{$record->_id}: {$e->getMessage()}");
-    }
-}
-
-                if ($needsSave) {
-                    try {
-                        // Write directly — same pattern as HasTranslations trait
-                        $record->newQuery()
-                               ->where('_id', $record->_id)
-                               ->update([$locale => $existing]);
-
-                    } catch (\Exception $e) {
-                        Log::error("TranslatePageJob: save failed for {$modelClass}#{$record->_id}: {$e->getMessage()}");
-                    }
+                try {
+                    $translator->translateAndSave($record, $fields, $locale);
+                } catch (\Exception $e) {
+                    Log::error("TranslatePageJob: {$modelClass}#{$record->_id}: {$e->getMessage()}");
                 }
             }
         });

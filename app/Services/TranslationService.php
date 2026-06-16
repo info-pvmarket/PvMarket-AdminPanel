@@ -18,7 +18,7 @@ class TranslationService
     'Brand'          => [\App\Models\Brand::class,          ['name']],
     'news'          => [\App\Models\News::class,           ['heading', 'content']],
     'PricePromotion' => [\App\Models\PricePromotion::class, ['heading', 'description']],
-    'PageSection'    => [\App\Models\PageSection::class,    ['title', 'subtitle', 'description', 'button_text']],
+    'PageSection'    => [\App\Models\PageSection::class,    ['title', 'subtitle', 'description', 'button_text', 'extra']],
     'PvSpotPrice'    => [\App\Models\PvSpotPrice::class,    ['heading']],
     'main-menu'     => [\App\Models\MainMenu::class,      ['name', 'short_description', 'content']],
     'sub-menu'      => [\App\Models\SubMenu::class,       ['name', 'short_description', 'content']],
@@ -40,7 +40,7 @@ class TranslationService
     'warehouse'     => [\App\Models\Warehouse::class,     ['name', 'location']],
     'offer'         => [\App\Models\Offer::class,         ['name', 'description']],
     'specification' => [\App\Models\DetailOption::class, ['name', 'description']],
-    'static-page'   => [\App\Models\PageSection::class, ['title', 'subtitle', 'description', 'button_text']],
+    'static-page'   => [\App\Models\PageSection::class, ['title', 'subtitle', 'description', 'button_text', 'extra']],
     'commission'    => [\App\Models\Commission::class,    ['name', 'description']],
     'inventory'     => [\App\Models\Inventory::class,     ['name', 'description']],
     'inventory-transaction' => [\App\Models\InventoryTransaction::class, ['notes']],
@@ -143,6 +143,10 @@ class TranslationService
                 'TargetLanguageCode' => $target,
                 'Text'               => $text,
             ]);
+
+            // Throttle real API calls to stay under AWS Translate rate limits.
+            usleep(150000); // 150ms
+
             return $result['TranslatedText'];
         } catch (AwsException $e) {
             Log::error('AWS translateText: ' . $e->getAwsErrorMessage() . ' [' . $e->getAwsErrorCode() . ']');
@@ -245,6 +249,84 @@ class TranslationService
     }
 
     // ─────────────────────────────────────────────────────────────
+    // Keys inside `extra` that hold non-text data (paths, links,
+    // contacts, numbers, emojis) — never sent to AWS, copied as-is.
+    // ─────────────────────────────────────────────────────────────
+    private array $nonTranslatableKeys = [
+        'logo', 'logo_file', 'image', 'icon', 'link', 'button_link',
+        'url', 'href', 'email', 'phone', 'address_link', 'prices',
+        'price', 'order', 'id', 'color', 'colors',
+    ];
+
+    private function isNonTranslatableKey($key): bool
+    {
+        if (!is_string($key)) return false;
+        $key = strtolower($key);
+        if (in_array($key, $this->nonTranslatableKeys, true)) return true;
+        // Prefix/suffix conventions: social_facebook, *_link, *_url, *_file
+        if (str_starts_with($key, 'social_')) return true;
+        foreach (['_link', '_url', '_file', '_id'] as $suffix) {
+            if (str_ends_with($key, $suffix)) return true;
+        }
+        return false;
+    }
+
+    // Decide whether a raw string value is worth translating
+    private function isTranslatableString(string $value): bool
+    {
+        $plain = trim(strip_tags($value));
+        if ($plain === '')                       return false;   // empty / tags only
+        if (is_numeric($plain))                  return false;   // "100", "12.5"
+        if (preg_match('#^https?://#i', $plain)) return false;   // URLs
+        if (filter_var($plain, FILTER_VALIDATE_EMAIL)) return false; // emails
+        // File paths like "logos/home/abc.png"
+        if (preg_match('#\.(png|jpe?g|gif|svg|webp|pdf)$#i', $plain)) return false;
+        // Must contain at least one letter to be translatable
+        return (bool) preg_match('/\p{L}/u', $plain);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Recursively translate every translatable string inside an
+    // array (e.g. PageSection.extra), preserving structure & keys.
+    // ─────────────────────────────────────────────────────────────
+    private function translateArrayRecursive($value, string $targetLang)
+    {
+        if (is_array($value)) {
+            $out = [];
+            foreach ($value as $k => $v) {
+                if ($this->isNonTranslatableKey($k)) {
+                    $out[$k] = $v;          // keep paths/links/contacts untouched
+                    continue;
+                }
+                $out[$k] = $this->translateArrayRecursive($v, $targetLang);
+            }
+            return $out;
+        }
+
+        if (is_string($value)) {
+            if (!$this->isTranslatableString($value)) return $value;
+            $translated = $this->translateText($value, $targetLang);
+            return $translated ?? $value;
+        }
+
+        // numbers, bools, null — leave as-is
+        return $value;
+    }
+
+    // True if there is at least one translatable string anywhere inside
+    private function arrayHasTranslatableText($value): bool
+    {
+        if (is_array($value)) {
+            foreach ($value as $k => $v) {
+                if ($this->isNonTranslatableKey($k)) continue;
+                if ($this->arrayHasTranslatableText($v)) return true;
+            }
+            return false;
+        }
+        return is_string($value) && $this->isTranslatableString($value);
+    }
+
+    // ─────────────────────────────────────────────────────────────
     // Translate one model record and SAVE into the record itself
     // record.ar = { heading: "...", description: "<p>...</p>", blog_comments: "..." }
     // ─────────────────────────────────────────────────────────────
@@ -253,21 +335,42 @@ class TranslationService
         $existing = $record->$targetLang ?? [];
         if (!is_array($existing)) $existing = [];
 
+        // Source fingerprints from the last translation run — used to detect
+        // edits to the English source so we re-translate only what changed.
+        $fingerprints = (isset($existing['_src']) && is_array($existing['_src']))
+            ? $existing['_src'] : [];
+
         $newTranslations = [];
+        $newFingerprints = $fingerprints;   // carry forward, overwrite per field
 
         foreach ($fields as $field) {
-            $original = (string) ($record->$field ?? '');
+            $value = $record->$field ?? null;
 
-            // Skip empty fields
-            if (empty(trim(strip_tags($original)))) continue;
+            // Is there anything translatable in this field?
+            $hasContent = is_array($value)
+                ? $this->arrayHasTranslatableText($value)
+                : !empty(trim(strip_tags((string) ($value ?? ''))));
+            if (!$hasContent) continue;
 
-            // Skip already-translated fields
-            if (!empty($existing[$field])) continue;
+            // Skip when already translated AND the source hasn't changed.
+            $fp = $this->fieldFingerprint($value);
+            if (!empty($existing[$field]) && ($fingerprints[$field] ?? null) === $fp) {
+                continue;
+            }
 
-            $translated = $this->translateText($original, $targetLang);
+            // ── Array field (e.g. PageSection.extra) → translate recursively ──
+            if (is_array($value)) {
+                $newTranslations[$field] = $this->translateArrayRecursive($value, $targetLang);
+                $newFingerprints[$field] = $fp;
+                continue;
+            }
+
+            // ── Plain string field ──
+            $translated = $this->translateText((string) $value, $targetLang);
 
             if ($translated !== null) {
                 $newTranslations[$field] = $translated;
+                $newFingerprints[$field] = $fp;
             } else {
                 Log::warning("TranslationService: null result — model=" . get_class($record)
                     . " id={$record->id} field={$field} lang={$targetLang}");
@@ -276,6 +379,7 @@ class TranslationService
 
         if (!empty($newTranslations)) {
             $merged = array_merge($existing, $newTranslations);
+            $merged['_src'] = $newFingerprints;
             $record->setAttribute($targetLang, $merged);
             $record->save();
         }
@@ -285,6 +389,13 @@ class TranslationService
             'translated' => count($newTranslations),
             'skipped'    => count($fields) - count($newTranslations),
         ];
+    }
+
+    // Fingerprint of a source field value — changes whenever the admin
+    // edits the English content, triggering a re-translation on next run.
+    private function fieldFingerprint($value): string
+    {
+        return md5(is_array($value) ? json_encode($value) : (string) ($value ?? ''));
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -308,14 +419,23 @@ class TranslationService
         $failed     = 0;
 
         foreach ($records as $record) {
-            // Check if every content field is already translated
+            // Skip only when every content field is already translated AND
+            // its source is unchanged since the last run (fingerprint match).
             $existing = $record->$targetLang ?? [];
             if (is_array($existing) && !empty($existing)) {
+                $fingerprints = (isset($existing['_src']) && is_array($existing['_src']))
+                    ? $existing['_src'] : [];
                 $needsWork = false;
                 foreach ($fields as $field) {
-                    $hasContent     = !empty(trim(strip_tags((string) ($record->$field ?? ''))));
+                    $value = $record->$field ?? null;
+                    $hasContent = is_array($value)
+                        ? $this->arrayHasTranslatableText($value)
+                        : !empty(trim(strip_tags((string) ($value ?? ''))));
+                    if (!$hasContent) continue;
+
                     $hasTranslation = !empty($existing[$field]);
-                    if ($hasContent && !$hasTranslation) { $needsWork = true; break; }
+                    $sourceChanged  = ($fingerprints[$field] ?? null) !== $this->fieldFingerprint($value);
+                    if (!$hasTranslation || $sourceChanged) { $needsWork = true; break; }
                 }
                 if (!$needsWork) { $skipped++; continue; }
             }
