@@ -46,9 +46,9 @@
 
         <div class="form-group">
             <label class="form-label">Warehouse Name <span>*</span></label>
-            <input type="text" name="name" class="form-input"
+            <input type="text" name="warehouse_name" class="form-input"
                    placeholder="e.g. Focus Freight International"
-                   value="{{ old('name', $record->name ?? '') }}" required/>
+                   value="{{ old('warehouse_name', $record->warehouse_name ?? '') }}" required/>
         </div>
 
         <div class="form-actions">

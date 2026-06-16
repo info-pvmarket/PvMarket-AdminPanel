@@ -870,6 +870,15 @@
                             </select>
                         </div>
                     </div>
+                    <div class="form-row cols-1" style="margin-top:16px;">
+                        <div class="form-group">
+                            <label class="form-label">Slug</label>
+                            <input type="text" name="slug" class="form-control"
+                                   placeholder="auto-generated if blank"
+                                   value="{{ old('slug') }}"/>
+                            <span style="font-size:.73rem; color:var(--muted); margin-top:3px;">Leave blank to auto-generate</span>
+                        </div>
+                    </div>
                 </div>
 
                 {{-- ══ Three Toggle Rows ══ --}}
@@ -934,9 +943,29 @@
                             <span class="toggle-thumb"></span>
                         </label>
                     </div>
+                    {{-- 4. Real Time Price --}}
+                    <div class="toggle-row">
+                        <div class="toggle-left">
+                            <div class="toggle-icon" style="background:#EFF6FF; color:var(--blue);">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <div class="toggle-info-title">Real Time Price</div>
+                                <div class="toggle-info-sub">Price updates in real time for buyers</div>
+                            </div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" name="real_time_price" value="1" id="toggleRealTimePrice">
+                            <span class="toggle-track"></span>
+                            <span class="toggle-thumb"></span>
+                        </label>
+                    </div>
 
                 </div>{{-- end toggle-section --}}
             </div>
+            
 
             {{-- ── Inventory & Pricing ── --}}
             <div class="section-card">
@@ -983,14 +1012,14 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label">Incoterm <span class="req">*</span></label>
-                            <select name="incoterm" class="form-select" required>
-                                <option value="">Select incoterm</option>
-                                @foreach($incoterms as $code => $label)
-                                    <option value="{{ $code }}" {{ old('incoterm') == $code ? 'selected' : '' }}>
-                                        {{ $label }}
-                                    </option>
-                                @endforeach
-                            </select>
+                            <select name="incoterm_id" class="form-select" required>
+    <option value="">Select incoterm</option>
+    @foreach($incoterms as $incoterm)
+        <option value="{{ $incoterm->id }}" {{ old('incoterm_id') == $incoterm->id ? 'selected' : '' }}>
+            {{ $incoterm->name }}
+        </option>
+    @endforeach
+</select>
                             @error('incoterm')<div class="error-msg">{{ $message }}</div>@enderror
                         </div>
                     </div>

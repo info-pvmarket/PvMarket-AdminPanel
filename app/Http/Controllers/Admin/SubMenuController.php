@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\SubMenu;
 use App\Models\MainMenu;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use App\Services\TranslationService;
 
@@ -47,51 +46,23 @@ class SubMenuController extends Controller
         'category_id'     => 'required|string',
         'items'           => 'required|array|min:1',
         'items.*.name'    => 'required|string|max:255',
-        'items.*.icon'    => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:2048',
         'items.*.alt_tag' => 'nullable|string|max:255',
     ]);
 
     foreach ($request->items as $index => $item) {
 
-        $iconData = [
-            'size'          => 0,
-            'uploaded_at'   => now()->toISOString(),
-            'filename'      => '',
-            'original_name' => '',
-            'path'          => '',
-            'url'           => '',
-            'mime_type'     => '',
-        ];
-
-        if ($request->hasFile("items.{$index}.icon")) {
-            $file     = $request->file("items.{$index}.icon");
-            $filename = time() . '_' . $file->getClientOriginalName();
-            $path     = $file->storeAs('uploads/sub-categories', $filename, 'public');
-
-            $iconData = [
-                'size'          => $file->getSize(),
-                'uploaded_at'   => now()->toISOString(),
-                'filename'      => $filename,
-                'original_name' => $file->getClientOriginalName(),
-                'path'          => $path,
-                'url'           => $path,
-                'mime_type'     => $file->getMimeType(),
-            ];
-        }
-
         $data = [
-    'sub_category_name'       => $item['name'],
-    'category_id'             => new \MongoDB\BSON\ObjectId($request->category_id),
-    'slug'                    => Str::slug($item['name']),
-    'sub_category_icon_image' => $iconData,
-    'category_name'           => MainMenu::find($request->category_id)?->category_name ?? '',
-    'icon_alt_tag'            => $item['alt_tag'] ?? Str::slug($item['name']),
-    'is_hold'                 => false,
-    'stock_value'             => false,
-    'pallet_applicable'       => isset($item['pallet']) ? true : false,
-    'container_applicable'    => isset($item['container']) ? true : false,
-    'created_by'              => new \MongoDB\BSON\ObjectId(auth()->id()),
-];
+            'sub_category_name'    => $item['name'],
+            'category_id'          => new \MongoDB\BSON\ObjectId($request->category_id),
+            'slug'                 => Str::slug($item['name']),
+            'category_name'        => MainMenu::find($request->category_id)?->category_name ?? '',
+            'is_hold'              => false,
+            'is_active'            => true,
+            'stock_value'          => false,
+            'pallet_applicable'    => isset($item['pallet']),
+            'container_applicable' => isset($item['container']),
+            'created_by'           => new \MongoDB\BSON\ObjectId(auth()->id()),
+        ];
 
         $data = $this->attachTranslations($data, new SubMenu());
         SubMenu::create($data);
@@ -122,49 +93,17 @@ class SubMenuController extends Controller
         'category_id'       => 'required|string',
         'slug'              => 'nullable|string|max:255',
         'alt_tag'           => 'nullable|string|max:255',
-        'icon'              => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:2048',
     ]);
 
-    $iconData = $subMenu->sub_category_icon_image ?? [
-    'size'          => 0,
-    'uploaded_at'   => now()->toISOString(),
-    'filename'      => '',
-    'original_name' => '',
-    'path'          => '',
-    'url'           => '',
-    'mime_type'     => '',
-];
-
-if ($request->hasFile('icon')) {
-    $oldPath = is_array($iconData) ? ($iconData['path'] ?? '') : '';
-    if ($oldPath) Storage::disk('public')->delete($oldPath);
-
-    $file     = $request->file('icon');
-    $filename = time() . '_' . $file->getClientOriginalName();
-    $path     = $file->storeAs('uploads/sub-categories', $filename, 'public');
-
-    $iconData = [
-        'size'          => $file->getSize(),
-        'uploaded_at'   => now()->toISOString(),
-        'filename'      => $filename,
-        'original_name' => $file->getClientOriginalName(),
-        'path'          => $path,
-        'url'           => $path,
-        'mime_type'     => $file->getMimeType(),
-    ];
-}
-
     $data = [
-    'sub_category_name'       => $request->sub_category_name,
-    'category_id'             => new \MongoDB\BSON\ObjectId($request->category_id),
-    'slug'                    => $request->slug ?: Str::slug($request->sub_category_name),
-    'sub_category_icon_image' => $iconData,
-    'category_name'           => MainMenu::find($request->category_id)?->category_name ?? '',
-    'icon_alt_tag'            => $request->alt_tag ?? Str::slug($request->sub_category_name),
-    'pallet_applicable'       => $request->has('pallet_applicable'),    
-    'container_applicable'    => $request->has('container_applicable'),
-    'updated_by'              => new \MongoDB\BSON\ObjectId(auth()->id()),
-];
+        'sub_category_name'    => $request->sub_category_name,
+        'category_id'          => new \MongoDB\BSON\ObjectId($request->category_id),
+        'slug'                 => $request->slug ?: Str::slug($request->sub_category_name),
+        'category_name'        => MainMenu::find($request->category_id)?->category_name ?? '',
+        'pallet_applicable'    => $request->has('pallet_applicable'),
+        'container_applicable' => $request->has('container_applicable'),
+        'updated_by'           => new \MongoDB\BSON\ObjectId(auth()->id()),
+    ];
 
     $data = $this->attachTranslations($data, $subMenu);
     $subMenu->update($data);
@@ -192,10 +131,6 @@ if ($request->hasFile('icon')) {
     public function destroy($id)
 {
     $subMenu = SubMenu::findOrFail($id);
-    $iconPath = is_array($subMenu->sub_category_icon_image)
-    ? ($subMenu->sub_category_icon_image['path'] ?? '')
-    : '';
-if ($iconPath) Storage::disk('public')->delete($iconPath);
     $subMenu->delete();
 
     return redirect()->route('admin.setup.sub-menus.index')

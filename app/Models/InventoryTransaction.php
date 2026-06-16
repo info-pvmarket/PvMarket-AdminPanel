@@ -13,18 +13,22 @@ class InventoryTransaction extends Model
     protected $collection = 'inventory_transactions';
 
     protected $fillable = [
-        'listing_id',
-        'product_id',
-        'warehouse_id',
-        'user_id',
-        'transaction_type',
-        'quantity',
-        'reference_type',
-        'reference_id',
-        'notes',
-        'created_by',
-        
-    ];
+    'listing_id',
+    'product_id',
+    'warehouse_id',
+    'user_id',
+    'transaction_type',
+    'quantity',
+    'quantity_before',   
+    'quantity_after',    
+    'quantity_change',   
+    'type',              
+    'reason',            
+    'reference_type',
+    'reference_id',
+    'notes',
+    'created_by',
+];
 
     protected $casts = [
         'listing_id'          => AsObjectId::class,

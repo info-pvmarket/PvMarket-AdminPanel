@@ -63,6 +63,7 @@
                     <th style="min-width:220px;">Brand Image</th>
                     <th style="min-width:160px;">Alt Tag</th>
                     <th style="min-width:110px;">Menu Order</th>
+                    <th style="min-width:110px;">Show Menu</th>
                     <th style="width:60px;">Action</th>
                 </tr>
             </thead>
@@ -86,6 +87,13 @@
                         <input type="number" name="brands[0][menu_order]" class="form-row-input"
                                placeholder="e.g. 1" min="0"/>
                     </td>
+                    <td>
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+        <input type="checkbox" name="brands[0][can_show_menu]" value="1"
+               style="width:16px;height:16px;cursor:pointer;" checked/>
+        <span style="font-size:13px;color:var(--text);">Visible</span>
+    </label>
+</td>
                     <td>
                         <button type="button" class="btn-remove" onclick="removeRow(this)" title="Remove">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -143,6 +151,13 @@ function addRow() {
             <input type="number" name="brands[${idx}][menu_order]" class="form-row-input"
                    placeholder="e.g. 1" min="0"/>
         </td>
+        <td>
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+        <input type="checkbox" name="brands[${idx}][can_show_menu]" value="1"
+               style="width:16px;height:16px;cursor:pointer;" checked/>
+        <span style="font-size:13px;color:var(--text);">Visible</span>
+    </label>
+</td>
         <td>
             <button type="button" class="btn-remove" onclick="removeRow(this)" title="Remove">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -253,8 +268,8 @@ function renumber() {
             {{-- Brand Image --}}
             <div class="form-group">
                 <label class="form-label">Brand Image</label>
-                @if(!empty($record->brand_image['url']))
-                    <img src="{{ asset('storage/' . $record->brand_image['url']) }}"
+                @if(!empty($record->image['url']))
+    <img src="{{ asset('storage/' . $record->image['url']) }}"
                          class="current-img"
                          alt="{{ $record->alt_tag ?? $record->name }}"/>
                 @endif
@@ -272,6 +287,17 @@ function renumber() {
                        value="{{ old('menu_order', $record->menu_order ?? 0) }}"/>
                 <span class="form-hint">Lower number appears first</span>
             </div>
+
+        {{-- Can Show Menu --}}
+<div class="form-group">
+    <label class="form-label">Show in Menu</label>
+    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:9px 0;">
+        <input type="checkbox" name="can_show_menu" value="1"
+               style="width:16px;height:16px;cursor:pointer;"
+               {{ old('can_show_menu', $record->can_show_menu ?? true) ? 'checked' : '' }}/>
+        <span style="font-size:13.5px;color:var(--text);">Visible in menu</span>
+    </label>
+</div>
 
         </div>
 
@@ -410,6 +436,7 @@ function renumber() {
                 <th class="center" style="width:160px;">Brand Image</th>
                 <th>Brand</th>
                 <th class="center" style="width:100px;">Order</th>
+                <th class="center" style="width:100px;">Show Menu</th>
                 <th class="center" style="width:130px;">Action</th>
             </tr>
         </thead>
@@ -421,8 +448,8 @@ function renumber() {
                 </td>
                 <td class="center">
                     <div class="brand-img-wrap">
-                        @if(!empty($brand->brand_image['url']))
-                            <img src="{{ asset('storage/' . $brand->brand_image['url']) }}"
+                        @if(!empty($brand->image['url']))
+    <img src="{{ asset('storage/' . $brand->image['url']) }}"
                                  class="brand-img"
                                  alt="{{ $brand->alt_tag ?? $brand->name }}"/>
                         @else
@@ -445,6 +472,17 @@ function renumber() {
                 <td class="center">
                     <span class="order-badge">{{ $brand->menu_order ?? 0 }}</span>
                 </td>
+                <td class="center">
+    @if($brand->can_show_menu ?? true)
+        <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:#D1FAE5;color:#065F46;border-radius:12px;font-size:12px;font-weight:600;">
+            ✓ Yes
+        </span>
+    @else
+        <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:#FEE2E2;color:#991B1B;border-radius:12px;font-size:12px;font-weight:600;">
+            ✗ No
+        </span>
+    @endif
+</td>
                 <td>
                     <div class="action-btns">
                         <a href="{{ route('admin.setup.brands.edit', $brand->id) }}"
@@ -484,7 +522,7 @@ function renumber() {
             </tr>
             @empty
             <tr>
-                <td colspan="5">
+                <td colspan="6">
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                             <rect x="3" y="3" width="18" height="18" rx="2"/>

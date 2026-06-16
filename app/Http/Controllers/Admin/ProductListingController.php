@@ -12,6 +12,8 @@ use App\Models\Product;
 use App\Models\Warehouse;
 use App\Models\Commission;
 use App\Services\TranslationService;
+use App\Models\ProductListingImage;
+use App\Models\Incoterm;
 
 class ProductListingController extends Controller
 {
@@ -89,9 +91,18 @@ $userIds  = $listings->pluck('user_id')->filter()->unique()
 $usersMap = \App\Models\User::whereIn('_id', $userIds)->get()
                 ->keyBy(fn($u) => (string)$u->_id);
 
+$listingIds = $listings->pluck('_id')
+    ->map(fn($id) => new \MongoDB\BSON\ObjectId((string)$id))
+    ->toArray();
+
+$imagesMap = ProductListingImage::whereIn('product_listing_id', $listingIds)
+    ->orderBy('sort_order')
+    ->get()
+    ->groupBy(fn($img) => (string)$img->product_listing_id);
+
 return view('admin.product_listing.index', compact(
     'listings', 'unpaidCount', 'statusFilter', 'paymentFilter','warehouses', 'warehouseFilter', 'filter',
-    'productsMap', 'warehousesMap', 'usersMap',
+    'productsMap', 'warehousesMap', 'usersMap', 'imagesMap',
 ));
     }
 
@@ -108,15 +119,7 @@ return view('admin.product_listing.index', compact(
     $sellTypes     = ['sell by pieces', 'sell by containers', 'sell by weight'];
     $currencies    = ['AED', 'USD', 'GBP', 'EUR'];
     $discountTypes = ['No Promotion', 'fixed', 'percentage'];
-    $incoterms     = [
-        'EXW' => 'EXW - Ex Works',
-        'FCA' => 'FCA - Free Carrier',
-        'FOB' => 'FOB - Free On Board',
-        'CFR' => 'CFR - Cost and Freight',
-        'CIF' => 'CIF - Cost Insurance Freight',
-        'DAP' => 'DAP - Delivered At Place',
-        'DDP' => 'DDP - Delivered Duty Paid',
-    ];
+    $incoterms = Incoterm::orderBy('name')->get();
 
     $commissionsJson = $commissions->map(fn($c) => [
     'category_id'   => (string)$c->category_id,
@@ -142,7 +145,8 @@ return view('admin.product_listing.create', compact(
     'sell_type'                        => 'required|string',
     'currency_id'                      => 'required|string',
     'discount_type'                    => 'nullable|string',
-    'incoterm'                         => 'nullable|string',
+    'incoterm_id'                      => 'required|string',
+    'slug'                             => 'nullable|string|max:255',
     'total_quantity'                   => 'required|integer|min:1',
     'lead_time'                        => 'required|integer|min:0',
     'is_active'                        => 'nullable|boolean',
@@ -162,6 +166,11 @@ return view('admin.product_listing.create', compact(
         $validated['user_id']             = new \MongoDB\BSON\ObjectId(Auth::id());
         $validated['created_by']          = new \MongoDB\BSON\ObjectId(Auth::id());
         $validated['verification_status'] = 'pending';
+        $validated['incoterm_id']     = new \MongoDB\BSON\ObjectId($validated['incoterm_id']);
+$validated['slug']            = $request->filled('slug')
+                                  ? \Illuminate\Support\Str::slug($request->slug)
+                                  : \Illuminate\Support\Str::slug($request->product_id . '-' . time());
+$validated['real_time_price'] = $request->boolean('real_time_price', false);
         $validated['is_active']           = $request->boolean('is_active', true);
         $validated['is_paid']             = false;
         $validated['is_sold_off']         = $request->boolean('is_sold_off', false);
@@ -189,35 +198,38 @@ foreach ($validated['slots'] as $slot) {
         'total_price'           => $totalPrice,
     ];
 }
+
 $validated['slots'] = $slotsAsObjects;
-         $images = [];
-    if ($request->hasFile('images')) {
-        foreach ($request->file('images') as $file) {
-            $timestamp    = time() . '_' . rand(1000, 9999);
-            $originalName = $file->getClientOriginalName();
-            $filename     = $timestamp . '_' . $originalName;
-            $path         = 'uploads/product_listings/' . $filename;
+// Remove images from validated — stored separately
+unset($validated['images']);
 
-            $file->storeAs('uploads/product_listings', $filename, 'public');
+$listing = ProductListing::create($validated);
 
-            $images[] = (object) [
-    'size'          => $file->getSize(),
-    'uploaded_at'   => now()->toISOString(),
-    'filename'      => $filename,
-    'original_name' => $originalName,
-    'path'          => $path,
-    'url'           => $path,
-    'mime_type'     => $file->getMimeType(),
-];
-        }
+// Store images in separate collection
+if ($request->hasFile('images')) {
+    $sortOrder = 1;
+    foreach ($request->file('images') as $file) {
+        $filename     = time() . '_' . rand(1000, 9999) . '_' . $file->getClientOriginalName();
+        $path         = 'product-listings/' . $filename;
+        $file->storeAs('product-listings', $filename, 'public');
+
+        ProductListingImage::create([
+            'product_listing_id' => new \MongoDB\BSON\ObjectId((string)$listing->_id),
+            'image'              => [
+                'size'          => $file->getSize(),
+                'uploaded_at'   => now()->toISOString(),
+                'filename'      => $filename,
+                'original_name' => $file->getClientOriginalName(),
+                'path'          => $path,
+                'url'           => $path,
+                'mime_type'     => $file->getMimeType(),
+            ],
+            'sort_order'  => $sortOrder++,
+            'created_by'  => new \MongoDB\BSON\ObjectId(Auth::id()),
+        ]);
     }
-    $validated['images'] = $images;
-
-    $validated = $this->attachTranslations($validated, new ProductListing());
-    ProductListing::create($validated);
-
     return redirect()->route('product_listing.index')
-                     ->with('success', 'Your listing has been created and is pending approval.');
+                 ->with('success', 'Your listing has been created and is pending approval.');
 }
 
     // ── Show ────────────────────────────────────────────────────────
@@ -258,15 +270,7 @@ $warehouse    = Warehouse::where('_id', new \MongoDB\BSON\ObjectId($warehouseId)
     $sellTypes     = ['sell by pieces', 'sell by containers', 'sell by weight'];
     $currencies    = ['AED', 'USD', 'GBP', 'EUR'];
     $discountTypes = ['No Promotion', 'fixed', 'percentage'];
-    $incoterms     = [
-        'EXW' => 'EXW - Ex Works',
-        'FCA' => 'FCA - Free Carrier',
-        'FOB' => 'FOB - Free On Board',
-        'CFR' => 'CFR - Cost and Freight',
-        'CIF' => 'CIF - Cost Insurance Freight',
-        'DAP' => 'DAP - Delivered At Place',
-        'DDP' => 'DDP - Delivered Duty Paid',
-    ];
+    $incoterms = Incoterm::orderBy('name')->get();
 
     $inventoryHistory = \App\Models\InventoryTransaction::where(
         'listing_id', new \MongoDB\BSON\ObjectId($id)
@@ -278,12 +282,12 @@ $warehouse    = Warehouse::where('_id', new \MongoDB\BSON\ObjectId($warehouseId)
     $currentStock = \App\Models\InventoryTransaction::currentStock($id);
 
     return view('admin.product_listing.edit', compact(
-        'listing', 'sellTypes', 'currencies', 'discountTypes', 'incoterms',
-        'commissions', 'commissionsJson',
-        'mainCategory', 'subCategory', 'product', 'warehouse',
-        'mainCategories', 'subCategories', 'products', 'warehouses',
-        'inventoryHistory', 'currentStock',  // ← add these
-    ));
+    'listing', 'sellTypes', 'currencies', 'discountTypes', 'incoterms',
+    'commissions', 'commissionsJson',
+    'mainCategory', 'subCategory', 'product', 'warehouse',
+    'mainCategories', 'subCategories', 'products', 'warehouses',
+    'inventoryHistory', 'currentStock',
+));
 }
     // ── Update ──────────────────────────────────────────────────────
 
@@ -295,7 +299,8 @@ $warehouse    = Warehouse::where('_id', new \MongoDB\BSON\ObjectId($warehouseId)
     'sell_type'                        => 'required|string',
     'currency_id'                      => 'required|string',
     'discount_type'                    => 'nullable|string',
-    'incoterm'                         => 'nullable|string',
+    'incoterm_id' => 'required|string',
+    'slug'        => 'nullable|string|max:255',
     'total_quantity'                   => 'required|integer|min:1',
     'lead_time'                        => 'required|integer|min:0',
     'is_active'                        => 'nullable|boolean',
@@ -315,6 +320,11 @@ $warehouse    = Warehouse::where('_id', new \MongoDB\BSON\ObjectId($warehouseId)
         $validated['is_active']   = $request->boolean('is_active');
         $validated['is_sold_off'] = $request->boolean('is_sold_off', false);
         $validated['is_popular']  = $request->boolean('is_popular', false);
+        $validated['incoterm_id']     = new \MongoDB\BSON\ObjectId($request->incoterm_id);
+$validated['slug']            = $request->filled('slug')
+                                  ? \Illuminate\Support\Str::slug($request->slug)
+                                  : $listing->slug;
+$validated['real_time_price'] = $request->boolean('real_time_price', false);
         $validated['main_category_id'] = new \MongoDB\BSON\ObjectId($request->main_category_id);
 $validated['sub_category_id']  = new \MongoDB\BSON\ObjectId($request->sub_category_id);
 $validated['product_id']       = new \MongoDB\BSON\ObjectId($request->product_id);
@@ -342,43 +352,52 @@ foreach ($validated['slots'] as $slot) {
     ];
 }
 $validated['slots'] = $slotsAsObjects;
+// Remove images from validated — stored separately
+unset($validated['images']);
 
-         $images = $listing->images;
-    if ($request->hasFile('images')) {
-        foreach ($request->file('images') as $file) {
-            $timestamp    = time() . '_' . rand(1000, 9999);
-            $originalName = $file->getClientOriginalName();
-            $filename     = $timestamp . '_' . $originalName;
-            $path         = 'uploads/product_listings/' . $filename;
+if ($request->hasFile('images')) {
+    $lastOrder = ProductListingImage::where(
+        'product_listing_id', new \MongoDB\BSON\ObjectId((string)$listing->_id)
+    )->max('sort_order') ?? 0;
 
-            $file->storeAs('uploads/product_listings', $filename, 'public');
+    foreach ($request->file('images') as $file) {
+        $filename = time() . '_' . rand(1000, 9999) . '_' . $file->getClientOriginalName();
+        $path     = 'product-listings/' . $filename;
+        $file->storeAs('product-listings', $filename, 'public');
 
-            $images[] = (object) [
-    'size'          => $file->getSize(),
-    'uploaded_at'   => now()->toISOString(),
-    'filename'      => $filename,
-    'original_name' => $originalName,
-    'path'          => $path,
-    'url'           => $path,
-    'mime_type'     => $file->getMimeType(),
-];
-        }
+        ProductListingImage::create([
+            'product_listing_id' => new \MongoDB\BSON\ObjectId((string)$listing->_id),
+            'image'              => [
+                'size'          => $file->getSize(),
+                'uploaded_at'   => now()->toISOString(),
+                'filename'      => $filename,
+                'original_name' => $file->getClientOriginalName(),
+                'path'          => $path,
+                'url'           => $path,
+                'mime_type'     => $file->getMimeType(),
+            ],
+            'sort_order'  => ++$lastOrder,
+            'created_by'  => new \MongoDB\BSON\ObjectId(Auth::id()),
+        ]);
     }
-    $validated['images'] = $images;
 
-        $validated = $this->attachTranslations($validated, $listing);
-    $listing->update($validated);
+}
 
-        return redirect()->route('product_listing.index')
-                         ->with('success', 'Listing updated successfully.');
-    }
+$listing->update($validated);
+return redirect()->route('product_listing.index')
+                 ->with('success', 'Listing updated successfully.');
 
     // ── Destroy ─────────────────────────────────────────────────────
 
     public function destroy(string $id)
-    {
-        $listing = ProductListing::findOrFail($id);
-        $listing->delete();
+{
+    $listing = ProductListing::findOrFail($id);
+
+    ProductListingImage::where(
+        'product_listing_id', new \MongoDB\BSON\ObjectId($id)
+    )->delete();
+
+    $listing->delete();
 
         return redirect()->route('product_listing.index')
                          ->with('success', 'Listing deleted successfully.');

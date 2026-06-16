@@ -89,8 +89,10 @@ class ProductDetailOptionController extends Controller
         }
 
         $data = [
-            'option_name'       => $request->option_name,
+            'name'              => $request->option_name,
             'data_type'         => $request->data_type,
+            'is_tag'            => false,
+            'is_active'         => true,
             'category_id'       => $request->category_id
                 ? new \MongoDB\BSON\ObjectId($request->category_id)
                 : null,
@@ -150,7 +152,7 @@ class ProductDetailOptionController extends Controller
         }
 
         $data = [
-            'option_name'       => $request->option_name,
+            'name'              => $request->option_name,
             'data_type'         => $request->data_type,
             'category_id'       => $request->category_id
                 ? new \MongoDB\BSON\ObjectId($request->category_id)
@@ -192,7 +194,7 @@ class ProductDetailOptionController extends Controller
 
         // String fields to translate
         $stringFields = [
-            'option_name',
+            'name',
             'category_name',
             'sub_category_name',
         ];

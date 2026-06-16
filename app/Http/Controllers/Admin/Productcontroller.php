@@ -142,7 +142,7 @@ return view('admin.products.products', [
         if ($request->hasFile('datasheet')) {
     $file = $request->file('datasheet');
     $path = $file->store('products/datasheets', 'public');
-    $data['datasheet'] = (object) [   // ← wrap with (object)
+    $data['datasheet'] = [
         'filename'      => basename($path),
         'original_name' => $file->getClientOriginalName(),
         'path'          => $path,
@@ -236,9 +236,9 @@ return view('admin.products.products', [
         // ── Datasheet (replace if new file uploaded) ──
         if ($request->hasFile('datasheet')) {
             // Delete old file
-            if (!empty($product->datasheet['path'])) {
-                Storage::disk('public')->delete($product->datasheet['path']);
-            }
+            if (!empty($product->datasheet?->path)) {
+    Storage::disk('public')->delete($product->datasheet->path);
+}
             $file = $request->file('datasheet');
             $path = $file->store('products/datasheets', 'public');
             $data['datasheet'] = [
@@ -346,9 +346,9 @@ return view('admin.products.products', [
     public function destroy($id)
     {
         $product = Product::findOrFail($id);
-        if (!empty($product->datasheet['path'])) {
-            Storage::disk('public')->delete($product->datasheet['path']);
-        }
+        if (!empty($product->datasheet?->path)) {
+    Storage::disk('public')->delete($product->datasheet->path);
+}
         $product->delete();
         return redirect()->route('admin.products.index')->with('success', 'Product deleted.');
     }

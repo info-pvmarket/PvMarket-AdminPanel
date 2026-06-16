@@ -53,12 +53,14 @@ class BrandController extends Controller
             }
 
             $rowData = [
-    'name'        => $data['name'],
-    'slug'        => Str::slug($data['name']),
-    'alt_tag'     => $data['alt_tag'] ?? Str::slug($data['name']),
-    'menu_order'  => isset($data['menu_order']) ? (int)$data['menu_order'] : 0,
-    'brand_image' => $imageData,
-    'is_active'   => true,
+    'name'          => $data['name'],
+    'slug'          => Str::slug($data['name']),
+    'alt_tag'       => $data['alt_tag'] ?? Str::slug($data['name']),
+    'menu_order'    => isset($data['menu_order']) ? (int)$data['menu_order'] : 0,
+    'image'         => $imageData,
+    'is_active'     => true,
+    'can_show_menu' => isset($data['can_show_menu']),
+    'is_hold'       => false,
 ];
 $rowData = $this->attachTranslations($rowData, new Brand());
 Brand::create($rowData);
@@ -89,22 +91,23 @@ Brand::create($rowData);
             'image'      => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 
-        $imageData = $brand->brand_image ?? $this->emptyImageData();
+        $imageData = $brand->image ?? $this->emptyImageData();
 
         if ($request->hasFile('image')) {
             // Delete old file if exists
-            $oldPath = $brand->brand_image['path'] ?? null;
+            $oldPath = $brand->image['path'] ?? null;
             if ($oldPath) Storage::disk('public')->delete($oldPath);
 
             $imageData = $this->buildImageData($request->file('image'), 'uploads/brands');
         }
 
         $updateData = [
-    'name'        => $request->name,
-    'slug'        => $request->slug ?: Str::slug($request->name),
-    'alt_tag'     => $request->alt_tag ?? Str::slug($request->name),
-    'menu_order'  => (int)($request->menu_order ?? 0),
-    'brand_image' => $imageData,
+    'name'          => $request->name,
+    'slug'          => $request->slug ?: Str::slug($request->name),
+    'alt_tag'       => $request->alt_tag ?? Str::slug($request->name),
+    'menu_order'    => (int)($request->menu_order ?? 0),
+    'image'         => $imageData,
+    'can_show_menu' => $request->boolean('can_show_menu'),
 ];
 $updateData = $this->attachTranslations($updateData, $brand);
 $brand->update($updateData);
@@ -124,7 +127,7 @@ $brand->update($updateData);
     {
         $brand = Brand::findOrFail($id);
 
-        $oldPath = $brand->brand_image['path'] ?? null;
+        $oldPath = $brand->image['path'] ?? null;
         if ($oldPath) Storage::disk('public')->delete($oldPath);
 
         $brand->delete();

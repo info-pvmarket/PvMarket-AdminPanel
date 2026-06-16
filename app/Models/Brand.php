@@ -14,7 +14,9 @@ class Brand extends Model
     protected $fillable = [
         'name',
         'slug',
-        'brand_image',
+        'image',
+        'can_show_menu',
+        'is_hold',
         'alt_tag',
         'is_active',
         'menu_order',
@@ -22,6 +24,7 @@ class Brand extends Model
 
     protected $casts = [
         'is_active'   => 'boolean',
+        'is_hold'     => 'boolean',
         'menu_order'  => 'integer',
     ];
     public array $translatable = ['name'];

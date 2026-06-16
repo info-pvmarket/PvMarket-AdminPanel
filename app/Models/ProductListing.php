@@ -4,6 +4,7 @@ namespace App\Models;
 
 use MongoDB\Laravel\Eloquent\Model;
 use App\Traits\HasTranslations;
+use App\Casts\AsObjectId;
 
 class ProductListing extends Model
 {
@@ -29,9 +30,10 @@ class ProductListing extends Model
         'warehouse_id',
         'lead_time',
         'is_paid',
-        'images',
         'created_by',
-        'incoterm',
+        'incoterm_id',
+        'slug',
+        'real_time_price',
         'approved_at',
         'approved_by',
     ];
@@ -43,10 +45,11 @@ class ProductListing extends Model
     'is_popular'     => 'boolean',
     'lead_time'      => 'integer',
     'total_quantity' => 'integer',
+    'incoterm_id'      => AsObjectId::class,
+    'real_time_price'  => 'boolean',
     
 ];
 public array $translatable = [
-    'incoterm',
 ];
 
     // ── Relationships ───────────────────────────────────────────────
@@ -106,33 +109,10 @@ public function warehouse()
             default    => ucfirst($this->verification_status),
         };
     }
-public function getImagesAttribute($value)
+public function images()
 {
-    if (empty($value)) return [];
-
-    $result = [];
-    foreach ($value as $img) {
-        if (is_string($img)) {
-            // Old bad record: JSON string or plain string — skip it
-            $decoded = json_decode($img, true);
-            if (is_array($decoded)) {
-                // It was a JSON array like [{"size":...}]
-                foreach ($decoded as $item) {
-                    if (is_array($item) && !empty($item['path'])) {
-                        $result[] = $item;
-                    }
-                }
-            }
-        } elseif (is_array($img) && !empty($img['path'])) {
-            $result[] = $img;
-        } elseif (is_object($img)) {
-            $arr = (array) $img;
-            if (!empty($arr['path'])) {
-                $result[] = $arr;
-            }
-        }
-    }
-    return $result;
+    return $this->hasMany(ProductListingImage::class, 'product_listing_id', '_id')
+                ->orderBy('sort_order', 'asc');
 }
 public function getSlotsAttribute($value)
 {

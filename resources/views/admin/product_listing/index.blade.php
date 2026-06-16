@@ -683,13 +683,15 @@
     <div id="listingsWrap">
     @forelse($listings as $listing)
         @php
-    $productId   = is_object($listing->product_id) ? $listing->product_id->__toString() : (string)$listing->product_id;
-    $warehouseId = is_object($listing->warehouse_id) ? $listing->warehouse_id->__toString() : (string)$listing->warehouse_id;
-    $listingUserId = is_object($listing->user_id) ? $listing->user_id->__toString() : (string)$listing->user_id;
-    $product     = $productsMap[$productId] ?? null;
-    $warehouse   = $warehousesMap[$warehouseId] ?? null;
-    $lister      = $usersMap[$listingUserId] ?? null;
-    $slots       = $listing->slots ?? [];
+    $productId     = is_object($listing->product_id)   ? $listing->product_id->__toString()   : (string)$listing->product_id;
+    $warehouseId   = is_object($listing->warehouse_id) ? $listing->warehouse_id->__toString() : (string)$listing->warehouse_id;
+    $listingUserId = is_object($listing->user_id)      ? $listing->user_id->__toString()      : (string)$listing->user_id;
+    $product       = $productsMap[$productId] ?? null;
+    $warehouse     = $warehousesMap[$warehouseId] ?? null;
+    $lister        = $usersMap[$listingUserId] ?? null;
+    $slots         = $listing->slots ?? [];
+    $listingImgs   = $imagesMap[(string)$listing->_id] ?? collect();
+    $firstImage    = $listingImgs->first();
 @endphp
 
         <div class="listing-card" id="card-{{ $listing->id }}">
@@ -700,9 +702,7 @@
                     <span class="badge-paid">Paid</span>
                 @endif
                 <img
-                    @php $firstImage = $listing->images[0] ?? null; @endphp
-src="{{ $firstImage && !empty($firstImage['path']) ? asset('storage/' . $firstImage['path']) : asset('images/placeholder.png') }}"
-                    alt="{{ $product?->name }}"
+                    src="{{ $firstImage && !empty($firstImage->image['path']) ? asset('storage/' . $firstImage->image['path']) : asset('images/placeholder.png') }}"
                     class="listing-thumb"
                     onerror="this.src='https://placehold.co/110x110/f3f4f6/9ca3af?text=No+Image'"
                 >
@@ -866,7 +866,7 @@ src="{{ $firstImage && !empty($firstImage['path']) ? asset('storage/' . $firstIm
                     <div class="slots-footer">
                         <span class="slots-hint">
                             📦 {{ count($slots) }} price {{ count($slots) === 1 ? 'tier' : 'tiers' }}
-                            &nbsp;·&nbsp; Incoterm: {{ lang($listing, 'incoterm') ?? '—' }}
+                            &nbsp;·&nbsp; Incoterm: {{ $listing->incoterm_id ?? '—' }}
                         </span>
                         <button class="view-slots-btn" onclick="toggleSlots('{{ $listing->id }}')">
                             View Slots ({{ count($slots) }})

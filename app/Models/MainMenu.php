@@ -25,12 +25,14 @@ class MainMenu extends Model
         'meta_description',
         'meta_image',
         'content',
-         'sort_order',
+        'sort_order',
+        'is_active',
     ];
 
     protected $casts = [
         'is_hold'    => 'boolean',
         'stock_value' => 'boolean',
+        'is_active' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

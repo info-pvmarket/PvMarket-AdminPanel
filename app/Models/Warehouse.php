@@ -14,7 +14,8 @@ class Warehouse extends Model
     protected $fillable = [
         'user_id',
         'warehouse_name',
-        'country',
+        'country',          // stored as ObjectId
+        'country_name',     // stored as plain string
         'zip_code',
         'street',
         'apartment_suite',
@@ -22,9 +23,11 @@ class Warehouse extends Model
         'warehouse_email',
         'contact_name',
         'contact_mobile',
-        'ddp_deliverable_countries',
-        'is_paid',
+        'ddp_deliverable_countries', // array of ObjectIds
         'is_active',
+        'is_paid',
+        'is_primary',
+        'created_by',
         'updated_by',
     ];
 
@@ -32,6 +35,7 @@ class Warehouse extends Model
         'is_active'                 => 'boolean',
         'is_paid'                   => 'boolean',
         'ddp_deliverable_countries' => 'array',
+        'is_primary'                => 'boolean',
     ];
     
     public array $translatable = [

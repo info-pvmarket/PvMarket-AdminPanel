@@ -846,6 +846,15 @@
                             </select>
                         </div>
                     </div>
+                    <div class="form-row cols-1" style="margin-top:16px;">
+                        <div class="form-group">
+                            <label class="form-label">Slug</label>
+                            <input type="text" name="slug" class="form-control"
+                                   placeholder="auto-generated if blank"
+                                   value="{{ old('slug') }}"/>
+                            <span style="font-size:.73rem; color:var(--muted); margin-top:3px;">Leave blank to auto-generate</span>
+                        </div>
+                    </div>
                 </div>
 
                 {{-- ══ Three Toggle Rows ══ --}}
@@ -911,6 +920,26 @@
                         <label class="toggle-switch popular-switch">
                             <input type="checkbox" name="is_popular" value="1"
                                    id="togglePopular" {{ !empty($listing->is_popular) ? 'checked' : '' }}>
+                            <span class="toggle-track"></span>
+                            <span class="toggle-thumb"></span>
+                        </label>
+                    </div>
+                    {{-- 4. Real Time Price --}}
+                    <div class="toggle-row">
+                        <div class="toggle-left">
+                            <div class="toggle-icon" style="background:#EFF6FF; color:var(--blue);">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <div class="toggle-info-title">Real Time Price</div>
+                                <div class="toggle-info-sub">Price updates in real time for buyers</div>
+                            </div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" name="real_time_price" value="1"
+                                   id="toggleRealTimePrice" {{ !empty($listing->real_time_price) ? 'checked' : '' }}>
                             <span class="toggle-track"></span>
                             <span class="toggle-thumb"></span>
                         </label>
@@ -989,14 +1018,15 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label">Incoterm <span class="req">*</span></label>
-                            <select name="incoterm" class="form-select">
-                                <option value="">Select incoterm</option>
-                                @foreach(['EXW' => 'EXW - Ex Works', 'FCA' => 'FCA - Free Carrier', 'FOB' => 'FOB - Free On Board', 'CFR' => 'CFR - Cost and Freight', 'CIF' => 'CIF - Cost Insurance Freight', 'DAP' => 'DAP - Delivered At Place', 'DDP' => 'DDP - Delivered Duty Paid'] as $code => $label)
-                                    <option value="{{ $code }}" {{ ($listing->incoterm ?? '') === $code ? 'selected' : '' }}>
-                                        {{ $label }}
-                                    </option>
-                                @endforeach
-                            </select>
+                            <select name="incoterm_id" class="form-select">
+    <option value="">Select incoterm</option>
+    @foreach($incoterms as $incoterm)
+        <option value="{{ $incoterm->id }}"
+            {{ (string)$listing->incoterm_id === (string)$incoterm->id ? 'selected' : '' }}>
+            {{ $incoterm->name }}
+        </option>
+    @endforeach
+</select>
                         </div>
                     </div>
 
@@ -1177,35 +1207,35 @@
                     <div>
                         <div class="summary-header-title">Product Images</div>
                         <div class="summary-header-sub" id="imgCardSubtitle">
-                            {{ count($listing->images ?? []) }} of 5 uploaded
-                        </div>
+    {{ $listing->images->count() }} of 5 uploaded
+</div>
                     </div>
                 </div>
                 <div style="padding:16px 18px;">
 
                     {{-- Existing images --}}
-                    @if(!empty($listing->images) && count($listing->images) > 0)
-                        <p class="img-section-label">Current Images</p>
-                        <div class="img-grid" id="existingImagesGrid">
-                            @foreach($listing->images as $img)
-                                @if(!empty($img['path']))
-                                <div class="img-grid-item" id="img-wrapper-{{ $loop->index }}">
-                                    <img src="{{ asset('storage/' . $img['path']) }}"
-                                         alt="{{ $img['original_name'] ?? 'image' }}"
-                                         onerror="this.style.display='none'">
-                                    <button type="button"
-                                            class="img-remove-btn"
-                                            onclick="removeExistingImage({{ $loop->index }})"
-                                            title="Remove image">✕</button>
-                                    <input type="hidden"
-                                           name="existing_images[]"
-                                           value="{{ $img['path'] }}"
-                                           id="existing-input-{{ $loop->index }}">
-                                </div>
-                                @endif
-                            @endforeach
-                        </div>
-                    @endif
+                    @if($listing->images->count() > 0)
+    <p class="img-section-label">Current Images</p>
+    <div class="img-grid" id="existingImagesGrid">
+        @foreach($listing->images as $img)
+            @if(!empty($img->image['path']))
+            <div class="img-grid-item" id="img-wrapper-{{ $loop->index }}">
+                <img src="{{ asset('storage/' . $img->image['path']) }}"
+                     alt="{{ $img->image['original_name'] ?? 'image' }}"
+                     onerror="this.style.display='none'">
+                <button type="button"
+                        class="img-remove-btn"
+                        onclick="removeExistingImage({{ $loop->index }})"
+                        title="Remove image">✕</button>
+                <input type="hidden"
+                       name="existing_image_ids[]"
+                       value="{{ $img->id }}"
+                       id="existing-input-{{ $loop->index }}">
+            </div>
+            @endif
+        @endforeach
+    </div>
+@endif
 
                     {{-- New images preview --}}
                     <p id="newImagesLabel" class="img-section-label" style="display:none; margin-top:12px;">New Images</p>
@@ -1281,8 +1311,8 @@
                     <div class="summary-row">
                         <span class="summary-key">Images</span>
                         <span class="summary-val" id="summImages">
-                            {{ count($listing->images ?? []) }} image{{ count($listing->images ?? []) === 1 ? '' : 's' }}
-                        </span>
+    {{ $listing->images->count() }} image{{ $listing->images->count() === 1 ? '' : 's' }}
+</span>
                     </div>
                     <div class="summary-row">
                         <span class="summary-key">Status</span>
@@ -1429,7 +1459,7 @@ let slots        = @json($listing->slots ?? []);
 let editingIndex = null;
 
 // Track existing image count for the 5-image cap
-let existingImageCount = {{ count($listing->images ?? []) }};
+let existingImageCount = {{ $listing->images->count() }};
 
 // Render existing slots immediately on load
 renderSlots();
