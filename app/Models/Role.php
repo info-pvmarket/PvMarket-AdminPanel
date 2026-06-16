@@ -18,6 +18,11 @@ class Role extends Model
         'role',
         'slug',
         'guard_name',
+        'access_types',
+    ];
+
+    protected $casts = [
+        'access_types' => 'array',
     ];
     public array $translatable = [
         'role',

@@ -48,13 +48,16 @@ class RoleController extends Controller
             'roles.*.role'          => ['required', 'string', 'max:100'],
             'roles.*.slug'          => ['required', 'string', 'max:100'],
             'roles.*.guard_name'    => ['required', 'string', 'in:web,api,admin'],
+            'roles.*.access_types'  => ['nullable', 'array'],
+            'roles.*.access_types.*'=> ['string', 'in:buyer,seller,projects'],
         ]);
 
         foreach ($request->input('roles') as $row) {
             Role::create([
-                'role'       => trim($row['role']),
-                'slug'       => Str::slug($row['slug']),
-                'guard_name' => $row['guard_name'],
+                'role'         => trim($row['role']),
+                'slug'         => Str::slug($row['slug']),
+                'guard_name'   => $row['guard_name'],
+                'access_types' => $row['access_types'] ?? [],
             ]);
         }
 
@@ -84,15 +87,18 @@ class RoleController extends Controller
         $record = Role::findOrFail($id);
 
         $request->validate([
-            'role'       => ['required', 'string', 'max:100'],
-            'slug'       => ['required', 'string', 'max:100'],
-            'guard_name' => ['required', 'string', 'in:web,api,admin'],
+            'role'          => ['required', 'string', 'max:100'],
+            'slug'          => ['required', 'string', 'max:100'],
+            'guard_name'    => ['required', 'string', 'in:web,api,admin'],
+            'access_types'  => ['nullable', 'array'],
+            'access_types.*'=> ['string', 'in:buyer,seller,projects'],
         ]);
 
         $record->update([
-            'role'       => trim($request->role),
-            'slug'       => Str::slug($request->slug),
-            'guard_name' => $request->guard_name,
+            'role'         => trim($request->role),
+            'slug'         => Str::slug($request->slug),
+            'guard_name'   => $request->guard_name,
+            'access_types' => $request->access_types ?? [],
         ]);
 
         return redirect()

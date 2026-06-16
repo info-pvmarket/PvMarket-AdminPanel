@@ -22,6 +22,10 @@
     .form-row-input::placeholder { color:#CBD5E1; }
     .form-row-select { width:100%; padding:9px 13px; border:1.5px solid var(--border); border-radius:8px; font-family:inherit; font-size:13.5px; color:var(--text); outline:none; transition:border-color .2s,box-shadow .2s; background:white; cursor:pointer; box-sizing:border-box; }
     .form-row-select:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(14,165,233,.1); }
+    .checkbox-group { display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
+    .checkbox-item { display:flex; align-items:center; gap:6px; cursor:pointer; }
+    .checkbox-item input[type="checkbox"] { width:16px; height:16px; accent-color:var(--primary); cursor:pointer; }
+    .checkbox-item label { font-size:13px; font-weight:500; color:var(--text); cursor:pointer; }
     .btn-add-row { display:inline-flex; align-items:center; gap:7px; padding:9px 18px; background:var(--primary); color:white; border:none; border-radius:8px; font-size:13.5px; font-weight:600; cursor:pointer; font-family:inherit; transition:background .15s; }
     .btn-add-row:hover { background:var(--primary-d); }
     .btn-back { display:inline-flex; align-items:center; gap:7px; padding:9px 18px; background:var(--text); color:white; border-radius:8px; font-size:13.5px; font-weight:600; text-decoration:none; transition:background .15s; white-space:nowrap; border:1.5px solid var(--text); }
@@ -60,6 +64,7 @@
                     <th style="min-width:200px;">Role <span style="color:#EF4444;">*</span></th>
                     <th style="min-width:200px;">Slug <span style="color:#EF4444;">*</span></th>
                     <th style="min-width:160px;">Guard Name <span style="color:#EF4444;">*</span></th>
+                    <th style="min-width:220px;">Access Types</th>
                     <th style="width:60px;">Action</th>
                 </tr>
             </thead>
@@ -81,6 +86,22 @@
                             <option value="api">api</option>
                             <option value="admin">admin</option>
                         </select>
+                    </td>
+                    <td>
+                        <div class="checkbox-group">
+                            <div class="checkbox-item">
+                                <input type="checkbox" name="roles[0][access_types][]" value="buyer" id="buyer-0"/>
+                                <label for="buyer-0">Buyer</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" name="roles[0][access_types][]" value="seller" id="seller-0"/>
+                                <label for="seller-0">Seller</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" name="roles[0][access_types][]" value="projects" id="projects-0"/>
+                                <label for="projects-0">Projects</label>
+                            </div>
+                        </div>
                     </td>
                     <td>
                         <button type="button" class="btn-remove" onclick="removeRow(this)" title="Remove">
@@ -139,6 +160,22 @@ function addRow() {
             </select>
         </td>
         <td>
+            <div class="checkbox-group">
+                <div class="checkbox-item">
+                    <input type="checkbox" name="roles[${idx}][access_types][]" value="buyer" id="buyer-${idx}"/>
+                    <label for="buyer-${idx}">Buyer</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" name="roles[${idx}][access_types][]" value="seller" id="seller-${idx}"/>
+                    <label for="seller-${idx}">Seller</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" name="roles[${idx}][access_types][]" value="projects" id="projects-${idx}"/>
+                    <label for="projects-${idx}">Projects</label>
+                </div>
+            </div>
+        </td>
+        <td>
             <button type="button" class="btn-remove" onclick="removeRow(this)" title="Remove">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="3 6 5 6 21 6"/>
@@ -164,6 +201,19 @@ function renumber() {
         tr.querySelector('.sno').textContent = (i + 1) + '.';
         tr.querySelectorAll('input, select').forEach(el => {
             el.name = el.name.replace(/roles\[\d+\]/, `roles[${i}]`);
+            // Update checkbox IDs
+            if (el.id && (el.id.startsWith('buyer-') || el.id.startsWith('seller-') || el.id.startsWith('projects-'))) {
+                const prefix = el.id.split('-')[0];
+                el.id = prefix + '-' + i;
+            }
+        });
+        // Update labels for attribute
+        tr.querySelectorAll('label').forEach(label => {
+            const forAttr = label.getAttribute('for');
+            if (forAttr && (forAttr.startsWith('buyer-') || forAttr.startsWith('seller-') || forAttr.startsWith('projects-'))) {
+                const prefix = forAttr.split('-')[0];
+                label.setAttribute('for', prefix + '-' + i);
+            }
         });
     });
 }
@@ -219,6 +269,10 @@ document.getElementById('createForm').addEventListener('submit', function (e) {
     .form-input:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(14,165,233,.1); }
     .form-input::placeholder { color:#CBD5E1; }
     .form-hint { font-size:11px; color:var(--muted); margin-top:3px; }
+    .checkbox-group { display:flex; gap:20px; align-items:center; flex-wrap:wrap; margin-top:8px; }
+    .checkbox-item { display:flex; align-items:center; gap:8px; cursor:pointer; }
+    .checkbox-item input[type="checkbox"] { width:18px; height:18px; accent-color:var(--primary); cursor:pointer; }
+    .checkbox-item label { font-size:14px; font-weight:500; color:var(--text); cursor:pointer; }
     .btn-save { display:inline-flex; align-items:center; gap:8px; padding:10px 28px; background:#10B981; color:white; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; transition:background .15s; }
     .btn-save:hover { background:#059669; }
     .btn-back { display:inline-flex; align-items:center; gap:7px; padding:9px 18px; background:var(--text); color:white; border-radius:8px; font-size:13.5px; font-weight:600; text-decoration:none; transition:background .15s; white-space:nowrap; border:1.5px solid var(--text); }
@@ -275,6 +329,31 @@ document.getElementById('createForm').addEventListener('submit', function (e) {
                 </select>
             </div>
 
+        </div>
+
+        {{-- Access Types --}}
+        <div class="form-group" style="margin-bottom:20px;">
+            <label class="form-label">Access Types</label>
+            @php
+                $accessTypes = old('access_types', $record->access_types ?? []);
+            @endphp
+            <div class="checkbox-group">
+                <div class="checkbox-item">
+                    <input type="checkbox" name="access_types[]" value="buyer" id="edit_buyer"
+                           {{ in_array('buyer', $accessTypes) ? 'checked' : '' }}/>
+                    <label for="edit_buyer">Buyer</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" name="access_types[]" value="seller" id="edit_seller"
+                           {{ in_array('seller', $accessTypes) ? 'checked' : '' }}/>
+                    <label for="edit_seller">Seller</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" name="access_types[]" value="projects" id="edit_projects"
+                           {{ in_array('projects', $accessTypes) ? 'checked' : '' }}/>
+                    <label for="edit_projects">Projects</label>
+                </div>
+            </div>
         </div>
 
         <div style="display:flex; justify-content:flex-end; padding-top:20px; border-top:1px solid var(--border);">
@@ -423,6 +502,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 <th>Role</th>
                 <th>Slug</th>
                 <th>Guard Name</th>
+                <th>Access Types</th>
                 <th class="center" style="width:130px;">Action</th>
             </tr>
         </thead>
@@ -460,6 +540,31 @@ document.addEventListener('DOMContentLoaded', function () {
                     ">{{ $role->guard_name }}</span>
                 </td>
                 <td>
+                    @php
+                        $accessTypes = $role->access_types ?? [];
+                        $accessColors = [
+                            'buyer'    => ['bg'=>'#FEF3C7','color'=>'#92400E','border'=>'#FDE68A'],
+                            'seller'   => ['bg'=>'#DBEAFE','color'=>'#1E40AF','border'=>'#BFDBFE'],
+                            'projects' => ['bg'=>'#FCE7F3','color'=>'#9D174D','border'=>'#FBCFE8'],
+                        ];
+                    @endphp
+                    @if(count($accessTypes) > 0)
+                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                            @foreach($accessTypes as $type)
+                                @php $ac = $accessColors[$type] ?? ['bg'=>'#F8FAFC','color'=>'#64748B','border'=>'#E2E8F0']; @endphp
+                                <span style="
+                                    display:inline-flex; align-items:center;
+                                    padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700;
+                                    letter-spacing:.4px; text-transform:capitalize;
+                                    background:{{ $ac['bg'] }}; color:{{ $ac['color'] }}; border:1px solid {{ $ac['border'] }};
+                                ">{{ $type }}</span>
+                            @endforeach
+                        </div>
+                    @else
+                        <span style="color:#94A3B8; font-size:12px;">—</span>
+                    @endif
+                </td>
+                <td>
                     <div class="action-btns">
                         <a href="{{ route('admin.setup.roles.edit', $role->id) }}"
                            class="action-icon edit" title="Edit">
@@ -486,7 +591,7 @@ document.addEventListener('DOMContentLoaded', function () {
             </tr>
             @empty
             <tr>
-                <td colspan="5">
+                <td colspan="6">
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                             <circle cx="12" cy="8" r="4"/>
