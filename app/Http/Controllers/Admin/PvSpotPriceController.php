@@ -36,42 +36,43 @@ class PvSpotPriceController extends Controller
     }
 
     public function store(Request $request)
-    {
-        $request->validate([
-            'heading'     => 'required|string|max:255',
-            'upload_date' => 'required|date',
-            'items'       => 'nullable|array',
-        ]);
+{
+    $request->validate([
+        'heading'     => 'required|string|max:255',
+        'upload_date' => 'required|date',
+        'items'       => 'nullable|array',
+    ]);
 
-        $items = [];
-        if ($request->has('items')) {
-            foreach ($request->items as $i => $row) {
-                if (!empty($row['item'])) {
-                    $items[] = [
-                        'item'     => $row['item'],
-                        'high'     => $row['high']     ?? null,
-                        'low'      => $row['low']      ?? null,
-                        'average'  => $row['average']  ?? null,
-                        'change'   => $row['change']   ?? null,
-                        'ordering' => $row['ordering'] ?? ($i + 1),
-                    ];
-                }
+    $items = [];
+    if ($request->has('items')) {
+        foreach ($request->items as $i => $row) {
+            if (!empty($row['item'])) {
+                $items[] = [
+                    'item'     => $row['item'],
+                    'high'     => $row['high']     ?? null,
+                    'low'      => $row['low']      ?? null,
+                    'average'  => $row['average']  ?? null,
+                    'change'   => $row['change']   ?? null,
+                    'ordering' => $row['ordering'] ?? ($i + 1),
+                ];
             }
         }
-
-        PvSpotPrice::create([
-            'heading'     => $request->heading,
-            'upload_date' => $request->upload_date,
-            'items'       => $items,
-        ]);
-
-        $data = $this->attachTranslations($data, new PvSpotPrice()); // ← ADD
-
-    PvSpotPrice::create($data); 
-
-        return redirect()->route('admin.knowledge-hub.pv-spot-price.index')
-                         ->with('success', 'PV Spot Price created successfully.');
     }
+
+    $data = [
+        'heading'     => $request->heading,
+        'upload_date' => $request->upload_date,
+        'items'       => $items,
+    ];
+
+    $data = $this->attachTranslations($data, new PvSpotPrice());
+    $data = $this->attachItemTranslations($data);
+
+    PvSpotPrice::create($data);
+
+    return redirect()->route('admin.knowledge-hub.pv-spot-price.index')
+                     ->with('success', 'PV Spot Price created successfully.');
+}
 
     public function edit($id)
     {
@@ -84,44 +85,45 @@ class PvSpotPriceController extends Controller
     }
 
     public function update(Request $request, $id)
-    {
-        $spotPrice = PvSpotPrice::findOrFail($id);
+{
+    $spotPrice = PvSpotPrice::findOrFail($id);
 
-        $request->validate([
-            'heading'     => 'required|string|max:255',
-            'upload_date' => 'required|date',
-            'items'       => 'nullable|array',
-        ]);
+    $request->validate([
+        'heading'     => 'required|string|max:255',
+        'upload_date' => 'required|date',
+        'items'       => 'nullable|array',
+    ]);
 
-        $items = [];
-        if ($request->has('items')) {
-            foreach ($request->items as $i => $row) {
-                if (!empty($row['item'])) {
-                    $items[] = [
-                        'item'     => $row['item'],
-                        'high'     => $row['high']     ?? null,
-                        'low'      => $row['low']      ?? null,
-                        'average'  => $row['average']  ?? null,
-                        'change'   => $row['change']   ?? null,
-                        'ordering' => $row['ordering'] ?? ($i + 1),
-                    ];
-                }
+    $items = [];
+    if ($request->has('items')) {
+        foreach ($request->items as $i => $row) {
+            if (!empty($row['item'])) {
+                $items[] = [
+                    'item'     => $row['item'],
+                    'high'     => $row['high']     ?? null,
+                    'low'      => $row['low']      ?? null,
+                    'average'  => $row['average']  ?? null,
+                    'change'   => $row['change']   ?? null,
+                    'ordering' => $row['ordering'] ?? ($i + 1),
+                ];
             }
         }
-
-        $spotPrice->update([
-            'heading'     => $request->heading,
-            'upload_date' => $request->upload_date,
-            'items'       => $items,
-        ]);
-
-        $data = $this->attachTranslations($data, $spotPrice); 
-
-        $spotPrice->update($data);
-
-        return redirect()->route('admin.knowledge-hub.pv-spot-price.index')
-                         ->with('success', 'PV Spot Price updated.');
     }
+
+    $data = [
+        'heading'     => $request->heading,
+        'upload_date' => $request->upload_date,
+        'items'       => $items,
+    ];
+
+    $data = $this->attachTranslations($data, $spotPrice);
+    $data = $this->attachItemTranslations($data);
+
+    $spotPrice->update($data);
+
+    return redirect()->route('admin.knowledge-hub.pv-spot-price.index')
+                     ->with('success', 'PV Spot Price updated.');
+}
 
     public function destroy($id)
     {
@@ -151,6 +153,42 @@ class PvSpotPriceController extends Controller
         if (!empty($translated)) {
             $data[$locale] = $translated;
         }
+    }
+
+    return $data;
+}
+private function attachItemTranslations(array $data): array
+{
+    $languages = array_keys(config('languages.available'));
+    $items     = $data['items'] ?? [];
+
+    if (empty($items)) return $data;
+
+    foreach ($languages as $locale) {
+        if ($locale === 'en') continue;
+
+        $translatedItems = [];
+        foreach ($items as $item) {
+            $translatedItem = $item;
+
+            if (!empty($item['item']) && is_string($item['item'])) {
+                try {
+                    $result = $this->translator->translateText($item['item'], $locale, 'en');
+                    if ($result && $result !== $item['item']) {
+                        $translatedItem['item'] = $result;
+                    }
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error(
+                        "attachItemTranslations [{$locale}]: " . $e->getMessage()
+                    );
+                }
+            }
+
+            $translatedItems[] = $translatedItem;
+        }
+
+        $data[$locale]          = $data[$locale] ?? [];
+        $data[$locale]['items'] = $translatedItems;
     }
 
     return $data;

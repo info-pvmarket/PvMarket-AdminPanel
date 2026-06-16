@@ -46,8 +46,8 @@ class WarehouseController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'warehouse_name'            => 'required|string|max:300',
-            'country'                   => 'required|string',
+            'warehouse_name' => 'required|string|max:300',
+            'country'        => 'required|string',
             'zip_code'                  => 'required|string|max:20',
             'street'                    => 'required|string|max:300',
             'apartment_suite'           => 'nullable|string|max:300',
@@ -59,21 +59,31 @@ class WarehouseController extends Controller
             'ddp_deliverable_countries.*' => 'string',
         ]);
 
+        // Resolve country ObjectId and name
+        $countryModel = \App\Models\Country::find($request->country);
+
         $data = [
-            'user_id'                   => (string) Auth::id(),
-            'warehouse_name'            => $request->name,
-            'country'                   => $request->country,
+            'user_id'                   => new \MongoDB\BSON\ObjectId(Auth::id()),
+            'warehouse_name'            => $request->warehouse_name,
+            'country'                   => $request->country
+                                            ? new \MongoDB\BSON\ObjectId($request->country)
+                                            : null,
+            'country_name'              => $countryModel?->name ?? '',
             'zip_code'                  => $request->zip_code,
             'street'                    => $request->street,
-            'apartment_suite'           => $request->apartment_suite,
+            'apartment_suite'           => $request->apartment_suite ?? '',
             'city'                      => $request->city,
             'warehouse_email'           => $request->warehouse_email,
             'contact_name'              => $request->contact_name,
             'contact_mobile'            => $request->contact_mobile,
-            'ddp_deliverable_countries' => $request->ddp_deliverable_countries ?? [],
-            'is_paid'                   => false,
+            'ddp_deliverable_countries' => collect($request->ddp_deliverable_countries ?? [])
+                                            ->map(fn($id) => new \MongoDB\BSON\ObjectId($id))
+                                            ->toArray(),
             'is_active'                 => true,
-            'updated_by'                => Auth::user()->name,
+            'is_primary'                => false,
+            'is_paid'                   => false,
+            'created_by'                => new \MongoDB\BSON\ObjectId(Auth::id()),
+            'updated_by'                => new \MongoDB\BSON\ObjectId(Auth::id()),
         ];
 
         $data = $this->attachTranslations($data, new Warehouse());
@@ -115,18 +125,25 @@ class WarehouseController extends Controller
 
         $warehouse = Warehouse::findOrFail($id);
 
+        $countryModel = \App\Models\Country::find($request->country);
+
         $data = [
-            'warehouse_name'            => $request->name,
-            'country'                   => $request->country,
+            'warehouse_name'            => $request->warehouse_name,
+            'country'                   => $request->country
+                                            ? new \MongoDB\BSON\ObjectId($request->country)
+                                            : null,
+            'country_name'              => $countryModel?->name ?? '',
             'zip_code'                  => $request->zip_code,
             'street'                    => $request->street,
-            'apartment_suite'           => $request->apartment_suite,
+            'apartment_suite'           => $request->apartment_suite ?? '',
             'city'                      => $request->city,
             'warehouse_email'           => $request->warehouse_email,
             'contact_name'              => $request->contact_name,
             'contact_mobile'            => $request->contact_mobile,
-            'ddp_deliverable_countries' => $request->ddp_deliverable_countries ?? [],
-            'updated_by'                => Auth::user()->name,
+            'ddp_deliverable_countries' => collect($request->ddp_deliverable_countries ?? [])
+                                            ->map(fn($id) => new \MongoDB\BSON\ObjectId($id))
+                                            ->toArray(),
+            'updated_by'                => new \MongoDB\BSON\ObjectId(Auth::id()),
         ];
 
         $data = $this->attachTranslations($data, $warehouse);
@@ -154,7 +171,7 @@ class WarehouseController extends Controller
         $warehouse = Warehouse::findOrFail($id);
         $warehouse->update([
             'is_active'  => !$warehouse->is_active,
-            'updated_by' => Auth::user()->name,
+            'updated_by' => new \MongoDB\BSON\ObjectId(Auth::id()),
         ]);
 
         return redirect()->route('admin.warehouses.index')

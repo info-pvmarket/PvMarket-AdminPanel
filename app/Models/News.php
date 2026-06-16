@@ -12,12 +12,18 @@ class News extends Model
     protected $collection = 'news';
 
     protected $fillable = [
-        'heading',
-        'slug',
-        'content',
-        'image',
-        'alt_tag',
-    ];
+    'title',
+    'slug',
+    'content',
+    'image',
+    'alt_tag',
+    'description',
+    'is_active',
+];
 
-    public array $translatable = ['heading', 'content'];
+protected $casts = [
+    'is_active' => 'boolean',
+];
+
+public array $translatable = ['title', 'content'];
 }

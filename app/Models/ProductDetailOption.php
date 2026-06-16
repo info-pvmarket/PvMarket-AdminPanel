@@ -16,8 +16,8 @@ class ProductDetailOption extends Model
         return 'specifications';
     }
 
-    protected $fillable = [
-        'option_name',
+   protected $fillable = [
+        'name',
         'data_type',
         'category_id',
         'category_name',
@@ -25,6 +25,8 @@ class ProductDetailOption extends Model
         'sub_category_name',
         'unit_ids',
         'unit_names',
+        'is_tag',
+        'is_active',
     ];
 
     protected $casts = [
@@ -32,7 +34,7 @@ class ProductDetailOption extends Model
         'unit_names' => 'array',
     ];
     public array $translatable = [
-        'option_name',
+        'name',
         'category_name',
         'sub_category_name',
         'unit_names',

@@ -18,7 +18,7 @@ class BlogController extends Controller
         $query = Blog::query();
 
         if ($request->filled('search')) {
-            $query->where('heading', 'like', '%' . $request->search . '%');
+            $query->where('title', 'like', '%' . $request->search . '%');
         }
 
         $blogs = $query->orderBy('created_at', 'desc')
@@ -32,7 +32,7 @@ class BlogController extends Controller
 
     public function create()
     {
-        $allBlogs = Blog::orderBy('heading')->get(['_id', 'heading']);
+        $allBlogs = Blog::orderBy('title')->get(['_id', 'title']);
 
         return view('admin.knowledge-hub.blogs.blogs', [
             'mode'     => 'create',
@@ -44,32 +44,38 @@ class BlogController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'heading'         => 'required|string|max:500',
+            'title'           => 'required|string|max:500',
             'alt_tag'         => 'nullable|string|max:255',
             'slug'            => 'nullable|string|max:255',
             'related_blog_id' => 'nullable|string',
             'image'           => 'nullable|image|mimes:jpeg,png,jpg,webp|max:3072',
-            'description'     => 'nullable|string',
+            'data'            => 'nullable|string',
         ]);
 
         $data = [
-            'heading'         => $request->heading,
-            'alt_tag'         => $request->alt_tag,
-            'slug'            => $request->slug
-                                    ? Str::slug($request->slug)
-                                    : Str::slug($request->heading),
-            'related_blog_id' => $request->related_blog_id,
-            'description'     => $request->description,
-            'blog_comments'   => new \MongoDB\Model\BSONArray([]),
+            'title'         => $request->title,
+            'alt_tag'       => $request->alt_tag,
+            'slug'          => $request->slug
+                                  ? Str::slug($request->slug)
+                                  : Str::slug($request->title),
+            'related_ids'   => $request->related_blog_id
+                                  ? [$request->related_blog_id]
+                                  : [],
+            'data'          => $request->data,
+            'content'       => null,
+            'is_faq'        => false,
+            'is_active'     => true,
+            'blog_comments' => [],
+            'image'         => $this->buildImageData(null), // empty placeholder
         ];
 
         if ($request->related_blog_id) {
             $related = Blog::find($request->related_blog_id);
-            $data['related_blog_title'] = $related?->heading;
+            $data['related_blog_title'] = $related?->title;
         }
 
         if ($request->hasFile('image')) {
-            $data['image'] = $request->file('image')->store('blogs', 'public');
+            $data['image'] = $this->buildImageData($request->file('image'), $request->alt_tag);
         }
 
         $data = $this->attachTranslations($data, new Blog());
@@ -84,8 +90,8 @@ class BlogController extends Controller
     {
         $record   = Blog::findOrFail($id);
         $allBlogs = Blog::where('_id', '!=', $id)
-                        ->orderBy('heading')
-                        ->get(['_id', 'heading']);
+                        ->orderBy('title')
+                        ->get(['_id', 'title']);
 
         return view('admin.knowledge-hub.blogs.blogs', [
             'mode'     => 'edit',
@@ -99,35 +105,40 @@ class BlogController extends Controller
         $blog = Blog::findOrFail($id);
 
         $request->validate([
-            'heading'         => 'required|string|max:500',
+            'title'           => 'required|string|max:500',
             'alt_tag'         => 'nullable|string|max:255',
             'slug'            => 'nullable|string|max:255',
             'related_blog_id' => 'nullable|string',
             'image'           => 'nullable|image|mimes:jpeg,png,jpg,webp|max:3072',
-            'description'     => 'nullable|string',
+            'data'            => 'nullable|string',
         ]);
 
         $data = [
-            'heading'         => $request->heading,
-            'alt_tag'         => $request->alt_tag,
-            'slug'            => $request->slug
-                                    ? Str::slug($request->slug)
-                                    : Str::slug($request->heading),
-            'related_blog_id' => $request->related_blog_id,
-            'description'     => $request->description,
-            // blog_comments intentionally excluded — managed by its own methods
+            'title'       => $request->title,
+            'alt_tag'     => $request->alt_tag,
+            'slug'        => $request->slug
+                                ? Str::slug($request->slug)
+                                : Str::slug($request->title),
+            'related_ids' => $request->related_blog_id
+                                ? [$request->related_blog_id]
+                                : [],
+            'data'        => $request->data,
         ];
 
         if ($request->related_blog_id) {
             $related = Blog::find($request->related_blog_id);
-            $data['related_blog_title'] = $related?->heading;
+            $data['related_blog_title'] = $related?->title;
         } else {
             $data['related_blog_title'] = null;
         }
 
         if ($request->hasFile('image')) {
-            if ($blog->image) Storage::disk('public')->delete($blog->image);
-            $data['image'] = $request->file('image')->store('blogs', 'public');
+            // Delete old image file if it exists
+            $oldPath = $blog->image['path'] ?? null;
+            if ($oldPath) {
+                Storage::disk('public')->delete($oldPath);
+            }
+            $data['image'] = $this->buildImageData($request->file('image'), $request->alt_tag);
         }
 
         $data = $this->attachTranslations($data, new Blog());
@@ -141,7 +152,12 @@ class BlogController extends Controller
     public function destroy($id)
     {
         $blog = Blog::findOrFail($id);
-        if ($blog->image) Storage::disk('public')->delete($blog->image);
+
+        $imagePath = $blog->image['path'] ?? null;
+        if ($imagePath) {
+            Storage::disk('public')->delete($imagePath);
+        }
+
         $blog->delete();
 
         return redirect()->route('admin.knowledge-hub.blogs.index')
@@ -155,23 +171,22 @@ class BlogController extends Controller
         ]);
 
         $blog = Blog::findOrFail($id);
+        $now  = now()->toDateTimeString();
 
-        $now = now()->toDateTimeString();
+        $languages    = array_keys(config('languages.available'));
+        $translations = [];
+        foreach ($languages as $locale) {
+            if ($locale === 'en') continue;
+            $translations[$locale] = $this->translator->translateText($request->comment, $locale, 'en');
+        }
 
-        $languages = array_keys(config('languages.available'));
-$translations = [];
-foreach ($languages as $locale) {
-    if ($locale === 'en') continue;
-    $translations[$locale] = $this->translator->translateText($request->comment, $locale, 'en');
-}
-
-$newComment = [
-    'comment'    => $request->comment,
-    'user_id'    => (string) auth()->id(),
-    'created_at' => $now,
-    'updated_at' => $now,
-    'translations' => $translations,
-];
+        $newComment = [
+            'comment'      => $request->comment,
+            'user_id'      => (string) auth()->id(),
+            'created_at'   => $now,
+            'updated_at'   => $now,
+            'translations' => $translations,
+        ];
 
         $comments   = $blog->blog_comments ?? [];
         $comments[] = $newComment;
@@ -194,16 +209,16 @@ $newComment = [
             abort(404, 'Comment not found.');
         }
 
-        $languages = array_keys(config('languages.available'));
-$translations = [];
-foreach ($languages as $locale) {
-    if ($locale === 'en') continue;
-    $translations[$locale] = $this->translator->translateText($request->comment, $locale, 'en');
-}
+        $languages    = array_keys(config('languages.available'));
+        $translations = [];
+        foreach ($languages as $locale) {
+            if ($locale === 'en') continue;
+            $translations[$locale] = $this->translator->translateText($request->comment, $locale, 'en');
+        }
 
-$comments[$commentIndex]['comment']      = $request->comment;
-$comments[$commentIndex]['translations'] = $translations;
-$comments[$commentIndex]['updated_at']   = now()->toDateTimeString();
+        $comments[$commentIndex]['comment']      = $request->comment;
+        $comments[$commentIndex]['translations'] = $translations;
+        $comments[$commentIndex]['updated_at']   = now()->toDateTimeString();
 
         $blog->update(['blog_comments' => array_values($comments)]);
 
@@ -222,6 +237,42 @@ $comments[$commentIndex]['updated_at']   = now()->toDateTimeString();
         return redirect()->back()->with('success', 'Comment deleted.');
     }
 
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * Build the image object matching the category_icon_image structure.
+     * Pass null $file to get an empty placeholder object.
+     */
+    private function buildImageData($file, ?string $alt = null): array
+    {
+        if (!$file) {
+            return [
+                'size'          => 0,
+                'uploaded_at'   => now()->toISOString(),
+                'filename'      => '',
+                'original_name' => '',
+                'path'          => '',
+                'url'           => '',
+                'mime_type'     => '',
+                'alt'           => $alt ?? '',
+            ];
+        }
+
+        $filename = time() . '_' . $file->getClientOriginalName();
+        $path     = $file->storeAs('blogs', $filename, 'public');
+
+        return [
+            'size'          => $file->getSize(),
+            'uploaded_at'   => now()->toISOString(),
+            'filename'      => $filename,
+            'original_name' => $file->getClientOriginalName(),
+            'path'          => $path,
+            'url'           => $path,
+            'mime_type'     => $file->getMimeType(),
+            'alt'           => $alt ?? '',
+        ];
+    }
+
     private function attachTranslations(array $data, $modelInstance): array
     {
         $languages    = array_keys(config('languages.available'));
@@ -233,9 +284,13 @@ $comments[$commentIndex]['updated_at']   = now()->toDateTimeString();
             $translated = [];
             foreach ($translatable as $field) {
                 if (!empty($data[$field])) {
-                    $translated[$field] = $this->translator->translateText(
-                        $data[$field], $locale, 'en'
-                    );
+                    try {
+                        $translated[$field] = $this->translator->translateText(
+                            $data[$field], $locale, 'en'
+                        );
+                    } catch (\Exception $e) {
+                        // skip failed translations silently
+                    }
                 }
             }
 

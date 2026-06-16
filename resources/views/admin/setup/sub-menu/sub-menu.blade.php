@@ -73,7 +73,6 @@
                 <tr>
                     <th style="width:60px;">S.No</th>
                     <th>Sub Category Name</th>
-                    <th>Sub Category Icon</th>
                     <th>Alt Tag</th>
                     <th style="width:220px; text-align:center;">Pallet/Container Sell Applicable</th>
                     <th style="width:60px;">Actions</th>
@@ -83,11 +82,6 @@
                 <tr id="row-1">
                     <td class="sno">1.</td>
                     <td><input type="text" name="items[0][name]" class="form-row-input" placeholder="Sub Category Name" required/></td>
-                    <td>
-                        <div class="form-file-wrap">
-                            <input type="file" name="items[0][icon]" accept="image/*"/>
-                        </div>
-                    </td>
                     <td><input type="text" name="items[0][alt_tag]" class="form-row-input" placeholder="Alt Tag"/></td>
                     <td>
                         <div class="checkbox-wrap">
@@ -137,11 +131,6 @@ function addRow() {
     tr.innerHTML = `
         <td class="sno">${rowCount}.</td>
         <td><input type="text" name="items[${idx}][name]" class="form-row-input" placeholder="Sub Category Name" required/></td>
-        <td>
-            <div class="form-file-wrap">
-                <input type="file" name="items[${idx}][icon]" accept="image/*"/>
-            </div>
-        </td>
         <td><input type="text" name="items[${idx}][alt_tag]" class="form-row-input" placeholder="Alt Tag"/></td>
         <td>
             <div class="checkbox-wrap">
@@ -290,35 +279,6 @@ function renumber() {
                         <label for="container_applicable">Container</label>
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <hr class="section-divider">
-
-        {{-- Row 2: Icon + Alt Tag + Slug --}}
-        <div class="form-grid-3">
-            <div class="form-group">
-                <label class="form-label">Sub Category Icon</label>
-                @if(!empty($record->sub_category_icon_image['path']))
-    <img src="{{ asset('storage/' . $record->sub_category_icon_image['path']) }}"
-         class="current-icon" alt="current"/>
-    <span class="form-hint">Leave blank to keep current icon</span>
-@endif
-                <div class="form-file-wrap">
-                    <input type="file" name="icon" accept="image/*"/>
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Alt Tag</label>
-                <input type="text" name="alt_tag" class="form-input"
-                       value="{{ old('alt_tag', $record->icon_alt_tag) }}"
-                       placeholder="e.g. solar-panels"/>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Slug</label>
-                <input type="text" name="slug" class="form-input" id="slugField"
-                       value="{{ old('slug', $record->slug) }}"
-                       placeholder="auto-generated if empty"/>
             </div>
         </div>
 

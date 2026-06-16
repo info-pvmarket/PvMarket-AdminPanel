@@ -17,11 +17,11 @@ class SalesController extends Controller
     $query = Order::where('is_active', 1);
 
     if ($request->filled('user_id')) {
-        $query->where('seller_id', new \MongoDB\BSON\ObjectId($request->user_id));
+        $query->where('user_id', new \MongoDB\BSON\ObjectId($request->user_id));
     }
 
     if ($request->filled('product_id')) {
-        $query->where('product_id', new \MongoDB\BSON\ObjectId($request->product_id));
+        $query->where('offer_id', new \MongoDB\BSON\ObjectId($request->product_id));
     }
 
     if ($request->filled('search')) {
@@ -51,7 +51,7 @@ class SalesController extends Controller
 
     // ── CHANGED: map the current page items only, then set them back ──
     $productIds = collect($orders->items())
-        ->pluck('product_id')
+        ->pluck('offer_id')
         ->filter()
         ->unique()
         ->values()
@@ -64,7 +64,7 @@ class SalesController extends Controller
 
     // Mutate the paginator's items in place
     $orders->getCollection()->transform(function ($order) use ($products_map) {
-        $product = $products_map[(string)$order->product_id] ?? null;
+        $product = $products_map[(string)$order->offer_id] ?? null;
         $order->product_info         = $product;
         $order->product_name_display = $product?->product_name ?? '—';
         return $order;

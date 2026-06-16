@@ -17,7 +17,7 @@ class NewsController extends Controller
         $query = News::query();
 
         if ($request->filled('search')) {
-            $query->where('heading', 'like', '%' . $request->search . '%');
+            $query->where('title', 'like', '%' . $request->search . '%');
         }
 
         $news = $query->orderBy('created_at', 'desc')
@@ -37,7 +37,7 @@ class NewsController extends Controller
     public function store(Request $request)
 {
     $request->validate([
-        'heading' => 'required|string|max:255',
+        'title' => 'required|string|max:255',
         'slug'    => 'nullable|string|max:255',
         'content' => 'nullable|string',
         'image'   => 'nullable|image|mimes:jpeg,png,jpg,webp|max:3072',
@@ -45,17 +45,20 @@ class NewsController extends Controller
     ]);
 
     $data = [
-        'heading' => $request->heading,
-        'slug'    => $request->filled('slug') ? Str::slug($request->slug) : Str::slug($request->heading),
-        'content' => $request->content,
-        'alt_tag' => $request->alt_tag,
-    ];
+    'title'     => $request->title,
+    'slug'      => $request->filled('slug') ? Str::slug($request->slug) : Str::slug($request->title),
+    'content'   => $request->content,
+    'alt_tag'   => $request->alt_tag,
+    'is_active' => true,
+];
 
-    if ($request->hasFile('image')) {
-        $data['image'] = $request->file('image')->store('news', 'public');
-    }
+    $data['image'] = $this->emptyImageData();
 
-    $data = $this->attachTranslations($data, new News()); // ← News not Event
+if ($request->hasFile('image')) {
+    $data['image'] = $this->buildImageData($request->file('image'), 'news');
+}
+
+    $data = $this->attachTranslations($data, new News()); 
 
     News::create($data);
 
@@ -77,7 +80,7 @@ class NewsController extends Controller
         $news = News::findOrFail($id);
 
         $request->validate([
-            'heading' => 'required|string|max:255',
+            'title' => 'required|string|max:255',
             'slug'    => 'nullable|string|max:255',
             'content' => 'nullable|string',
             'image'   => 'nullable|image|mimes:jpeg,png,jpg,webp|max:3072',
@@ -89,20 +92,22 @@ class NewsController extends Controller
             : Str::slug($request->heading);
 
         $data = [
-            'heading' => $request->heading,
-            'slug'    => $slug,
-            'content' => $request->content,
-            'alt_tag' => $request->alt_tag,
-        ];
+    'title'   => $request->title,
+    'slug'    => $request->filled('slug') ? Str::slug($request->slug) : Str::slug($request->title),
+    'content' => $request->content,
+    'alt_tag' => $request->alt_tag,
+];
 
-        if ($request->hasFile('image')) {
-            if ($news->image) {
-                Storage::disk('public')->delete($news->image);
-            }
-            $data['image'] = $request->file('image')->store('news', 'public');
-        }
+        $data['image'] = $news->image ?? $this->emptyImageData();
 
-        $data = $this->attachTranslations($data, new News());
+if ($request->hasFile('image')) {
+    $oldPath = $news->image['path'] ?? null;
+    if ($oldPath) Storage::disk('public')->delete($oldPath);
+
+    $data['image'] = $this->buildImageData($request->file('image'), 'news');
+}
+
+        $data = $this->attachTranslations($data, $news);
 
         $news->update($data);
 
@@ -113,14 +118,41 @@ class NewsController extends Controller
     public function destroy($id)
     {
         $news = News::findOrFail($id);
-        if ($news->image) {
-            Storage::disk('public')->delete($news->image);
-        }
+        $oldPath = $news->image['path'] ?? null;
+if ($oldPath) Storage::disk('public')->delete($oldPath);
         $news->delete();
 
         return redirect()->route('admin.knowledge-hub.news.index')
                          ->with('success', 'News article deleted.');
     }
+    private function emptyImageData(): array
+{
+    return [
+        'size'          => 0,
+        'uploaded_at'   => now()->toISOString(),
+        'filename'      => '',
+        'original_name' => '',
+        'path'          => '',
+        'url'           => '',
+        'mime_type'     => '',
+    ];
+}
+
+private function buildImageData($file, string $folder): array
+{
+    $filename = time() . '_' . $file->getClientOriginalName();
+    $path     = $file->storeAs($folder, $filename, 'public');
+
+    return [
+        'size'          => $file->getSize(),
+        'uploaded_at'   => now()->toISOString(),
+        'filename'      => $filename,
+        'original_name' => $file->getClientOriginalName(),
+        'path'          => $path,
+        'url'           => $path,
+        'mime_type'     => $file->getMimeType(),
+    ];
+}
 
     private function attachTranslations(array $data, $modelInstance): array
 {

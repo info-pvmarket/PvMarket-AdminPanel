@@ -131,7 +131,7 @@
                     <input type="file" name="datasheet" accept=".pdf,.jpg,.png,.webp"/>
                 </div>
                 @if(isset($record) && !empty($record->datasheet))
-                    <span class="form-hint">{{ $record->datasheet['original_name'] ?? 'File uploaded' }}</span>
+                    <span class="form-hint">{{ $record->datasheet->original_name ?? 'File uploaded' }}</span>
                 @endif
             </div>
             <div class="form-group">

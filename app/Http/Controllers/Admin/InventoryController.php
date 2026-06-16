@@ -114,8 +114,9 @@ $listing->alert_record_id     = $alert ? (string) $alert->_id : null;
         $transactionType = $request->type === 'add' ? 'stock_add' : 'stock_reduce';
         $quantity        = (int) $request->quantity;
 
+        $current = InventoryTransaction::currentStock($listingId);
+
         if ($request->type === 'reduce') {
-            $current = InventoryTransaction::currentStock($listingId);
             if ($quantity > $current) {
                 return response()->json([
                     'success' => false,
@@ -125,16 +126,25 @@ $listing->alert_record_id     = $alert ? (string) $alert->_id : null;
         }
 
         $txData = [
-    'listing_id'       => new ObjectId((string) $listing->_id),
-    'product_id'       => new ObjectId((string) $listing->product_id),
-    'warehouse_id'     => (string) $listing->warehouse_id ? new ObjectId((string) $listing->warehouse_id) : null,
-    'user_id'          => new ObjectId(Auth::id()),
-    'created_by'       => new ObjectId(Auth::id()),
-    'transaction_type' => $transactionType,
-    'quantity'         => $quantity,
-    'reference_type'   => 'listing',
-    'reference_id'     => (string) $listing->_id,
-    'notes'            => $request->notes,
+    'listing_id'        => new ObjectId((string) $listing->_id),
+    'product_id'        => new ObjectId((string) $listing->product_id),
+    'warehouse_id'      => $listing->warehouse_id ? new ObjectId((string) $listing->warehouse_id) : null,
+    'user_id'           => new ObjectId(Auth::id()),
+    'created_by'        => new ObjectId(Auth::id()),
+    'transaction_type'  => $transactionType,
+    'quantity'          => $quantity,
+
+    // ── New fields ──────────────────────────────────
+    'quantity_before'   => $current,             // stock before this transaction
+    'quantity_after'    => $request->type === 'add' ? $current + $quantity : $current - $quantity,
+    'quantity_change'   => $quantity,
+    'type'              => $request->type === 'add' ? 'addition' : 'deduction',
+    'reason'            => $request->notes,      // mirrors notes field
+    // ────────────────────────────────────────────────
+
+    'reference_type'    => 'listing',
+    'reference_id'      => new ObjectId((string) $listing->_id),
+    'notes'             => $request->notes,
 ];
 
 $txData = $this->attachTranslations($txData, new InventoryTransaction());

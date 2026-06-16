@@ -5,8 +5,6 @@
 
 @section('styles')
 <style>
-    .page-header-wrap { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
-    .page-header-wrap h1 { font-size:22px; font-weight:800; color:var(--text); }
     .btn-back { display:inline-flex; align-items:center; gap:7px; padding:9px 18px; background:var(--text); color:white; border-radius:8px; font-size:13.5px; font-weight:600; text-decoration:none; transition:background .15s; white-space:nowrap; }
     .btn-back:hover { background:#334155; }
     .content-panel { background:white; border:1px solid var(--border); border-radius:12px; padding:28px; box-shadow:0 1px 4px rgba(0,0,0,.04); }
@@ -19,14 +17,8 @@
     .form-input, .form-select, .form-textarea { width:100%; padding:9px 13px; border:1.5px solid var(--border); border-radius:8px; font-family:inherit; font-size:13.5px; color:var(--text); outline:none; transition:border-color .2s, box-shadow .2s; background:white; }
     .form-input:focus, .form-select:focus, .form-textarea:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(14,165,233,.1); }
     .form-input::placeholder, .form-textarea::placeholder { color:#CBD5E1; }
-    .form-file-wrap { border:1.5px solid var(--border); border-radius:8px; overflow:hidden; display:flex; align-items:center; background:white; transition:border-color .2s; }
-    .form-file-wrap:focus-within { border-color:var(--primary); }
-    .form-file-wrap input[type="file"] { flex:1; padding:8px 12px; border:none; outline:none; font-family:inherit; font-size:13px; background:transparent; cursor:pointer; }
-    .form-file-wrap input[type="file"]::-webkit-file-upload-button { padding:6px 14px; background:var(--light); border:none; border-right:1px solid var(--border); font-family:inherit; font-size:12.5px; font-weight:600; cursor:pointer; margin-right:8px; }
-    .form-hint  { font-size:11px; color:var(--muted); margin-top:2px; }
     .slug-hint  { font-size:11px; color:var(--primary-d); margin-top:3px; font-weight:500; }
     .form-select { appearance:none; background:white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 12px center; cursor:pointer; }
-    .img-preview { width:80px; height:50px; object-fit:cover; border-radius:6px; border:1px solid var(--border); margin-bottom:8px; display:block; }
     .section-divider { border:none; border-top:1px solid var(--border); margin:20px 0; }
     .form-actions { display:flex; justify-content:flex-end; padding-top:20px; border-top:1px solid var(--border); margin-top:20px; }
     .btn-save { display:inline-flex; align-items:center; gap:8px; padding:10px 28px; background:#10B981; color:white; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; transition:background .15s, box-shadow .2s; }
@@ -67,7 +59,6 @@
         <div class="alert-error">{{ $errors->first() }}</div>
     @endif
 
-    {{-- ═══ MAIN BLOG FORM ═══ --}}
     <form
         method="POST"
         action="{{ $mode === 'create' ? route('admin.knowledge-hub.blogs.store') : route('admin.knowledge-hub.blogs.update', $record->id) }}"
@@ -80,10 +71,10 @@
         <div class="form-main-grid">
             <div class="form-left">
                 <div class="form-group">
-                    <label class="form-label">Heading <span>*</span></label>
-                    <input type="text" name="heading" class="form-input"
-                           placeholder="Enter blog heading..."
-                           value="{{ old('heading', $record->heading ?? '') }}"
+                    <label class="form-label">Title <span>*</span></label>
+                    <input type="text" name="title" class="form-input"
+                           placeholder="Enter blog title..."
+                           value="{{ old('title', $record->title ?? '') }}"
                            id="headingInput" required/>
                 </div>
                 <div class="form-group">
@@ -91,9 +82,12 @@
                     <select name="related_blog_id" class="form-select">
                         <option value="">Select Related Blog</option>
                         @foreach($allBlogs as $blog)
-                            <option value="{{ $blog->id }}"
-                                {{ old('related_blog_id', $record->related_blog_id ?? '') == $blog->id ? 'selected' : '' }}>
-                                {{ Str::limit($blog->heading, 60) }}
+                            @php
+                                $relatedIds = $record->related_ids ?? [];
+                                $selected   = in_array($blog->id, (array) $relatedIds);
+                            @endphp
+                            <option value="{{ $blog->id }}" {{ $selected ? 'selected' : '' }}>
+                                {{ Str::limit($blog->title, 60) }}
                             </option>
                         @endforeach
                     </select>
@@ -101,17 +95,33 @@
             </div>
 
             <div class="form-right">
-                <x-image-upload name="image" label="Blog Image:" :current-image="$record->image ?? null"/>
+                {{--
+                    Pass the current image URL extracted from the image object.
+                    The x-image-upload component expects a plain path/url string
+                    for its :current-image prop, so we pull image.url from the object.
+                --}}
+                @php
+                    $currentImageUrl = null;
+                    if (!empty($record->image['url'])) {
+                        $currentImageUrl = $record->image['url'];
+                    }
+                @endphp
+                <x-image-upload
+                    name="image"
+                    label="Blog Image:"
+                    :current-image="$currentImageUrl"
+                />
+
                 <div class="form-group">
                     <label class="form-label">Alt Tag</label>
                     <input type="text" name="alt_tag" class="form-input"
-                           placeholder="Image alt"
-                           value="{{ old('alt_tag', $record->alt_tag ?? '') }}"/>
+                           placeholder="Image alt text"
+                           value="{{ old('alt_tag', $record->image['alt'] ?? $record->alt_tag ?? '') }}"/>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Slug</label>
                     <input type="text" name="slug" id="slugInput" class="form-input"
-                           placeholder="auto-generated-from-heading"
+                           placeholder="auto-generated-from-title"
                            value="{{ old('slug', $record->slug ?? '') }}"/>
                     <span class="slug-hint" id="slugPreview"></span>
                 </div>
@@ -121,32 +131,28 @@
         <hr class="section-divider">
 
         <div class="form-group">
-            <label class="form-label">Description</label>
-            <textarea name="description" id="descriptionInput" style="display:none;">{{ old('description', $record->description ?? '') }}</textarea>
+            <label class="form-label">Content (data)</label>
+            <textarea name="data" id="dataInput" style="display:none;">{{ old('data', $record->data ?? '') }}</textarea>
             <div class="quill-wrapper">
                 <div id="quillEditor"></div>
             </div>
         </div>
 
-        
-
     </form>
-    {{-- ═══ END MAIN BLOG FORM ═══ --}}
 
-    {{-- ═══ COMMENTS SECTION — outside main form to avoid nested form issue ═══ --}}
+    {{-- ═══ COMMENTS SECTION — outside main form ═══ --}}
     @if($mode === 'edit')
     <hr class="section-divider">
 
     <div style="margin-top:20px;">
         <label class="form-label" style="margin-bottom:14px; display:block; font-size:15px;">Blog Comments</label>
 
-        {{-- Existing comments --}}
         @forelse($record->blog_comments ?? [] as $index => $comment)
         <div style="background:#F8FAFC; border:1px solid var(--border); border-radius:8px; padding:14px 16px; margin-bottom:10px; display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
             <div style="flex:1;">
                 <p style="font-size:13.5px; color:var(--text); margin:0 0 6px;">
-    {{ $comment['translations'][app()->getLocale()] ?? $comment['comment'] }}
-</p>
+                    {{ $comment['translations'][app()->getLocale()] ?? $comment['comment'] }}
+                </p>
                 <span style="font-size:11px; color:var(--muted);">
                     User: {{ $comment['user_id'] }} &bull; {{ $comment['created_at'] }}
                 </span>
@@ -164,7 +170,6 @@
             <p style="font-size:13px; color:var(--muted); margin-bottom:14px;">No comments yet.</p>
         @endforelse
 
-        {{-- Add new comment --}}
         <form method="POST" action="{{ route('admin.knowledge-hub.blogs.comments.store', $record->id) }}" style="margin-top:16px;">
             @csrf
             <div class="form-group">
@@ -179,7 +184,6 @@
         </form>
     </div>
     @endif
-    {{-- ═══ END COMMENTS SECTION ═══ --}}
 
     <div class="form-actions">
         <button type="submit" form="blogForm" class="btn-save">
@@ -193,8 +197,6 @@
     </div>
 
 </div>
-
-
 
 <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
 <script>
@@ -216,14 +218,14 @@
         }
     });
 
-    var existingContent = document.getElementById('descriptionInput').value;
+    var existingContent = document.getElementById('dataInput').value;
     if (existingContent && existingContent.trim() !== '') {
         quill.clipboard.dangerouslyPasteHTML(existingContent);
     }
 
     document.getElementById('blogForm').addEventListener('submit', function () {
         var html = quill.root.innerHTML;
-        document.getElementById('descriptionInput').value = (html === '<p><br></p>') ? '' : html;
+        document.getElementById('dataInput').value = (html === '<p><br></p>') ? '' : html;
     });
 
     var headingInput = document.getElementById('headingInput');
@@ -295,10 +297,6 @@
     .action-icon.edit:hover   { background:#FEF3C7; border-color:#F59E0B; }
     .action-icon.delete:hover { background:#FEE2E2; border-color:#EF4444; }
     .table-footer { padding:12px 20px; font-size:13px; color:var(--muted); border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; background:#FAFBFD; }
-    .pagination { display:flex; gap:3px; list-style:none; }
-    .pagination li a,.pagination li span { display:flex; align-items:center; justify-content:center; min-width:32px; height:32px; padding:0 8px; border-radius:6px; border:1.5px solid var(--border); font-size:13px; font-weight:500; text-decoration:none; color:var(--text); background:white; transition:all .15s; }
-    .pagination li.active span { background:var(--primary-d); border-color:var(--primary-d); color:white; }
-    .pagination li a:hover { border-color:var(--primary); color:var(--primary); background:var(--primary-l); }
     .empty-state { text-align:center; padding:52px 20px; color:var(--muted); }
     .empty-state svg { width:42px; height:42px; margin:0 auto 12px; opacity:.2; display:block; }
     .empty-state p { font-size:14px; font-weight:500; }
@@ -342,7 +340,7 @@
                     <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
                 </svg>
                 <input type="text" name="search" value="{{ request('search') }}"
-                       placeholder="Search By Header..." class="search-input"/>
+                       placeholder="Search By Title..." class="search-input"/>
             </div>
         </form>
 
@@ -364,7 +362,7 @@
         <thead>
             <tr>
                 <th class="center" style="width:70px;">S.No</th>
-                <th>Header</th>
+                <th>Title</th>
                 <th>Content</th>
                 <th class="center" style="width:120px;">Image</th>
                 <th class="center" style="width:100px;">Action</th>
@@ -378,27 +376,30 @@
                 </td>
 
                 <td>
-                    <span class="truncate" style="max-width:320px;"
-                          title="{{ lang($blog, 'heading') }}">
-                        {{ lang($blog, 'heading') }}
+                    <span class="truncate" style="max-width:320px;" title="{{ lang($blog, 'title') }}">
+                        {{ lang($blog, 'title') }}
                     </span>
                 </td>
 
                 <td>
-                    <span class="truncate" style="max-width:380px;"
-                          title="{{ strip_tags(lang($blog, 'description')) }}">
-                        {{ Str::limit(strip_tags(lang($blog, 'description')), 80) }}
+                    <span class="truncate" style="max-width:380px;" title="{{ strip_tags(lang($blog, 'data')) }}">
+                        {{ Str::limit(strip_tags(lang($blog, 'data')), 80) }}
                     </span>
                 </td>
 
                 <td class="center">
-                    @if($blog->image)
-                        <img src="{{ asset('storage/' . $blog->image) }}"
-                             class="blog-thumb" alt="{{ $blog->alt_tag ?? $blog->heading }}"/>
+                    @php
+                        $thumbUrl = $blog->image['url'] ?? null;
+                    @endphp
+                    @if($thumbUrl)
+                        <img src="{{ asset('storage/' . $thumbUrl) }}"
+                             class="blog-thumb"
+                             alt="{{ $blog->image['alt'] ?? $blog->title }}"/>
                     @else
                         <span class="no-image">—</span>
                     @endif
                 </td>
+
                 <td>
                     <div class="action-btns">
                         <a href="{{ route('admin.knowledge-hub.blogs.edit', $blog->id) }}"
@@ -441,33 +442,33 @@
     </table>
 
     <div class="table-footer">
-    <span>{{ $blogs->firstItem() ?? 0 }}–{{ $blogs->lastItem() ?? 0 }} of {{ $blogs->total() }} entries</span>
-    @if ($blogs->hasPages())
-    <nav style="display:flex; align-items:center; gap:4px;">
-        @if ($blogs->onFirstPage())
-            <span style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:6px;border:1.5px solid var(--border);background:white;color:#CBD5E1;cursor:not-allowed;font-size:16px;">‹</span>
-        @else
-            <a href="{{ $blogs->previousPageUrl() }}" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:6px;border:1.5px solid var(--border);background:white;color:var(--text);text-decoration:none;font-size:16px;font-weight:600;transition:all .15s;" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)';this.style.background='var(--primary-l)';" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text)';this.style.background='white';">‹</a>
-        @endif
-
-        @foreach ($blogs->getUrlRange(1, $blogs->lastPage()) as $page => $url)
-            @if ($page == $blogs->currentPage())
-                <span style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:6px;border:1.5px solid var(--primary-d);background:var(--primary-d);color:white;font-size:13px;font-weight:700;">{{ $page }}</span>
-            @elseif ($page == 1 || $page == $blogs->lastPage() || abs($page - $blogs->currentPage()) <= 2)
-                <a href="{{ $url }}" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:6px;border:1.5px solid var(--border);background:white;color:var(--text);text-decoration:none;font-size:13px;font-weight:500;transition:all .15s;" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)';this.style.background='var(--primary-l)';" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text)';this.style.background='white';">{{ $page }}</a>
-            @elseif ($page == $blogs->currentPage() - 3 || $page == $blogs->currentPage() + 3)
-                <span style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:6px;border:1.5px solid var(--border);background:white;color:var(--muted);font-size:13px;">…</span>
+        <span>{{ $blogs->firstItem() ?? 0 }}–{{ $blogs->lastItem() ?? 0 }} of {{ $blogs->total() }} entries</span>
+        @if ($blogs->hasPages())
+        <nav style="display:flex; align-items:center; gap:4px;">
+            @if ($blogs->onFirstPage())
+                <span style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:6px;border:1.5px solid var(--border);background:white;color:#CBD5E1;cursor:not-allowed;font-size:16px;">‹</span>
+            @else
+                <a href="{{ $blogs->previousPageUrl() }}" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:6px;border:1.5px solid var(--border);background:white;color:var(--text);text-decoration:none;font-size:16px;font-weight:600;transition:all .15s;" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)';this.style.background='var(--primary-l)';" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text)';this.style.background='white';">‹</a>
             @endif
-        @endforeach
 
-        @if ($blogs->hasMorePages())
-            <a href="{{ $blogs->nextPageUrl() }}" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:6px;border:1.5px solid var(--border);background:white;color:var(--text);text-decoration:none;font-size:16px;font-weight:600;transition:all .15s;" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)';this.style.background='var(--primary-l)';" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text)';this.style.background='white';">›</a>
-        @else
-            <span style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:6px;border:1.5px solid var(--border);background:white;color:#CBD5E1;cursor:not-allowed;font-size:16px;">›</span>
+            @foreach ($blogs->getUrlRange(1, $blogs->lastPage()) as $page => $url)
+                @if ($page == $blogs->currentPage())
+                    <span style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:6px;border:1.5px solid var(--primary-d);background:var(--primary-d);color:white;font-size:13px;font-weight:700;">{{ $page }}</span>
+                @elseif ($page == 1 || $page == $blogs->lastPage() || abs($page - $blogs->currentPage()) <= 2)
+                    <a href="{{ $url }}" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:6px;border:1.5px solid var(--border);background:white;color:var(--text);text-decoration:none;font-size:13px;font-weight:500;transition:all .15s;" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)';this.style.background='var(--primary-l)';" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text)';this.style.background='white';">{{ $page }}</a>
+                @elseif ($page == $blogs->currentPage() - 3 || $page == $blogs->currentPage() + 3)
+                    <span style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:6px;border:1.5px solid var(--border);background:white;color:var(--muted);font-size:13px;">…</span>
+                @endif
+            @endforeach
+
+            @if ($blogs->hasMorePages())
+                <a href="{{ $blogs->nextPageUrl() }}" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:6px;border:1.5px solid var(--border);background:white;color:var(--text);text-decoration:none;font-size:16px;font-weight:600;transition:all .15s;" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)';this.style.background='var(--primary-l)';" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text)';this.style.background='white';">›</a>
+            @else
+                <span style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:6px;border:1.5px solid var(--border);background:white;color:#CBD5E1;cursor:not-allowed;font-size:16px;">›</span>
+            @endif
+        </nav>
         @endif
-    </nav>
-    @endif
-</div>
+    </div>
 
 </div>
 

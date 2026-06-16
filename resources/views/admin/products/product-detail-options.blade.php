@@ -111,7 +111,7 @@
                     name="option_name"
                     class="form-input"
                     placeholder="e.g. Serial Number"
-                    value="{{ old('option_name', $record->option_name ?? '') }}"
+                    value="{{ old('option_name', $record->name ?? '') }}"
                     required
                 />
             </div>
@@ -397,7 +397,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <td class="center" style="font-weight:700; color:var(--muted); font-size:13px;">
                 {{ $options->firstItem() + $index }}
             </td>
-            <td class="center" style="font-weight:500;">{{ lang($option, 'option_name') }}</td>
+            <td class="center" style="font-weight:500;">{{ lang($option, 'name') }}</td>
 <td class="center">
     <span class="badge badge-{{ $option->data_type }}">
                     {{ match($option->data_type) {

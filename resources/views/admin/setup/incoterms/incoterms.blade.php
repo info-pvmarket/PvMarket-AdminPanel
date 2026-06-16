@@ -28,6 +28,7 @@
     :paginator="$records"
 >
     <x-slot name="columns">
+    <th class="center">Code</th> 
     <th class="center">Term Name</th>
     <th class="center" style="width:120px;">Action</th>
 </x-slot>
@@ -38,6 +39,7 @@
             <td class="center" style="font-weight:700;color:var(--muted);font-size:13px;width:70px;">
                 {{ $records->firstItem() + $index }}
             </td>
+            <td class="center" style="font-weight:600;">{{ $term->code }}</td>
             <td class="center" style="font-weight:600;">{{ $term->name }}</td>
             <td>
                 <div class="action-btns">
@@ -120,10 +122,19 @@
     :action="route('admin.setup.incoterms.store')"
 >
     <x-slot name="columns">
+        <th style="min-width:160px;">Code</th>
         <th style="min-width:400px;">Term Name</th>
     </x-slot>
 
     <x-slot name="row">
+        <input
+            type="text"
+            name="items[{INDEX}][code]"
+            class="form-input"
+            placeholder="e.g. EXW"
+            required
+        />
+    </td>
         <td>
             <input
                 type="text"
@@ -149,6 +160,17 @@
     method="PUT"
 >
     <div class="form-grid">
+        <div class="form-group" style="max-width:200px;">   {{-- ← add --}}
+    <label class="form-label">Code <span>*</span></label>
+    <input
+        type="text"
+        name="code"
+        class="form-input"
+        placeholder="e.g. EXW"
+        value="{{ old('code', $record->code) }}"
+        required
+    />
+</div>
         <div class="form-group full-width" style="max-width:500px;">
             <label class="form-label">Term Name <span>*</span></label>
             <input
