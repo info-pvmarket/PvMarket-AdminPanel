@@ -37,8 +37,9 @@ use App\Http\Controllers\Admin\InventoryController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\LocationController;
 use App\Http\Controllers\Admin\RfqRequestController;
+use App\Http\Controllers\Admin\MarketController;
 
- 
+
 
 // ── Redirect root to login ──────────────────────────────────────────────
 Route::get('/', function () {
@@ -433,6 +434,22 @@ Route::prefix('admin/setup/locations')->name('admin.setup.locations.')->group(fu
     Route::delete('/{id}', [LocationController::class, 'destroy'])
         ->name('destroy');
 });
+
+// ── Markets ────────────────────────────────────────
+Route::prefix('admin/setup/markets')->name('admin.setup.markets.')->group(function () {
+    Route::get('/',              [MarketController::class, 'index'])  ->name('index');
+    Route::get('/create',        [MarketController::class, 'create']) ->name('create');
+    Route::post('/',             [MarketController::class, 'store'])  ->name('store');
+    Route::get('/{id}/edit',     [MarketController::class, 'edit'])   ->name('edit');
+    Route::put('/{id}',          [MarketController::class, 'update']) ->name('update');
+    Route::patch('/{id}/toggle', [MarketController::class, 'toggle']) ->name('toggle');
+    Route::delete('/{id}',       [MarketController::class, 'destroy'])->name('destroy');
+    // Domain management
+    Route::post('/{id}/domains',                        [MarketController::class, 'addDomain'])       ->name('domains.add');
+    Route::delete('/{id}/domains/{domainId}',           [MarketController::class, 'removeDomain'])    ->name('domains.remove');
+    Route::patch('/{id}/domains/{domainId}/primary',    [MarketController::class, 'setPrimaryDomain'])->name('domains.primary');
+});
+
 // ── Warehouses ────────────────────────────────────────
 Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
  

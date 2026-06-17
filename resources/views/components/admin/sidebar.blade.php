@@ -82,6 +82,10 @@
                class="nav-sub-item {{ request()->routeIs('admin.setup.languages.*') ? 'active' : '' }}">
                Languages
             </a>
+            <a href="{{ route('admin.setup.markets.index') }}"
+               class="nav-sub-item {{ request()->routeIs('admin.setup.markets.*') ? 'active' : '' }}">
+               Markets
+            </a>
         </div>
 
         {{-- ═══ CMS / PAGE SECTIONS ═══ --}}
