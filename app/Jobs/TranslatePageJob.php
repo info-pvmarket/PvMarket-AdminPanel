@@ -14,7 +14,7 @@ class TranslatePageJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $timeout = 300;
+    public int $timeout = 1800; // 30 minutes
     public int $tries   = 3;
 
     public function __construct(
@@ -41,34 +41,105 @@ class TranslatePageJob implements ShouldQueue
         }
 
         // Stream records in chunks to avoid memory issues
-        $modelClass::chunk(50, function ($records) use ($translator, $fields, $locale, $modelClass) {
+        $totalCount = $modelClass::count();
+        $processed = 0;
+
+        $modelClass::chunk(50, function ($records) use ($translator, $fields, $locale, $modelClass, $totalCount, &$processed) {
             foreach ($records as $record) {
-                $existing    = is_array($record->{$locale}) ? $record->{$locale} : [];
+                $processed++;
+                Log::info("TranslatePageJob: processing record {$processed}/{$totalCount} for {$modelClass}");
+                // Handle both array and object (MongoDB returns objects)
+                $localeData = $record->{$locale} ?? null;
+                if (is_object($localeData)) {
+                    $existing = (array) $localeData;
+                } elseif (is_array($localeData)) {
+                    $existing = $localeData;
+                } else {
+                    $existing = [];
+                }
                 $needsSave   = false;
 
                 foreach ($fields as $field) {
-    // Skip if already translated
-    if (!empty($existing[$field])) {
-        continue;
-    }
 
     $raw = $record->{$field} ?? null;
 
-    // ── Array fields (e.g. unit_names) ──
+    // Convert MongoDB objects to arrays
+    if (is_object($raw) && method_exists($raw, 'getArrayCopy')) {
+        $raw = $raw->getArrayCopy();
+    } elseif (is_object($raw)) {
+        $raw = (array) $raw;
+    }
+
+    // ── Array of objects (e.g. product_details: [{label, value, unit}, ...]) ──
+    if (is_array($raw) && !empty($raw)) {
+        $firstItem = reset($raw);
+        $isArrayOfObjects = is_array($firstItem) || is_object($firstItem);
+    } else {
+        $isArrayOfObjects = false;
+    }
+
+    if ($isArrayOfObjects) {
+        Log::debug("TranslatePageJob: translating array of objects '{$field}' on {$modelClass}#{$record->_id}");
+        $translatedArray = [];
+        $arrayChanged    = false;
+
+        foreach ($raw as $item) {
+            $itemArray = (array) $item;
+            $translatedItem = $itemArray;
+
+            // Translate 'label' field if present
+            if (!empty($itemArray['label']) && is_string($itemArray['label'])) {
+                try {
+                    $result = $translator->translateText($itemArray['label'], $locale, 'en');
+                    if ($result && $result !== $itemArray['label']) {
+                        $translatedItem['label'] = $result;
+                        $arrayChanged = true;
+                    }
+                    usleep(50000);
+                } catch (\Exception $e) {
+                    Log::error("TranslatePageJob: array object 'label' on {$modelClass}#{$record->_id}: {$e->getMessage()}");
+                }
+            }
+
+            // Translate 'value' field if present and is a string (not numeric)
+            if (!empty($itemArray['value']) && is_string($itemArray['value']) && !is_numeric($itemArray['value'])) {
+                try {
+                    $result = $translator->translateText($itemArray['value'], $locale, 'en');
+                    if ($result && $result !== $itemArray['value']) {
+                        $translatedItem['value'] = $result;
+                        $arrayChanged = true;
+                    }
+                    usleep(50000);
+                } catch (\Exception $e) {
+                    Log::error("TranslatePageJob: array object 'value' on {$modelClass}#{$record->_id}: {$e->getMessage()}");
+                }
+            }
+
+            $translatedArray[] = (object) $translatedItem;
+        }
+
+        if ($arrayChanged) {
+            $existing[$field] = $translatedArray;
+            $needsSave = true;
+        }
+        continue;
+    }
+
+    // ── Simple array fields (e.g. unit_names: ["kg", "lb"]) ──
     if (is_array($raw)) {
         $translatedArray = [];
         $arrayChanged    = false;
 
         foreach ($raw as $item) {
-            if (empty(trim((string) $item))) {
+            if (!is_string($item) || empty(trim($item))) {
                 $translatedArray[] = $item;
                 continue;
             }
             try {
-                $result = $translator->translateText((string) $item, $locale, 'en');
+                $result = $translator->translateText($item, $locale, 'en');
                 $translatedArray[] = ($result && $result !== $item) ? $result : $item;
                 if ($result && $result !== $item) $arrayChanged = true;
-                usleep(150000);
+                usleep(50000);
             } catch (\Exception $e) {
                 Log::error("TranslatePageJob: array field '{$field}' on {$modelClass}#{$record->_id}: {$e->getMessage()}");
                 $translatedArray[] = $item;
@@ -86,6 +157,8 @@ class TranslatePageJob implements ShouldQueue
     $original = (string) ($raw ?? '');
     if (empty(trim($original))) continue;
 
+    Log::debug("TranslatePageJob: translating string field '{$field}' on {$modelClass}#{$record->_id}");
+
     try {
         $translated = $translator->translateText($original, $locale, 'en');
 
@@ -94,7 +167,7 @@ class TranslatePageJob implements ShouldQueue
             $needsSave = true;
         }
 
-        usleep(150000);
+        usleep(50000);
 
     } catch (\Exception $e) {
         Log::error("TranslatePageJob: field '{$field}' on {$modelClass}#{$record->_id}: {$e->getMessage()}");

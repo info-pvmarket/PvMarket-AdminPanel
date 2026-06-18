@@ -228,6 +228,9 @@ if ($request->hasFile('images')) {
             'created_by'  => new \MongoDB\BSON\ObjectId(Auth::id()),
         ]);
     }
+
+}
+
     return redirect()->route('product_listing.index')
                  ->with('success', 'Your listing has been created and is pending approval.');
 }
@@ -386,6 +389,7 @@ if ($request->hasFile('images')) {
 $listing->update($validated);
 return redirect()->route('product_listing.index')
                  ->with('success', 'Listing updated successfully.');
+}
 
     // ── Destroy ─────────────────────────────────────────────────────
 

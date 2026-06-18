@@ -50,6 +50,9 @@ class ProductListing extends Model
     
 ];
 public array $translatable = [
+    'sell_type',
+    'discount_type',
+    'verification_status',
 ];
 
     // ── Relationships ───────────────────────────────────────────────

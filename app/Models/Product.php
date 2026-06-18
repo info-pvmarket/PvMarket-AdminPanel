@@ -47,8 +47,7 @@ public array $translatable = [
     'category_name',
     'sub_category_name',
     'brand_name',
-    'pieces_per_pallet',
-    'pallets_per_container',
+    'product_details',
 ];
 
     // ── Relationships ───────────────────────────────────────────────

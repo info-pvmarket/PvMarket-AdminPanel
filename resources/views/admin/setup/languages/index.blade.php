@@ -43,6 +43,7 @@
     .lang-alert.error   { background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; }
     @keyframes slideDown { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:none} }
 
+
     /* ── Cards ── */
     .lang-card {
         background: var(--bg-card, #fff);

@@ -136,13 +136,11 @@ class LanguageController extends Controller
         $pages    = $request->input('pages', []);
 
         foreach ($pages as $page) {
-            (new \App\Jobs\TranslatePageJob($code, $page))->handle(
-                app(\App\Services\TranslationService::class)
-            );
+            \App\Jobs\TranslatePageJob::dispatch($code, $page);
         }
 
         return back()->with('success',
-            count($pages) . ' page(s) translated to ' . $language->name . ' successfully.'
+            count($pages) . ' page(s) queued for translation to ' . $language->name . '. Processing in background.'
         );
     }
 }
