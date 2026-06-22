@@ -56,8 +56,8 @@ class EventController extends Controller
             'alt_tag'     => $request->alt_tag,
         ];
 
-        if ($request->hasFile('image')) {
-            $data['image'] = $request->file('image')->store('events', 'public');
+        if ($request->hasFile('image') && $request->file('image')->isValid()) {
+            $data['image'] = $this->buildImageData($request->file('image'), 'events');
         }
 
         $data = $this->attachTranslations($data, new Event());
@@ -99,9 +99,9 @@ class EventController extends Controller
             'alt_tag'     => $request->alt_tag,
         ];
 
-        if ($request->hasFile('image')) {
+        if ($request->hasFile('image') && $request->file('image')->isValid()) {
             if ($event->image) Storage::disk('public')->delete($event->image);
-            $data['image'] = $request->file('image')->store('events', 'public');
+            $data['image'] = $this->buildImageData($request->file('image'), 'events');
         }
 
         $data = $this->attachTranslations($data, new Event());
@@ -145,5 +145,16 @@ class EventController extends Controller
     }
 
     return $data;
+}
+
+private function buildImageData($file, string $folder): string
+{
+    $extension = $file->getClientOriginalExtension() ?: 'jpg';
+    $filename = time() . '_' . uniqid() . '.' . $extension;
+    $path = $folder . '/' . $filename;
+
+    Storage::disk('public')->put($path, file_get_contents($file->getPathname()));
+
+    return $path;
 }
 }

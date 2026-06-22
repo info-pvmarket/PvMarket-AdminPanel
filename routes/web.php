@@ -293,7 +293,7 @@ Route::prefix('admin/products/detail-options')->name('admin.products.detail-opti
 
 
  
-Route::prefix('admin/sales')->name('admin.sales.')->group(function () {
+Route::prefix('admin/sales')->name('admin.sales.')->middleware(['auth'])->group(function () {
     Route::get('/',                        [SalesController::class, 'index'])               ->name('index');
     Route::post('/{id}/verify-payment',    [SalesController::class, 'markPaymentVerified']) ->name('verify-payment');
     Route::post('/{id}/status',            [SalesController::class, 'updateStatus'])        ->name('update-status');

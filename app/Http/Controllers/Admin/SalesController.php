@@ -14,7 +14,7 @@ class SalesController extends Controller
     public function __construct(protected TranslationService $translator) {}
     public function index(Request $request)
 {
-    $query = Order::where('is_active', 1);
+    $query = Order::where('is_active', true);
 
     if ($request->filled('user_id')) {
         $query->where('user_id', new \MongoDB\BSON\ObjectId($request->user_id));

@@ -618,7 +618,7 @@ $total     = (!empty($order->payment_currency_total) && $order->payment_currency
 
 @section('scripts')
 <script>
-const CSRF = document.querySelector('meta[name="csrf-token"]').content;
+const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
 // ── Filter by product dropdown ──
 function filterByProduct(productId) {
@@ -684,7 +684,7 @@ async function markVerified(orderId, btn) {
     try {
         const res  = await fetch(`/admin/sales/${orderId}/verify-payment`, {
             method:  'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
         });
         const data = await res.json();
 
@@ -712,14 +712,41 @@ async function markVerified(orderId, btn) {
 
 // ── Update order status ──
 async function updateStatus(orderId, status) {
+    const statusLabels = {
+        0: 'Pending under payment verification',
+        1: 'Confirmed',
+        2: 'Shipped',
+        3: 'Delivered',
+        4: 'Cancelled'
+    };
+    const statusColors = {
+        0: 'status-orange',
+        1: 'status-blue',
+        2: 'status-purple',
+        3: 'status-green',
+        4: 'status-red'
+    };
+
     try {
         const res = await fetch(`/admin/sales/${orderId}/status`, {
             method:  'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
             body:    JSON.stringify({ order_status: status }),
         });
         const data = await res.json();
-        if (!data.success) alert('Failed to update status');
+        if (data.success) {
+            // Update the badge visually
+            const row = document.querySelector(`tr[data-id="${orderId}"]`);
+            if (row) {
+                const badge = row.querySelector('.badge-order-status');
+                if (badge) {
+                    badge.className = 'badge-order-status ' + statusColors[status];
+                    badge.textContent = statusLabels[status];
+                }
+            }
+        } else {
+            alert('Failed to update status');
+        }
     } catch (e) {
         alert('Network error updating status');
     }

@@ -355,8 +355,8 @@
 </span>
                 </td>
                 <td class="center">
-                    @if($item->image)
-                        <img src="{{ asset('storage/' . $item->image) }}"
+                    @if(!empty($item->image['path']))
+                        <img src="{{ asset('storage/' . $item->image['path']) }}"
                              class="news-thumb" alt="{{ $item->alt_tag ?? $item->heading }}"/>
                     @else
                         <span style="font-size:12px; color:#CBD5E1;">—</span>
