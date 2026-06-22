@@ -1,6 +1,7 @@
 <?php
 namespace App\Models;
 use MongoDB\Laravel\Eloquent\Model;
+use App\Casts\AsObjectId;
 
 class PageSection extends Model
 {
@@ -21,11 +22,13 @@ class PageSection extends Model
         'is_active',
         'order',
         'type',
+        'location_id',
     ];
 
     protected $casts = [
-        'is_active' => 'boolean',
-        'order'     => 'integer',
+        'is_active'   => 'boolean',
+        'order'       => 'integer',
+        'location_id' => AsObjectId::class,
         //'extra'     => 'array',
     ];
 }

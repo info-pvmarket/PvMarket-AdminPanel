@@ -409,9 +409,11 @@ Route::post('/setup/main-menus/reorder', [MainMenuController::class, 'reorder'])
      
 
 Route::prefix('admin/page-sections')->name('admin.page-sections.')->group(function () {
-    Route::get('/',           [PageSectionController::class, 'index']) ->name('index');
-    Route::get('/{page}',     [PageSectionController::class, 'edit'])  ->name('edit');
-    Route::put('/{page}',     [PageSectionController::class, 'update'])->name('update');
+    Route::get('/',                    [PageSectionController::class, 'index'])->name('index');
+    Route::get('/{market}',            [PageSectionController::class, 'pages'])->name('pages');
+    Route::get('/{market}/{page}',     [PageSectionController::class, 'edit'])->name('edit');
+    Route::put('/{market}/{page}',     [PageSectionController::class, 'update'])->name('update');
+    Route::post('/{market}/copy-from', [PageSectionController::class, 'copyFrom'])->name('copy-from');
 });
 
 Route::prefix('admin/setup/locations')->name('admin.setup.locations.')->group(function () {

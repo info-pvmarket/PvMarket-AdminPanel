@@ -1,6 +1,6 @@
 {{-- resources/views/admin/page-sections/edit.blade.php --}}
 @extends('layouts.admin')
-@section('title', $pageLabel . ' – Page Sections')
+@section('title', $pageLabel . ' – ' . ($isGlobal ? 'Global' : ($country->name ?? $market->name)) . ' – Page Sections')
 @section('content')
 
 {{-- Quill CSS --}}
@@ -178,11 +178,66 @@
         font-size:13px; font-weight:700; color:var(--text);
         margin:0 0 14px; display:flex; align-items:center; gap:6px;
     }
+    .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 16px;
+    }
+    .breadcrumb a {
+        color: var(--primary);
+        text-decoration: none;
+    }
+    .breadcrumb a:hover {
+        text-decoration: underline;
+    }
+    .market-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--primary);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .market-badge.global {
+        background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+    }
+    .market-badge img {
+        width: 18px;
+        height: 12px;
+        object-fit: cover;
+        border-radius: 2px;
+    }
 </style>
 
-<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
-    <h1 style="font-size:22px; font-weight:800; color:var(--text);">{{ $pageLabel }}</h1>
-    <a href="{{ route('admin.page-sections.index') }}" class="btn-back">← Back</a>
+<div class="breadcrumb">
+    <a href="{{ route('admin.page-sections.index') }}">All Markets</a>
+    <span>&rsaquo;</span>
+    <a href="{{ route('admin.page-sections.pages', $marketId) }}">{{ $isGlobal ? 'Global' : ($country->name ?? $market->name) }}</a>
+    <span>&rsaquo;</span>
+    <span>{{ $pageLabel }}</span>
+</div>
+
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+    <div style="display:flex; align-items:center; gap:12px;">
+        <h1 style="font-size:22px; font-weight:800; color:var(--text); margin:0;">{{ $pageLabel }}</h1>
+        <span class="market-badge {{ $isGlobal ? 'global' : '' }}">
+            @if($isGlobal)
+                Global
+            @else
+                @if($country && $country->flag_url)
+                    <img src="{{ $country->flag_url }}" alt="{{ $country->name }}">
+                @endif
+                {{ $country->name ?? $market->name }}
+            @endif
+        </span>
+    </div>
+    <a href="{{ route('admin.page-sections.pages', $marketId) }}" class="btn-back">Back to Pages</a>
 </div>
 
 @if(session('success'))
@@ -192,7 +247,7 @@
     </div>
 @endif
 
-<form method="POST" action="{{ route('admin.page-sections.update', $page) }}"
+<form method="POST" action="{{ route('admin.page-sections.update', [$marketId, $page]) }}"
       enctype="multipart/form-data">
     @csrf
     @method('PUT')
@@ -769,14 +824,14 @@
                     </div>
                 </div>
                 <div class="contact-group">
-                    <p class="contact-group-title">🔗 Social Links</p>
+                    <p class="contact-group-title">🔗 Social Links (Optional)</p>
                     <div class="fields-grid">
                         @foreach(['facebook'=>'Facebook','twitter'=>'Twitter','instagram'=>'Instagram','linkedin'=>'LinkedIn','youtube'=>'YouTube'] as $sKey => $sLabel)
                         <div>
                             <label class="field-label">{{ $sLabel }}</label>
-                            <input type="url" class="field-input"
+                            <input type="text" class="field-input"
                                    name="sections[{{ $section->id }}][extra][social_{{ $sKey }}]"
-                                   placeholder="https://"
+                                   placeholder="https://..."
                                    value="{{ old("sections.{$section->id}.extra.social_{$sKey}", $section->extra['social_'.$sKey] ?? '') }}">
                         </div>
                         @endforeach
@@ -829,7 +884,7 @@
                        border-radius:8px; font-size:14px; font-weight:600; cursor:pointer;">
             Save Changes
         </button>
-        <a href="{{ route('admin.page-sections.index') }}"
+        <a href="{{ route('admin.page-sections.pages', $marketId) }}"
            style="background:white; color:var(--text); border:1px solid var(--border);
                   padding:10px 24px; border-radius:8px; font-size:14px; font-weight:600;
                   text-decoration:none; display:inline-flex; align-items:center;">

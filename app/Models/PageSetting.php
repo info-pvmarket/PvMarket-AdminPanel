@@ -1,6 +1,7 @@
 <?php
 namespace App\Models;
 use MongoDB\Laravel\Eloquent\Model;
+use App\Casts\AsObjectId;
 
 class PageSetting extends Model
 {
@@ -9,6 +10,7 @@ class PageSetting extends Model
 
     protected $fillable = [
         'page',
+        'location_id',
         'seo_title',
         'seo_description',
         'seo_keywords',
@@ -16,5 +18,8 @@ class PageSetting extends Model
         'is_published',
     ];
 
-    protected $casts = ['is_published' => 'boolean'];
+    protected $casts = [
+        'is_published' => 'boolean',
+        'location_id'  => AsObjectId::class,
+    ];
 }

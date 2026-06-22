@@ -36,8 +36,13 @@ class AdvertisementController extends ResourceController
     {
         $request->validate($this->rules);
         $data = $request->only($this->fields);
-        if ($request->hasFile('image')) {
-            $data['image'] = $request->file('image')->store('advertisements', 'public');
+        if ($request->hasFile('image') && $request->file('image')->isValid()) {
+            $file = $request->file('image');
+            $extension = $file->getClientOriginalExtension() ?: 'jpg';
+            $filename = time() . '_' . uniqid() . '.' . $extension;
+            $path = 'advertisements/' . $filename;
+            Storage::disk('public')->put($path, file_get_contents($file->getPathname()));
+            $data['image'] = $path;
         }
         $data['is_active'] = true;
         $data = $this->attachTranslations($data, new Advertisement());
@@ -50,9 +55,14 @@ class AdvertisementController extends ResourceController
         $ad = Advertisement::findOrFail($id);
         $request->validate($this->rules);
         $data = $request->only($this->fields);
-        if ($request->hasFile('image')) {
+        if ($request->hasFile('image') && $request->file('image')->isValid()) {
             if ($ad->image) Storage::disk('public')->delete($ad->image);
-            $data['image'] = $request->file('image')->store('advertisements', 'public');
+            $file = $request->file('image');
+            $extension = $file->getClientOriginalExtension() ?: 'jpg';
+            $filename = time() . '_' . uniqid() . '.' . $extension;
+            $path = 'advertisements/' . $filename;
+            Storage::disk('public')->put($path, file_get_contents($file->getPathname()));
+            $data['image'] = $path;
         }
         $data = $this->attachTranslations($data, $ad);
         $ad->update($data);
