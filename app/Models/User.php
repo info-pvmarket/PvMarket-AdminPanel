@@ -28,10 +28,12 @@ class User extends Authenticatable
     'is_hold',
     'email_verified',
     'email_verified_at',
+    'assigned_admin_id',
 ];
 
 protected $casts = [
     'role_id'            => \App\Casts\AsObjectId::class,
+    'assigned_admin_id'  => \App\Casts\AsObjectId::class,
     'c_active'           => 'boolean',
     'is_active'          => 'boolean',
     'is_hold'            => 'boolean',
@@ -50,12 +52,34 @@ public array $translatable = [
 
     public function isAdmin(): bool
     {
-        // dd($this->role->slug);
-        return $this->role && in_array($this->role->slug, ['admin', 'super-admin']);
+        if (empty($this->role_id)) {
+            return false;
+        }
+        $role = $this->role;
+        return $role !== null;
     }
 
-    // public function isAdmin(): bool
-    // {
-    //     return in_array($this->role, ['admin', 'super_admin']);
-    // }
+    public function isSuperAdmin(): bool
+    {
+        if (empty($this->role_id)) {
+            return false;
+        }
+        $role = $this->role;
+        return $role && $role->slug === 'super-admin';
+    }
+
+    public function assignedAdmin()
+    {
+        return $this->belongsTo(User::class, 'assigned_admin_id', '_id');
+    }
+
+    public function getAssignedUserIds(): array
+    {
+        if (empty($this->_id)) {
+            return [];
+        }
+
+        $users = User::where('assigned_admin_id', new \MongoDB\BSON\ObjectId((string) $this->_id))->get(['_id']);
+        return $users->map(fn($user) => (string) $user->_id)->filter(fn($id) => !empty($id))->toArray();
+    }
 }

@@ -24,12 +24,14 @@ class LeadGeneration extends Model
         'is_active',
         'created_by',
         'updated_by',
+        'assigned_admin_id',
     ];
 
     protected $casts = [
-        'lead_type'   => 'integer',
-        'lead_device' => 'integer',
-        'status'      => 'integer',
+        'lead_type'         => 'integer',
+        'lead_device'       => 'integer',
+        'status'            => 'integer',
+        'assigned_admin_id' => \App\Casts\AsObjectId::class,
     ];
 
     
@@ -53,5 +55,10 @@ class LeadGeneration extends Model
             2 => 'Rejected',
             default => 'Pending',
         };
+    }
+
+    public function assignedAdmin()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'assigned_admin_id', '_id');
     }
 }

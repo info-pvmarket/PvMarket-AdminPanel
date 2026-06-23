@@ -11,9 +11,12 @@ use MongoDB\BSON\ObjectId;
 use App\Models\StockAlert;
 use App\traits\HasTranslations;
 use App\Services\TranslationService;
+use App\Traits\FiltersAssignedUsers;
 
 class InventoryController extends Controller
 {
+    use FiltersAssignedUsers;
+
     public function __construct(protected TranslationService $translator) {}
     // ── Index ─────────────────────────────────────────────────────────────────
 
@@ -23,7 +26,10 @@ class InventoryController extends Controller
         $filter = $request->get('filter', 'all'); // all | low_stock | out_of_stock
         $search = $request->get('search', '');
 
-       $query = ProductListing::query()->with(['warehouse']);
+        $query = ProductListing::query()->with(['warehouse']);
+
+        // Filter by assigned users
+        $this->filterByAssignedUsers($query, 'user_id');
 
         if ($search) {
             $query->where('sku_code', 'like', "%{$search}%");

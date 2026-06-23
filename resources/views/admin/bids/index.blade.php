@@ -257,8 +257,9 @@
                 <th onclick="sortTable(6)">Currency </th>
                 <th onclick="sortTable(7)">Expected Lead Time(Weeks) </th>
                 <th>Status</th>
-                <th onclick="sortTable(9)">Requested </th>
-                <th onclick="sortTable(10)">Completed </th>
+                <th>Assigned Admin</th>
+                <th onclick="sortTable(10)">Requested </th>
+                <th onclick="sortTable(11)">Completed </th>
                 <th>Action</th>
             </tr>
         </thead>
@@ -318,6 +319,25 @@
                     </span>
                 </td>
 
+                {{-- Assigned Admin --}}
+                <td>
+                    @if(Auth::user()->isSuperAdmin())
+                        <form action="{{ route('admin.bids.assign-admin', $bid->id) }}" method="POST" style="display:inline;">
+                            @csrf
+                            <select name="admin_id" class="show-select" onchange="this.form.submit()" style="min-width:120px;">
+                                <option value="">-- Not Assigned --</option>
+                                @foreach($admins as $admin)
+                                    <option value="{{ $admin->_id }}" {{ (string)$bid->assigned_admin_id === (string)$admin->_id ? 'selected' : '' }}>
+                                        {{ $admin->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </form>
+                    @else
+                        {{ $bid->assignedAdmin?->name ?? 'Not Assigned' }}
+                    @endif
+                </td>
+
                 {{-- Requested At --}}
                 <td class="date-cell">
                     @if($bid->created_at)
@@ -357,7 +377,7 @@
             </tr>
             @empty
             <tr>
-                <td colspan="12">
+                <td colspan="13">
                     <div class="empty-state">
                         <div class="empty-state-icon">📋</div>
                         <div class="empty-state-text">No bid/fair price requests found.</div>

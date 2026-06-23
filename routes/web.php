@@ -73,6 +73,7 @@ Route::put('/admin/users/{id}/update-basic',     [UserController::class, 'update
 Route::put('/admin/users/{id}/update-company',   [UserController::class, 'updateCompany'])       ->name('admin.users.update-company');
 Route::patch('/admin/users/{id}/toggle-verified',[UserController::class, 'toggleCompanyVerified'])->name('admin.users.toggle-verified');
 Route::get('users/export', [UserController::class, 'export'])->name('admin.users.export');
+Route::post('/admin/users/{userId}/assign-admin', [UserController::class, 'assignAdmin'])->name('admin.users.assign-admin');
 Route::resource('users', UserController::class)->names('admin.users');
 
     // Schedules
@@ -144,6 +145,7 @@ Route::prefix('admin/bids')->name('admin.bids.')->group(function () {
     Route::get('/',             [BidRequestController::class, 'index'])        ->name('index');
     Route::get('/{id}',         [BidRequestController::class, 'show'])         ->name('show');
     Route::post('/{id}/status', [BidRequestController::class, 'updateStatus']) ->name('update-status');
+    Route::post('/{bidId}/assign-admin', [BidRequestController::class, 'assignAdmin'])->name('assign-admin');
     Route::delete('/{id}',      [BidRequestController::class, 'destroy'])      ->name('destroy');
 });
 
@@ -152,6 +154,7 @@ Route::prefix('admin/rfq-requests')->name('admin.rfq-requests.')->group(function
     Route::get('/',             [RfqRequestController::class, 'index'])        ->name('index');
     Route::get('/{id}',         [RfqRequestController::class, 'show'])         ->name('show');
     Route::post('/{id}/status', [RfqRequestController::class, 'updateStatus']) ->name('update-status');
+    Route::post('/{rfqId}/assign-admin', [RfqRequestController::class, 'assignAdmin'])->name('assign-admin');
     Route::delete('/{id}',      [RfqRequestController::class, 'destroy'])      ->name('destroy');
 });
 
@@ -163,7 +166,8 @@ Route::prefix('admin/leads')->name('admin.leads.')->group(function () {
     Route::put('/{id}',          [LeadController::class, 'update'])        ->name('update');
     Route::delete('/{id}',       [LeadController::class, 'destroy'])       ->name('destroy');
     Route::post('/{id}/status',  [LeadController::class, 'updateStatus'])  ->name('update-status');
- 
+    Route::post('/{leadId}/assign-admin', [LeadController::class, 'assignAdmin'])->name('assign-admin');
+
     // Product Visits sub-section
     Route::prefix('visits')->name('visits.')->group(function () {
         Route::get('/',          [LeadController::class, 'productVisits'])  ->name('index');

@@ -29,6 +29,7 @@ class RfqRequest extends Model
         'total_items',
         'total_quantity',
         'status',
+        'assigned_admin_id',
     ];
 
     protected $casts = [
@@ -36,5 +37,11 @@ class RfqRequest extends Model
         'quote_needed_by' => 'datetime',
         'total_items' => 'integer',
         'total_quantity' => 'integer',
+        'assigned_admin_id' => \App\Casts\AsObjectId::class,
     ];
+
+    public function assignedAdmin()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'assigned_admin_id', '_id');
+    }
 }

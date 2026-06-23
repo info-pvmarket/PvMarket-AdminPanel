@@ -5,15 +5,32 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use App\Services\TranslationService;
+use App\Traits\FiltersAssignedUsers;
 
 class UserController extends Controller
 {
+    use FiltersAssignedUsers;
+
     public function __construct(protected TranslationService $translator) {}
+
     public function index(Request $request)
     {
-        $query = User::where('role', '!=', 'super_admin')
-                     ->where('role', '!=', 'sub_admin');
+        // Get admin role IDs to exclude admin users from this list
+        $roleIds = \App\Models\Role::whereIn('slug', ['super-admin', 'admin'])->pluck('id');
+        $roleObjectIds = $roleIds->map(fn($id) => new \MongoDB\BSON\ObjectId((string) $id))->toArray();
+
+        // Start with users who are not admins (no role_id or role_id not in admin roles)
+        $query = User::where(function ($q) use ($roleObjectIds) {
+            $q->whereNull('role_id')
+              ->orWhereNotIn('role_id', $roleObjectIds);
+        });
+
+        // Super Admin sees all users, regular admin sees only assigned users
+        if (!Auth::user()->isSuperAdmin()) {
+            $query->where('assigned_admin_id', new \MongoDB\BSON\ObjectId(Auth::id()));
+        }
 
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
@@ -22,11 +39,13 @@ class UserController extends Controller
             });
         }
 
-        
+        // dd($query->toMql()); // Debugging: Output the SQL query for inspection
         $users = $query->orderBy('created_at', 'desc')
                        ->paginate($request->get('entries', 10));
 
-        return view('admin.users.index', compact('users'));
+        $admins = $this->getAdminsForAssignment();
+
+        return view('admin.users.index', compact('users', 'admins'));
     }
 
     public function edit($id)
@@ -148,7 +167,22 @@ foreach ($users as $i => $user) {
  
     return response()->stream($callback, 200, $headers);
 }
-private function attachTranslations(array $data, $modelInstance): array
+public function assignAdmin(Request $request, $userId)
+    {
+        if (!Auth::user()->isSuperAdmin()) {
+            return back()->with('error', 'Only Super Admin can assign users.');
+        }
+
+        $user = User::findOrFail($userId);
+        $user->assigned_admin_id = $request->admin_id
+            ? new \MongoDB\BSON\ObjectId($request->admin_id)
+            : null;
+        $user->save();
+
+        return back()->with('success', 'User assigned successfully.');
+    }
+
+    private function attachTranslations(array $data, $modelInstance): array
     {
         $languages    = array_keys(config('languages.available'));
         $translatable = $modelInstance->translatable ?? [];

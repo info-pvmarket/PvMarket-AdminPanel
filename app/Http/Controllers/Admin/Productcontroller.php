@@ -13,9 +13,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use App\Services\TranslationService;
+use App\Traits\FiltersAssignedUsers;
 
 class ProductController extends Controller
 {
+    use FiltersAssignedUsers;
+
     public function __construct(protected TranslationService $translator) {}
     // ── SKU Generator ─────────────────────────────────
     private function generateSku(string $categoryName): string
@@ -56,6 +59,9 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         $query = Product::query();
+
+        // Filter by assigned users
+        $this->filterByAssignedUsers($query, 'created_by');
 
         if ($request->filled('search')) {
             $s = $request->search;

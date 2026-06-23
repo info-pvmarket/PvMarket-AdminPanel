@@ -139,6 +139,7 @@
                 <th>Delivery</th>
                 <th>Quote Needed By</th>
                 <th class="center">Status</th>
+                <th class="center">Assigned Admin</th>
                 <th class="center" style="width:100px;">Action</th>
             </tr>
         </thead>
@@ -206,6 +207,23 @@
                     @endphp
                     <span class="badge {{ $statusClass }}">{{ $rfq->status ?? 'pending' }}</span>
                 </td>
+                <td class="center">
+                    @if(Auth::user()->isSuperAdmin())
+                        <form action="{{ route('admin.rfq-requests.assign-admin', $rfq->id) }}" method="POST" style="display:inline;">
+                            @csrf
+                            <select name="admin_id" class="filter-select" onchange="this.form.submit()" style="min-width:140px;">
+                                <option value="">-- Not Assigned --</option>
+                                @foreach($admins as $admin)
+                                    <option value="{{ $admin->_id }}" {{ (string)$rfq->assigned_admin_id === (string)$admin->_id ? 'selected' : '' }}>
+                                        {{ $admin->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </form>
+                    @else
+                        {{ $rfq->assignedAdmin?->name ?? 'Not Assigned' }}
+                    @endif
+                </td>
                 <td>
                     <div class="action-btns">
                         <a href="{{ route('admin.rfq-requests.show', $rfq->id) }}"
@@ -233,7 +251,7 @@
             </tr>
             @empty
             <tr>
-                <td colspan="8">
+                <td colspan="9">
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                             <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>

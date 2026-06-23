@@ -5,15 +5,22 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\RfqRequest;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use App\Traits\FiltersAssignedUsers;
 
 class RfqRequestController extends Controller
 {
+    use FiltersAssignedUsers;
+
     /**
      * Display a listing of RFQ requests.
      */
     public function index(Request $request)
     {
         $query = RfqRequest::query();
+
+        // Filter by assigned admin
+        $this->filterByAssignedAdmin($query);
 
         // Search by RFQ number, company name, contact person, or email
         if ($search = $request->input('search')) {
@@ -33,8 +40,11 @@ class RfqRequestController extends Controller
         $perPage = $request->input('entries', 15);
         $records = $query->orderBy('created_at', 'desc')->paginate($perPage)->withQueryString();
 
+        $admins = $this->getAdminsForAssignment();
+
         return view('admin.rfq-requests.index', [
             'records' => $records,
+            'admins' => $admins,
         ]);
     }
 
@@ -79,5 +89,23 @@ class RfqRequestController extends Controller
         return redirect()
             ->route('admin.rfq-requests.index')
             ->with('success', 'RFQ request deleted successfully.');
+    }
+
+    /**
+     * Assign admin to RFQ request.
+     */
+    public function assignAdmin(Request $request, $rfqId)
+    {
+        if (!Auth::user()->isSuperAdmin()) {
+            return back()->with('error', 'Only Super Admin can assign.');
+        }
+
+        $rfq = RfqRequest::findOrFail($rfqId);
+        $rfq->assigned_admin_id = $request->admin_id
+            ? new \MongoDB\BSON\ObjectId($request->admin_id)
+            : null;
+        $rfq->save();
+
+        return back()->with('success', 'Assigned successfully.');
     }
 }

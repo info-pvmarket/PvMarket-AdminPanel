@@ -8,13 +8,20 @@ use App\Models\ProductVisit;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use App\Traits\FiltersAssignedUsers;
 
 class LeadController extends Controller
 {
+    use FiltersAssignedUsers;
+
     // ── Leads Management Page ─────────────────────────────────────
     public function index(Request $request)
     {
         $query = LeadGeneration::where('is_active', '!=', '0');
+
+        // Filter by assigned admin
+        $this->filterByAssignedAdmin($query);
 
         // Filter by lead type (All / Book Free / Spot Price / etc.)
         if ($request->filled('lead_type') && $request->lead_type !== 'all') {
@@ -31,9 +38,11 @@ class LeadController extends Controller
         }
 
         $perPage = (int) $request->get('per_page', 10);
-$leads   = $query->orderBy('created_at', 'desc')->paginate($perPage)->withQueryString();
+        $leads   = $query->orderBy('created_at', 'desc')->paginate($perPage)->withQueryString();
 
-return view('admin.leads.index', compact('leads'));
+        $admins = $this->getAdminsForAssignment();
+
+        return view('admin.leads.index', compact('leads', 'admins'));
     }
 
     // ── Update lead status ────────────────────────────────────────
@@ -85,6 +94,22 @@ return view('admin.leads.index', compact('leads'));
         $lead = LeadGeneration::findOrFail($id);
         $lead->update(['is_active' => '0']);
         return back()->with('success', 'Lead removed.');
+    }
+
+    // ── Assign Admin ─────────────────────────────────────────────
+    public function assignAdmin(Request $request, $leadId)
+    {
+        if (!Auth::user()->isSuperAdmin()) {
+            return back()->with('error', 'Only Super Admin can assign.');
+        }
+
+        $lead = LeadGeneration::findOrFail($leadId);
+        $lead->assigned_admin_id = $request->admin_id
+            ? new \MongoDB\BSON\ObjectId($request->admin_id)
+            : null;
+        $lead->save();
+
+        return back()->with('success', 'Assigned successfully.');
     }
 
     // ══════════════════════════════════════════════════════════════

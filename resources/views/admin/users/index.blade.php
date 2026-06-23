@@ -443,6 +443,7 @@
                 <th>Name</th>
                 <th>Email</th>
                 <th class="center">User Type</th>
+                <th class="center">Assigned Admin</th>
                 <th class="center" style="width:160px;">Action</th>
             </tr>
         </thead>
@@ -470,6 +471,23 @@
                         <span class="badge-verified">Company Verified</span>
                     @else
                         <span class="badge-not-verified">Company Not Verified</span>
+                    @endif
+                </td>
+                <td class="center">
+                    @if(Auth::user()->isSuperAdmin())
+                        <form action="{{ route('admin.users.assign-admin', $user->id) }}" method="POST" style="display:inline;">
+                            @csrf
+                            <select name="admin_id" class="filter-select" onchange="this.form.submit()" style="min-width:140px;">
+                                <option value="">-- Not Assigned --</option>
+                                @foreach($admins as $admin)
+                                    <option value="{{ $admin->_id }}" {{ (string)$user->assigned_admin_id === (string)$admin->_id ? 'selected' : '' }}>
+                                        {{ $admin->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </form>
+                    @else
+                        {{ $user->assignedAdmin?->name ?? 'Not Assigned' }}
                     @endif
                 </td>
                 <td>
@@ -504,7 +522,7 @@
             </tr>
             @empty
             <tr>
-                <td colspan="5">
+                <td colspan="6">
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>

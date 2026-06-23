@@ -14,9 +14,12 @@ use App\Models\Commission;
 use App\Services\TranslationService;
 use App\Models\ProductListingImage;
 use App\Models\Incoterm;
+use App\Traits\FiltersAssignedUsers;
 
 class ProductListingController extends Controller
 {
+    use FiltersAssignedUsers;
+
     public function __construct(protected TranslationService $translator) {}
     // ── Index (My Listings page) ────────────────────────────────────
 
@@ -27,6 +30,9 @@ class ProductListingController extends Controller
         //$query = ProductListing::where('user_id', new \MongoDB\BSON\ObjectId(Auth::id()));
 
         $query = ProductListing::query();
+
+        // Filter by assigned users
+        $this->filterByAssignedUsers($query, 'user_id');
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -77,33 +83,33 @@ class ProductListingController extends Controller
 
         $productIds   = $listings->pluck('product_id')->filter()->unique()
                     ->map(fn($id) => (string)$id)->values();
-$warehouseIds = $listings->pluck('warehouse_id')->filter()->unique()
-                    ->map(fn($id) => (string)$id)->values();
+        $warehouseIds = $listings->pluck('warehouse_id')->filter()->unique()
+                            ->map(fn($id) => (string)$id)->values();
 
-$productsMap   = Product::whereIn('_id', $productIds)->get()
-                    ->keyBy(fn($p) => (string)$p->_id);
+        $productsMap   = Product::whereIn('_id', $productIds)->get()
+                            ->keyBy(fn($p) => (string)$p->_id);
 
-$warehousesMap = Warehouse::whereIn('_id', $warehouseIds)->get()
-                    ->keyBy(fn($w) => (string)$w->_id);
+        $warehousesMap = Warehouse::whereIn('_id', $warehouseIds)->get()
+                            ->keyBy(fn($w) => (string)$w->_id);
 
-$userIds  = $listings->pluck('user_id')->filter()->unique()
-                ->map(fn($id) => (string)$id)->values();
-$usersMap = \App\Models\User::whereIn('_id', $userIds)->get()
-                ->keyBy(fn($u) => (string)$u->_id);
+        $userIds  = $listings->pluck('user_id')->filter()->unique()
+                        ->map(fn($id) => (string)$id)->values();
+        $usersMap = \App\Models\User::whereIn('_id', $userIds)->get()
+                        ->keyBy(fn($u) => (string)$u->_id);
 
-$listingIds = $listings->pluck('_id')
-    ->map(fn($id) => new \MongoDB\BSON\ObjectId((string)$id))
-    ->toArray();
+        $listingIds = $listings->pluck('_id')
+            ->map(fn($id) => new \MongoDB\BSON\ObjectId((string)$id))
+            ->toArray();
 
-$imagesMap = ProductListingImage::whereIn('product_listing_id', $listingIds)
-    ->orderBy('sort_order')
-    ->get()
-    ->groupBy(fn($img) => (string)$img->product_listing_id);
+        $imagesMap = ProductListingImage::whereIn('product_listing_id', $listingIds)
+            ->orderBy('sort_order')
+            ->get()
+            ->groupBy(fn($img) => (string)$img->product_listing_id);
 
-return view('admin.product_listing.index', compact(
-    'listings', 'unpaidCount', 'statusFilter', 'paymentFilter','warehouses', 'warehouseFilter', 'filter',
-    'productsMap', 'warehousesMap', 'usersMap', 'imagesMap',
-));
+        return view('admin.product_listing.index', compact(
+            'listings', 'unpaidCount', 'statusFilter', 'paymentFilter','warehouses', 'warehouseFilter', 'filter',
+            'productsMap', 'warehousesMap', 'usersMap', 'imagesMap',
+        ));
     }
 
     // ── Create ──────────────────────────────────────────────────────

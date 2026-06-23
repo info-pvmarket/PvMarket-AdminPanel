@@ -214,6 +214,7 @@
                 <th>Lead Data</th>
                 <th>Lead From</th>
                 <th onclick="sortTable(7)">Status ⇅</th>
+                <th>Assigned Admin</th>
                 <th>Action</th>
             </tr>
         </thead>
@@ -283,6 +284,25 @@
                     </span>
                 </td>
 
+                {{-- Assigned Admin --}}
+                <td>
+                    @if(Auth::user()->isSuperAdmin())
+                        <form action="{{ route('admin.leads.assign-admin', $lead->id) }}" method="POST" style="display:inline;">
+                            @csrf
+                            <select name="admin_id" class="show-select" onchange="this.form.submit()" style="min-width:120px;">
+                                <option value="">-- Not Assigned --</option>
+                                @foreach($admins as $admin)
+                                    <option value="{{ $admin->_id }}" {{ (string)$lead->assigned_admin_id === (string)$admin->_id ? 'selected' : '' }}>
+                                        {{ $admin->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </form>
+                    @else
+                        {{ $lead->assignedAdmin?->name ?? 'Not Assigned' }}
+                    @endif
+                </td>
+
                 {{-- Action --}}
                 <td>
                     <a href="{{ route('admin.leads.edit', $lead->id) }}" class="btn-action btn-edit" title="Edit">
@@ -293,7 +313,7 @@
             </tr>
             @empty
             <tr>
-                <td colspan="9">
+                <td colspan="10">
                     <div class="empty-state">
                         <div class="empty-state-icon">📋</div>
                         <div class="empty-state-text">No leads found.</div>

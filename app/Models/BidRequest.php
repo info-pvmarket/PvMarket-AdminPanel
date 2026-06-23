@@ -34,21 +34,23 @@ class BidRequest extends Model
         'status',
         'is_active',
         'completed_at',
+        'assigned_admin_id',
     ];
 
     protected $casts = [
-        'product_id'       => AsObjectId::class,
-        'company_id'       => AsObjectId::class,
-        'offer_id'         => AsObjectId::class,
-        'order_id'         => AsObjectId::class,
-        'country_id'       => AsObjectId::class,
-        'created_by'       => AsObjectId::class,
-        'updated_by'       => AsObjectId::class,
-        'selected_pcs_qty' => 'integer',
-        'sell_type'        => 'integer',
-        'lead_time'        => 'integer',
-        'status'           => 'integer',
-        'is_active'        => 'integer',
+        'product_id'        => AsObjectId::class,
+        'company_id'        => AsObjectId::class,
+        'offer_id'          => AsObjectId::class,
+        'order_id'          => AsObjectId::class,
+        'country_id'        => AsObjectId::class,
+        'created_by'        => AsObjectId::class,
+        'updated_by'        => AsObjectId::class,
+        'assigned_admin_id' => AsObjectId::class,
+        'selected_pcs_qty'  => 'integer',
+        'sell_type'         => 'integer',
+        'lead_time'         => 'integer',
+        'status'            => 'integer',
+        'is_active'         => 'integer',
     ];
     public array $translatable = [
         'product_name',
@@ -99,5 +101,10 @@ class BidRequest extends Model
     public function product()
     {
         return $this->belongsTo(Product::class, 'product_id');
+    }
+
+    public function assignedAdmin()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'assigned_admin_id', '_id');
     }
 }

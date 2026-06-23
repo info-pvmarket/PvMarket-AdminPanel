@@ -8,14 +8,20 @@ use App\Models\Country;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Services\TranslationService;
+use App\Traits\FiltersAssignedUsers;
 
 class WarehouseController extends Controller
 {
+    use FiltersAssignedUsers;
+
     public function __construct(protected TranslationService $translator) {}
     // ── Index ─────────────────────────────────────────
     public function index(Request $request)
     {
         $query = Warehouse::query();
+
+        // Filter by assigned users
+        $this->filterByAssignedUsers($query, 'user_id');
 
         if ($request->filled('search')) {
             $query->where('name', 'like', '%' . $request->search . '%');

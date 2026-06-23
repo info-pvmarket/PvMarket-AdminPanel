@@ -12,7 +12,14 @@ class SubAdminController extends Controller
 {
     public function index(Request $request)
     {
-        $query = User::whereNotNull('role_id');
+        // Get all role IDs from the roles collection
+        $roleIds = \App\Models\Role::whereIn('slug', ['super-admin', 'admin'])->pluck('id');
+
+        // Convert to ObjectId for proper MongoDB comparison
+        $roleObjectIds = $roleIds->map(fn($id) => new \MongoDB\BSON\ObjectId((string) $id))->toArray();
+
+        // Show only admin users (users whose role_id is in the roles collection)
+        $query = User::whereIn('role_id', $roleObjectIds);
 
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
@@ -23,38 +30,39 @@ class SubAdminController extends Controller
 
         $subAdmins = $query->with('role')->orderBy('created_at', 'desc')
                    ->paginate($request->get('entries', 10));
+
         return view('admin.setup.sub-admins.sub-admins', [
-    'mode'      => 'index',
-    'subAdmins' => $subAdmins,
-    'roles'     => \App\Models\Role::orderBy('role')->get(),
-]);
+            'mode'      => 'index',
+            'subAdmins' => $subAdmins,
+            'roles'     => \App\Models\Role::orderBy('role')->get(),
+        ]);
     }
 
     public function create()
     {
         return view('admin.setup.sub-admins.sub-admins', [
-    'mode'   => 'create',
-    'record' => null,
-    'roles'  => \App\Models\Role::orderBy('role')->get(),
-]);
+            'mode'   => 'create',
+            'record' => null,
+            'roles'  => \App\Models\Role::where('slug', '!=', 'super-admin')->orderBy('role')->get(),
+        ]);
     }
 
     public function store(Request $request)
     {
         $request->validate([
-    'name'     => 'required|string|max:255',
-    'email'    => 'required|email|unique:mongodb.users,email',
-    'password' => 'required|string|min:8',
-    'role_id'  => 'required|string',
-]);
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|email|unique:mongodb.users,email',
+            'password' => 'required|string|min:8',
+            'role_id'  => 'required|string',
+        ]);
 
-User::create([
-    'name'      => $request->name,
-    'email'     => $request->email,
-    'password'  => Hash::make($request->password),
-    'role_id'   => new \MongoDB\BSON\ObjectId($request->role_id),
-    'is_active' => true,
-]);
+        User::create([
+            'name'      => $request->name,
+            'email'     => $request->email,
+            'password'  => Hash::make($request->password),
+            'role_id'   => new \MongoDB\BSON\ObjectId($request->role_id),
+            'is_active' => true,
+        ]);
 
         return redirect()->route('admin.setup.sub-admins.index')
                          ->with('success', 'Sub Admin created successfully.');
@@ -65,28 +73,28 @@ User::create([
         $record = User::findOrFail($id);
 
         return view('admin.setup.sub-admins.sub-admins', [
-    'mode'   => 'edit',
-    'record' => $record->load('role'),
-    'roles'  => \App\Models\Role::orderBy('role')->get(),
-]);
+            'mode'   => 'edit',
+            'record' => $record->load('role'),
+            'roles'  => \App\Models\Role::where('slug', '!=', 'super-admin')->orderBy('role')->get(),
+        ]);
     }
 
     public function update(Request $request, $id)
     {
-        $record = User::where('role', 'sub_admin')->findOrFail($id);
+        $record = User::findOrFail($id);
 
         $request->validate([
-    'name'     => 'required|string|max:255',
-    'email'    => 'required|email|unique:mongodb.users,email,' . $id . ',_id',
-    'password' => 'nullable|string|min:8',
-    'role_id'  => 'required|string',
-]);
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|email|unique:mongodb.users,email,' . $id . ',_id',
+            'password' => 'nullable|string|min:8',
+            'role_id'  => 'required|string',
+        ]);
 
-$data = [
-    'name'    => $request->name,
-    'email'   => $request->email,
-    'role_id' => new \MongoDB\BSON\ObjectId($request->role_id),
-];
+        $data = [
+            'name'    => $request->name,
+            'email'   => $request->email,
+            'role_id' => new \MongoDB\BSON\ObjectId($request->role_id),
+        ];
 
         if ($request->filled('password')) {
             $data['password'] = Hash::make($request->password);
@@ -95,7 +103,7 @@ $data = [
         $record->update($data);
 
         return redirect()->route('admin.setup.sub-admins.index')
-                         ->with('success', 'Sub Admin updated successfully.');
+                         ->with('success', 'Admin updated successfully.');
     }
 
     public function destroy($id)
@@ -106,17 +114,24 @@ $data = [
                          ->with('success', 'Sub Admin deleted.');
     }
     public function export(Request $request)
-{
-    $query = User::where('role', 'sub_admin');
+    {
+        // Get all role IDs from the roles collection
+        $roleIds = \App\Models\Role::whereIn('slug', ['super-admin', 'admin'])->pluck('id');
 
-    if ($request->filled('search')) {
-        $query->where(function ($q) use ($request) {
-            $q->where('name', 'like', '%' . $request->search . '%')
-              ->orWhere('email', 'like', '%' . $request->search . '%');
-        });
-    }
+        // Convert to ObjectId for proper MongoDB comparison
+        $roleObjectIds = $roleIds->map(fn($id) => new \MongoDB\BSON\ObjectId((string) $id))->toArray();
 
-    $subAdmins = $query->orderBy('created_at', 'desc')->get();
+        // Show only admin users (users whose role_id is in the roles collection)
+        $query = User::whereIn('role_id', $roleObjectIds);
+
+        if ($request->filled('search')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('name', 'like', '%' . $request->search . '%')
+                  ->orWhere('email', 'like', '%' . $request->search . '%');
+            });
+        }
+
+        $subAdmins = $query->orderBy('created_at', 'desc')->get();
 
     $filename = 'sub_admins_' . now()->format('Y_m_d_His') . '.csv';
 

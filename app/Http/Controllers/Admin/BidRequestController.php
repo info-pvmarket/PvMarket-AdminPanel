@@ -6,13 +6,20 @@ use App\Http\Controllers\Controller;
 use App\Models\BidRequest;
 use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use App\Traits\FiltersAssignedUsers;
 
 class BidRequestController extends Controller
 {
+    use FiltersAssignedUsers;
+
     // ── Index — list all bid/fair requests ────────────────────────
     public function index(Request $request)
     {
         $query = BidRequest::where('is_active', 1);
+
+        // Filter by assigned admin
+        $this->filterByAssignedAdmin($query);
 
         // Search by product name or request id
         if ($request->filled('search')) {
@@ -57,7 +64,9 @@ $bids = $query->orderBy('created_at', 'desc')->paginate($perPage)->withQueryStri
     ];
 })->values();
 
-return view('admin.bids.index', compact('bids', 'bidsJson'));
+$admins = $this->getAdminsForAssignment();
+
+        return view('admin.bids.index', compact('bids', 'bidsJson', 'admins'));
     }
 
     // ── Show single bid detail ────────────────────────────────────
@@ -90,5 +99,21 @@ return view('admin.bids.index', compact('bids', 'bidsJson'));
         $bid = BidRequest::findOrFail($id);
         $bid->update(['is_active' => 0]);
         return response()->json(['success' => true]);
+    }
+
+    // ── Assign Admin ─────────────────────────────────────────────
+    public function assignAdmin(Request $request, $bidId)
+    {
+        if (!Auth::user()->isSuperAdmin()) {
+            return back()->with('error', 'Only Super Admin can assign.');
+        }
+
+        $bid = BidRequest::findOrFail($bidId);
+        $bid->assigned_admin_id = $request->admin_id
+            ? new \MongoDB\BSON\ObjectId($request->admin_id)
+            : null;
+        $bid->save();
+
+        return back()->with('success', 'Assigned successfully.');
     }
 }
