@@ -38,6 +38,7 @@ use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\LocationController;
 use App\Http\Controllers\Admin\RfqRequestController;
 use App\Http\Controllers\Admin\MarketController;
+use App\Http\Controllers\Admin\NotificationController;
 
 // ── Redirect root to login ──────────────────────────────────────────────
 Route::get('/', function () {
@@ -57,6 +58,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/dashboard', function () {
         return view('admin.dashboard');
     })->name('admin.dashboard');
+
+    // Notifications (accessible to all authenticated admin users)
+    Route::prefix('admin/notifications')->name('admin.notifications.')->group(function () {
+        Route::get('/', [NotificationController::class, 'index'])->name('index');
+        Route::get('/unread-count', [NotificationController::class, 'unreadCount'])->name('unread-count');
+        Route::post('/{id}/read', [NotificationController::class, 'markAsRead'])->name('mark-read');
+        Route::post('/read-all', [NotificationController::class, 'markAllAsRead'])->name('read-all');
+        Route::delete('/{id}', [NotificationController::class, 'destroy'])->name('destroy');
+    });
 
     // Profile (accessible to all authenticated users)
     Route::get('/admin/profile', [ProfileController::class, 'show'])->name('admin.profile');
