@@ -16,10 +16,16 @@ class BidRequestController extends Controller
     // ── Index — list all bid/fair requests ────────────────────────
     public function index(Request $request)
     {
-        $query = BidRequest::where('is_active', 1);
+        // Show records where is_active is 1 or doesn't exist (not explicitly set to 0)
+        $query = BidRequest::where(function ($q) {
+            $q->where('is_active', 1)
+              ->orWhereNull('is_active');
+        });
 
-        // Filter by assigned admin
-        $this->filterByAssignedAdmin($query);
+        // Filter by assigned admin (Super Admin sees all, regular admin sees only assigned)
+        if (!Auth::user()->isSuperAdmin()) {
+            $query->where('assigned_admin_id', new \MongoDB\BSON\ObjectId(Auth::id()));
+        }
 
         // Search by product name or request id
         if ($request->filled('search')) {
