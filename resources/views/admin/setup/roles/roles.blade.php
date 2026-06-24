@@ -277,6 +277,36 @@ document.getElementById('createForm').addEventListener('submit', function (e) {
     .btn-save:hover { background:#059669; }
     .btn-back { display:inline-flex; align-items:center; gap:7px; padding:9px 18px; background:var(--text); color:white; border-radius:8px; font-size:13.5px; font-weight:600; text-decoration:none; transition:background .15s; white-space:nowrap; border:1.5px solid var(--text); }
     .alert-error { padding:12px 16px; background:#FEE2E2; color:#991B1B; border:1px solid #FECACA; border-radius:8px; font-size:13.5px; margin-bottom:20px; }
+
+    /* Toggle Switch */
+    .toggle-switch { position:relative; display:inline-block; width:50px; height:26px; }
+    .toggle-switch input { opacity:0; width:0; height:0; }
+    .toggle-slider { position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background:#CBD5E1; transition:.3s; border-radius:26px; }
+    .toggle-slider:before { position:absolute; content:""; height:20px; width:20px; left:3px; bottom:3px; background:white; transition:.3s; border-radius:50%; box-shadow:0 2px 4px rgba(0,0,0,.15); }
+    .toggle-switch input:checked + .toggle-slider { background:var(--primary); }
+    .toggle-switch input:checked + .toggle-slider:before { transform:translateX(24px); }
+
+    /* Permissions Container */
+    .permissions-container { display:flex; flex-direction:column; gap:16px; }
+
+    .permission-group { background:#F8FAFC; border-radius:10px; border:1px solid var(--border); overflow:hidden; }
+    .permission-group-header { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; background:#E2E8F0; border-bottom:1px solid var(--border); }
+    .group-title { font-size:13px; font-weight:700; color:var(--text); text-transform:uppercase; letter-spacing:0.5px; }
+    .btn-group-toggle { padding:4px 10px; font-size:11px; font-weight:600; border-radius:4px; cursor:pointer; background:white; color:var(--primary); border:1px solid var(--primary); transition:all .15s; }
+    .btn-group-toggle:hover { background:var(--primary); color:white; }
+
+    .permission-group-items { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:10px; padding:14px; }
+    .permission-item { display:flex; align-items:center; gap:10px; padding:10px 14px; background:white; border-radius:8px; border:1px solid #E2E8F0; transition:all .15s; cursor:pointer; }
+    .permission-item:hover { border-color:var(--primary); background:#F0F9FF; }
+    .permission-item input[type="checkbox"] { width:18px; height:18px; accent-color:var(--primary); cursor:pointer; flex-shrink:0; }
+    .permission-item label { font-size:13px; font-weight:500; color:var(--text); cursor:pointer; line-height:1.3; }
+    .permission-item:has(input:checked) { border-color:var(--primary); background:#EFF6FF; }
+
+    .btn-select-all, .btn-select-none { padding:6px 14px; font-size:12px; font-weight:600; border-radius:6px; cursor:pointer; transition:all .15s; margin-right:8px; }
+    .btn-select-all { background:#10B981; color:white; border:none; }
+    .btn-select-all:hover { background:#059669; }
+    .btn-select-none { background:white; color:var(--text); border:1px solid var(--border); }
+    .btn-select-none:hover { background:#F1F5F9; }
 </style>
 @endsection
 
@@ -356,6 +386,55 @@ document.getElementById('createForm').addEventListener('submit', function (e) {
             </div>
         </div>
 
+        {{-- Can Access Admin Toggle --}}
+        <div class="form-group" style="margin-bottom:20px;">
+            <label class="form-label">Admin Panel Access</label>
+            <div style="display:flex; align-items:center; gap:12px; margin-top:8px;">
+                <label class="toggle-switch">
+                    <input type="checkbox" name="can_access_admin" id="can_access_admin" value="1"
+                           {{ old('can_access_admin', $record->can_access_admin ?? false) ? 'checked' : '' }}
+                           onchange="toggleAdminPermissions()"/>
+                    <span class="toggle-slider"></span>
+                </label>
+                <span style="font-size:14px; font-weight:500; color:var(--text);">Can Access Admin Panel</span>
+            </div>
+        </div>
+
+        {{-- Admin Permissions (shown when can_access_admin is true) --}}
+        <div class="form-group" id="admin-permissions-group" style="margin-bottom:20px; display:{{ old('can_access_admin', $record->can_access_admin ?? false) ? 'block' : 'none' }};">
+            <label class="form-label">Admin Permissions</label>
+            <p style="font-size:12px; color:var(--muted); margin-bottom:12px;">Select which sections this role can access in the admin panel.</p>
+
+            <div style="margin-bottom:12px;">
+                <button type="button" class="btn-select-all" onclick="selectAllPermissions()">Select All</button>
+                <button type="button" class="btn-select-none" onclick="deselectAllPermissions()">Deselect All</button>
+            </div>
+
+            @php
+                $currentPermissions = old('admin_permissions', $record->admin_permissions ?? []);
+            @endphp
+
+            <div class="permissions-container">
+                @foreach($groupedPermissions as $groupName => $permissions)
+                <div class="permission-group">
+                    <div class="permission-group-header">
+                        <span class="group-title">{{ $groupName }}</span>
+                        <button type="button" class="btn-group-toggle" onclick="toggleGroup(this, '{{ Str::slug($groupName) }}')">Select All</button>
+                    </div>
+                    <div class="permission-group-items" data-group="{{ Str::slug($groupName) }}">
+                        @foreach($permissions as $key => $label)
+                        <div class="permission-item">
+                            <input type="checkbox" name="admin_permissions[]" value="{{ $key }}" id="perm_{{ Str::slug($key) }}"
+                                   {{ in_array($key, $currentPermissions) ? 'checked' : '' }}/>
+                            <label for="perm_{{ Str::slug($key) }}">{{ $label }}</label>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+
         <div style="display:flex; justify-content:flex-end; padding-top:20px; border-top:1px solid var(--border);">
             <button type="submit" class="btn-save">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -371,27 +450,76 @@ document.getElementById('createForm').addEventListener('submit', function (e) {
 
 @endsection
 
-@push('scripts')
+@section('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const roleInput = document.getElementById('edit_role_name');
-    const slugInput = document.getElementById('edit_slug');
-    let userEdited  = slugInput.value !== '';   // pre-filled on edit — treat as manual
+// Global functions for admin permissions
+window.toggleAdminPermissions = function() {
+    var checkbox = document.getElementById('can_access_admin');
+    var permissionsGroup = document.getElementById('admin-permissions-group');
+    if (permissionsGroup) {
+        permissionsGroup.style.display = checkbox.checked ? 'block' : 'none';
+    }
+};
 
-    roleInput && roleInput.addEventListener('input', function () {
-        if (!userEdited) {
-            slugInput.value = this.value.toLowerCase().trim()
-                .replace(/[^a-z0-9\s-]/g, '')
-                .replace(/\s+/g, '-');
+window.selectAllPermissions = function() {
+    var container = document.getElementById('admin-permissions-group');
+    if (!container) return;
+    var checkboxes = container.querySelectorAll('.permission-item input[type="checkbox"]');
+    for (var i = 0; i < checkboxes.length; i++) {
+        checkboxes[i].checked = true;
+    }
+};
+
+window.deselectAllPermissions = function() {
+    var container = document.getElementById('admin-permissions-group');
+    if (!container) return;
+    var checkboxes = container.querySelectorAll('.permission-item input[type="checkbox"]');
+    for (var i = 0; i < checkboxes.length; i++) {
+        checkboxes[i].checked = false;
+    }
+};
+
+window.toggleGroup = function(btn, groupSlug) {
+    var container = document.querySelector('[data-group="' + groupSlug + '"]');
+    if (!container) return;
+    var checkboxes = container.querySelectorAll('input[type="checkbox"]');
+    var allChecked = true;
+    for (var i = 0; i < checkboxes.length; i++) {
+        if (!checkboxes[i].checked) {
+            allChecked = false;
+            break;
         }
-    });
+    }
+    for (var j = 0; j < checkboxes.length; j++) {
+        checkboxes[j].checked = !allChecked;
+    }
+    btn.textContent = allChecked ? 'Select All' : 'Deselect All';
+};
 
-    slugInput && slugInput.addEventListener('input', function () {
-        userEdited = true;
-    });
+// Slug auto-generation
+document.addEventListener('DOMContentLoaded', function () {
+    var roleInput = document.getElementById('edit_role_name');
+    var slugInput = document.getElementById('edit_slug');
+    var userEdited = slugInput && slugInput.value !== '';
+
+    if (roleInput) {
+        roleInput.addEventListener('input', function () {
+            if (!userEdited && slugInput) {
+                slugInput.value = this.value.toLowerCase().trim()
+                    .replace(/[^a-z0-9\s-]/g, '')
+                    .replace(/\s+/g, '-');
+            }
+        });
+    }
+
+    if (slugInput) {
+        slugInput.addEventListener('input', function () {
+            userEdited = true;
+        });
+    }
 });
 </script>
-@endpush
+@endsection
 
 
 @else
@@ -503,6 +631,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 <th>Slug</th>
                 <th>Guard Name</th>
                 <th>Access Types</th>
+                <th>Admin Access</th>
                 <th class="center" style="width:130px;">Action</th>
             </tr>
         </thead>
@@ -565,6 +694,30 @@ document.addEventListener('DOMContentLoaded', function () {
                     @endif
                 </td>
                 <td>
+                    @if($role->can_access_admin)
+                        <span style="
+                            display:inline-flex; align-items:center; gap:4px;
+                            padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700;
+                            background:#D1FAE5; color:#065F46; border:1px solid #A7F3D0;
+                        ">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            Yes
+                        </span>
+                        @php $permCount = count($role->admin_permissions ?? []); @endphp
+                        @if($permCount > 0)
+                            <span style="display:block; font-size:10px; color:#64748B; margin-top:4px;">{{ $permCount }} permission(s)</span>
+                        @endif
+                    @else
+                        <span style="
+                            display:inline-flex; align-items:center;
+                            padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700;
+                            background:#FEE2E2; color:#991B1B; border:1px solid #FECACA;
+                        ">No</span>
+                    @endif
+                </td>
+                <td>
                     <div class="action-btns">
                         <a href="{{ route('admin.setup.roles.edit', $role->id) }}"
                            class="action-icon edit" title="Edit">
@@ -591,7 +744,7 @@ document.addEventListener('DOMContentLoaded', function () {
             </tr>
             @empty
             <tr>
-                <td colspan="6">
+                <td colspan="7">
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                             <circle cx="12" cy="8" r="4"/>

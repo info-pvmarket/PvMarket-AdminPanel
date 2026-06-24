@@ -82,4 +82,45 @@ public array $translatable = [
         $users = User::where('assigned_admin_id', new \MongoDB\BSON\ObjectId((string) $this->_id))->get(['_id']);
         return $users->map(fn($user) => (string) $user->_id)->filter(fn($id) => !empty($id))->toArray();
     }
+
+    /**
+     * Check if user can access admin panel
+     */
+    public function canAccessAdmin(): bool
+    {
+        $role = $this->role;
+        if (!$role) {
+            return false;
+        }
+
+        // Super admin always has access
+        if ($role->slug === 'super-admin') {
+            return true;
+        }
+
+        return $role->can_access_admin ?? false;
+    }
+
+    /**
+     * Check if user has a specific admin permission
+     */
+    public function hasAdminPermission(string $permission): bool
+    {
+        $role = $this->role;
+        if (!$role) {
+            return false;
+        }
+
+        // Super admin has all permissions
+        if ($role->slug === 'super-admin') {
+            return true;
+        }
+
+        if (!$role->can_access_admin) {
+            return false;
+        }
+
+        $permissions = $role->admin_permissions ?? [];
+        return in_array($permission, $permissions);
+    }
 }

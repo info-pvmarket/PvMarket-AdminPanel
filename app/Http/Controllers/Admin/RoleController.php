@@ -35,6 +35,8 @@ class RoleController extends Controller
     {
         return view('admin.setup.roles.roles', [
             'mode' => 'create',
+            'adminPermissions' => Role::getAdminPermissions(),
+            'groupedPermissions' => Role::getGroupedAdminPermissions(),
         ]);
     }
 
@@ -44,20 +46,25 @@ class RoleController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'roles'                 => ['required', 'array', 'min:1'],
-            'roles.*.role'          => ['required', 'string', 'max:100'],
-            'roles.*.slug'          => ['required', 'string', 'max:100'],
-            'roles.*.guard_name'    => ['required', 'string', 'in:web,api,admin'],
-            'roles.*.access_types'  => ['nullable', 'array'],
-            'roles.*.access_types.*'=> ['string', 'in:buyer,seller,projects'],
+            'roles'                      => ['required', 'array', 'min:1'],
+            'roles.*.role'               => ['required', 'string', 'max:100'],
+            'roles.*.slug'               => ['required', 'string', 'max:100'],
+            'roles.*.guard_name'         => ['required', 'string', 'in:web,api,admin'],
+            'roles.*.access_types'       => ['nullable', 'array'],
+            'roles.*.access_types.*'     => ['string', 'in:buyer,seller,projects'],
+            'roles.*.can_access_admin'   => ['nullable', 'boolean'],
+            'roles.*.admin_permissions'  => ['nullable', 'array'],
+            'roles.*.admin_permissions.*'=> ['string'],
         ]);
 
         foreach ($request->input('roles') as $row) {
             Role::create([
-                'role'         => trim($row['role']),
-                'slug'         => Str::slug($row['slug']),
-                'guard_name'   => $row['guard_name'],
-                'access_types' => $row['access_types'] ?? [],
+                'role'              => trim($row['role']),
+                'slug'              => Str::slug($row['slug']),
+                'guard_name'        => $row['guard_name'],
+                'access_types'      => $row['access_types'] ?? [],
+                'can_access_admin'  => !empty($row['can_access_admin']),
+                'admin_permissions' => $row['admin_permissions'] ?? [],
             ]);
         }
 
@@ -76,6 +83,8 @@ class RoleController extends Controller
         return view('admin.setup.roles.roles', [
             'mode'   => 'edit',
             'record' => $record,
+            'adminPermissions' => Role::getAdminPermissions(),
+            'groupedPermissions' => Role::getGroupedAdminPermissions(),
         ]);
     }
 
@@ -87,18 +96,23 @@ class RoleController extends Controller
         $record = Role::findOrFail($id);
 
         $request->validate([
-            'role'          => ['required', 'string', 'max:100'],
-            'slug'          => ['required', 'string', 'max:100'],
-            'guard_name'    => ['required', 'string', 'in:web,api,admin'],
-            'access_types'  => ['nullable', 'array'],
-            'access_types.*'=> ['string', 'in:buyer,seller,projects'],
+            'role'               => ['required', 'string', 'max:100'],
+            'slug'               => ['required', 'string', 'max:100'],
+            'guard_name'         => ['required', 'string', 'in:web,api,admin'],
+            'access_types'       => ['nullable', 'array'],
+            'access_types.*'     => ['string', 'in:buyer,seller,projects'],
+            'can_access_admin'   => ['nullable', 'boolean'],
+            'admin_permissions'  => ['nullable', 'array'],
+            'admin_permissions.*'=> ['string'],
         ]);
 
         $record->update([
-            'role'         => trim($request->role),
-            'slug'         => Str::slug($request->slug),
-            'guard_name'   => $request->guard_name,
-            'access_types' => $request->access_types ?? [],
+            'role'              => trim($request->role),
+            'slug'              => Str::slug($request->slug),
+            'guard_name'        => $request->guard_name,
+            'access_types'      => $request->access_types ?? [],
+            'can_access_admin'  => $request->boolean('can_access_admin'),
+            'admin_permissions' => $request->admin_permissions ?? [],
         ]);
 
         return redirect()
