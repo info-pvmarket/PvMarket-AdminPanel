@@ -239,10 +239,12 @@
         min-width: 90px;
     }
 
+    .status-scheduled { background: #0EA5E9; color: white; }
     .status-accepted  { background: #10B981; color: white; }
     .status-pending   { background: #F59E0B; color: white; }
     .status-rejected  { background: #EF4444; color: white; }
-    .status-completed { background: #3B82F6; color: white; }
+    .status-cancelled { background: #6B7280; color: white; }
+    .status-completed { background: #10B981; color: white; }
 
     /* Action icons */
     .action-btns { display: flex; align-items: center; justify-content: center; gap: 8px; }
@@ -303,6 +305,24 @@
     <a href="{{ route('admin.dashboard') }}" class="btn-back">← Back</a>
 </div>
 
+@if(session('success'))
+    <div style="padding:12px 16px; background:#D1FAE5; color:#065F46; border:1px solid #A7F3D0; border-radius:8px; font-size:13.5px; font-weight:500; margin-bottom:20px; display:flex; align-items:center; gap:8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+        {{ session('success') }}
+    </div>
+@endif
+
+@if(session('error'))
+    <div style="padding:12px 16px; background:#FEE2E2; color:#991B1B; border:1px solid #FECACA; border-radius:8px; font-size:13.5px; font-weight:500; margin-bottom:20px; display:flex; align-items:center; gap:8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+        </svg>
+        {{ session('error') }}
+    </div>
+@endif
+
 {{-- Content Panel --}}
 <div class="content-panel">
 
@@ -332,25 +352,53 @@
                     type="text"
                     name="search"
                     value="{{ request('search') }}"
-                    placeholder="Search By Menu..."
+                    placeholder="Search by name, email, title..."
                     class="search-input"
                 />
             </div>
-        </form>
-
-        <form method="GET" action="{{ route('admin.schedules.index') }}" class="entries-group">
-            Show
-            <select name="entries" class="entries-select" onchange="this.form.submit()">
-                <option value="10"  {{ request('entries', 10) == 10  ? 'selected' : '' }}>10</option>
-                <option value="25"  {{ request('entries', 10) == 25  ? 'selected' : '' }}>25</option>
-                <option value="50"  {{ request('entries', 10) == 50  ? 'selected' : '' }}>50</option>
-                <option value="100" {{ request('entries', 10) == 100 ? 'selected' : '' }}>100</option>
-            </select>
-            entries
-            @if(request('search'))
-                <input type="hidden" name="search" value="{{ request('search') }}">
+            @if(request('status'))
+                <input type="hidden" name="status" value="{{ request('status') }}">
+            @endif
+            @if(request('entries'))
+                <input type="hidden" name="entries" value="{{ request('entries') }}">
             @endif
         </form>
+
+        <div style="display:flex; align-items:center; gap:12px;">
+            <form method="GET" action="{{ route('admin.schedules.index') }}" style="display:flex; align-items:center; gap:8px;">
+                <label style="font-size:13px; font-weight:600; color:var(--text);">Status:</label>
+                <select name="status" class="entries-select" onchange="this.form.submit()" style="min-width:120px;">
+                    <option value="">All Status</option>
+                    <option value="scheduled" {{ request('status') === 'scheduled' ? 'selected' : '' }}>Scheduled</option>
+                    <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>Completed</option>
+                    <option value="cancelled" {{ request('status') === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
+                    <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Pending</option>
+                </select>
+                @if(request('search'))
+                    <input type="hidden" name="search" value="{{ request('search') }}">
+                @endif
+                @if(request('entries'))
+                    <input type="hidden" name="entries" value="{{ request('entries') }}">
+                @endif
+            </form>
+
+            <form method="GET" action="{{ route('admin.schedules.index') }}" class="entries-group">
+                Show
+                <select name="entries" class="entries-select" onchange="this.form.submit()">
+                    <option value="10"  {{ request('entries', 10) == 10  ? 'selected' : '' }}>10</option>
+                    <option value="25"  {{ request('entries', 10) == 25  ? 'selected' : '' }}>25</option>
+                    <option value="50"  {{ request('entries', 10) == 50  ? 'selected' : '' }}>50</option>
+                    <option value="100" {{ request('entries', 10) == 100 ? 'selected' : '' }}>100</option>
+                </select>
+                entries
+                @if(request('search'))
+                    <input type="hidden" name="search" value="{{ request('search') }}">
+                @endif
+                @if(request('status'))
+                    <input type="hidden" name="status" value="{{ request('status') }}">
+                @endif
+            </form>
+        </div>
     </div>
 
     {{-- Table --}}
@@ -360,10 +408,12 @@
                 <th class="center" style="width:60px;">S.No</th>
                 <th>Requester</th>
                 <th>Requester Email</th>
+                <th>Mobile</th>
                 <th>Title</th>
-                <th>Date</th>
-                <th class="center">Time</th>
+                <th>Date & Time</th>
+                <th class="center">Duration</th>
                 <th class="center">Status</th>
+                <th class="center">Assigned Admin</th>
                 <th class="center" style="width:100px;">Action</th>
             </tr>
         </thead>
@@ -374,17 +424,23 @@
                     {{ $schedules->firstItem() + $index }}
                 </td>
                 <td>
-                    <div class="requester-name">{{ $schedule->requester ?? '—' }}</div>
+                    <div class="requester-name">{{ $schedule->requester_name ?? '—' }}</div>
                 </td>
                 <td>
                     <span class="requester-email">{{ $schedule->requester_email ?? '—' }}</span>
                 </td>
                 <td>
-                    <span class="schedule-title">{{ $schedule->title ?? '—' }}</span>
+                    <span style="font-size:13px; color:var(--text);">{{ $schedule->requester_mobile ?? '—' }}</span>
+                </td>
+                <td>
+                    <span class="schedule-title">{{ $schedule->event_title ?? '—' }}</span>
+                    @if($schedule->description)
+                        <div style="font-size:12px; color:var(--muted); margin-top:2px;">{{ Str::limit($schedule->description, 50) }}</div>
+                    @endif
                 </td>
                 <td>
                     <span class="schedule-date">
-                        {{ $schedule->date ? \Carbon\Carbon::parse($schedule->date)->format('F j, Y \a\t g:i A') : '—' }}
+                        {{ $schedule->event_date_time ? \Carbon\Carbon::parse($schedule->event_date_time)->format('F j, Y \a\t g:i A') : '—' }}
                     </span>
                 </td>
                 <td class="center">
@@ -398,14 +454,25 @@
                         {{ ucfirst($schedule->status ?? 'Pending') }}
                     </span>
                 </td>
+                <td class="center">
+                    @if(Auth::user()->isSuperAdmin())
+                        <form action="{{ route('admin.schedules.assign-admin', $schedule->_id) }}" method="POST" style="display:inline;">
+                            @csrf
+                            <select name="admin_id" class="entries-select" onchange="this.form.submit()" style="min-width:140px;">
+                                <option value="">-- Not Assigned --</option>
+                                @foreach($admins as $admin)
+                                    <option value="{{ $admin->_id }}" {{ (string)$schedule->assigned_admin_id === (string)$admin->_id ? 'selected' : '' }}>
+                                        {{ $admin->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </form>
+                    @else
+                        {{ $schedule->assignedAdmin?->name ?? 'Not Assigned' }}
+                    @endif
+                </td>
                 <td>
                     <div class="action-btns">
-                        <a href="#" class="action-icon edit" title="Edit">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                            </svg>
-                        </a>
                         <a href="#" class="action-icon delete" title="Delete">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="3 6 5 6 21 6"/>
@@ -418,7 +485,7 @@
             </tr>
             @empty
             <tr>
-                <td colspan="8">
+                <td colspan="10">
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                             <rect x="3" y="4" width="18" height="18" rx="2"/>

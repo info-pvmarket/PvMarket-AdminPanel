@@ -39,6 +39,7 @@ use App\Http\Controllers\Admin\LocationController;
 use App\Http\Controllers\Admin\RfqRequestController;
 use App\Http\Controllers\Admin\MarketController;
 use App\Http\Controllers\Admin\NotificationController;
+use App\Http\Controllers\Admin\SeoMetaController;
 
 // ── Redirect root to login ──────────────────────────────────────────────
 Route::get('/', function () {
@@ -385,6 +386,16 @@ Route::middleware('auth')->group(function () {
         Route::patch('/admin/users/{id}/toggle-verified', [UserController::class, 'toggleCompanyVerified'])->name('admin.users.toggle-verified');
         Route::get('users/export', [UserController::class, 'export'])->name('admin.users.export');
         Route::post('/admin/users/{userId}/assign-admin', [UserController::class, 'assignAdmin'])->name('admin.users.assign-admin');
+
+        // Document verification
+        Route::post('/admin/users/{userId}/documents/{docIndex}/verify', [UserController::class, 'verifyDocument'])->name('admin.users.verify-document');
+
+        // Listing management from user edit page
+        Route::patch('/admin/users/{userId}/listings/{listingId}/toggle', [UserController::class, 'toggleListingActive'])->name('admin.users.listing-toggle');
+        Route::post('/admin/users/{userId}/listings/{listingId}/approve-payment', [UserController::class, 'approveListingPayment'])->name('admin.users.listing-approve-payment');
+        Route::post('/admin/users/{userId}/listings/{listingId}/approve', [UserController::class, 'approveListing'])->name('admin.users.listing-approve');
+        Route::post('/admin/users/{userId}/listings/{listingId}/reject', [UserController::class, 'rejectListing'])->name('admin.users.listing-reject');
+
         Route::resource('users', UserController::class)->names('admin.users');
     });
 
@@ -393,6 +404,7 @@ Route::middleware('auth')->group(function () {
     // ══════════════════════════════════════════════════════════════════════
     Route::middleware('admin.permission:schedules')->group(function () {
         Route::get('/admin/schedules', [ScheduleController::class, 'index'])->name('admin.schedules.index');
+        Route::post('/admin/schedules/{scheduleId}/assign-admin', [ScheduleController::class, 'assignAdmin'])->name('admin.schedules.assign-admin');
     });
 
     // ══════════════════════════════════════════════════════════════════════
@@ -524,5 +536,21 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/subcategories/{mainCategoryId}', [ProductListingController::class, 'getSubCategories']);
     Route::get('/api/products/{subCategoryId}', [ProductListingController::class, 'getProducts']);
     Route::get('/api/warehouses', [ProductListingController::class, 'getWarehouses']);
+
+    // ══════════════════════════════════════════════════════════════════════
+    // SEO META MANAGEMENT
+    // ══════════════════════════════════════════════════════════════════════
+    Route::prefix('admin/seo-meta')->name('admin.seo-meta.')->middleware('admin.permission:settings.seo_meta')->group(function () {
+        Route::get('/', [SeoMetaController::class, 'index'])->name('index');
+        Route::get('/create', [SeoMetaController::class, 'create'])->name('create');
+        Route::post('/', [SeoMetaController::class, 'store'])->name('store');
+        Route::get('/{id}/edit', [SeoMetaController::class, 'edit'])->name('edit');
+        Route::put('/{id}', [SeoMetaController::class, 'update'])->name('update');
+        Route::delete('/{id}', [SeoMetaController::class, 'destroy'])->name('destroy');
+    });
+
+    // SEO Meta AJAX routes (no specific permission - used by create/edit forms)
+    Route::get('admin/seo-meta-sub-categories', [SeoMetaController::class, 'getSubCategories'])->name('admin.seo-meta.sub-categories');
+    Route::get('admin/seo-meta-brands', [SeoMetaController::class, 'getBrands'])->name('admin.seo-meta.brands');
 
 });

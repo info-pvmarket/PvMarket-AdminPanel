@@ -28,7 +28,8 @@
                 $user->hasAdminPermission('settings.coupons') ||
                 $user->hasAdminPermission('settings.incoterms') ||
                 $user->hasAdminPermission('settings.languages') ||
-                $user->hasAdminPermission('settings.markets');
+                $user->hasAdminPermission('settings.markets') ||
+                $user->hasAdminPermission('settings.seo_meta');
 
             $hasAnyKnowledgeHubPermission = $user->hasAdminPermission('knowledge_hub.news') ||
                 $user->hasAdminPermission('knowledge_hub.events') ||
@@ -149,6 +150,12 @@
             <a href="{{ route('admin.setup.markets.index') }}"
                class="nav-sub-item {{ request()->routeIs('admin.setup.markets.*') ? 'active' : '' }}">
                Markets
+            </a>
+            @endif
+            @if($user->hasAdminPermission('settings.seo_meta'))
+            <a href="{{ route('admin.seo-meta.index') }}"
+               class="nav-sub-item {{ request()->routeIs('admin.seo-meta.*') ? 'active' : '' }}">
+               SEO Meta
             </a>
             @endif
         </div>

@@ -55,6 +55,7 @@ class Role extends Model
             'settings.incoterms' => 'Settings → Incoterms',
             'settings.languages' => 'Settings → Languages',
             'settings.markets' => 'Settings → Markets',
+            'settings.seo_meta' => 'Settings → SEO Meta',
 
             // Static Pages
             'static_pages' => 'Static Pages',
@@ -114,6 +115,7 @@ class Role extends Model
                 'settings.incoterms' => 'Incoterms',
                 'settings.languages' => 'Languages',
                 'settings.markets' => 'Markets',
+                'settings.seo_meta' => 'SEO Meta',
             ],
             'Content' => [
                 'static_pages' => 'Static Pages',
