@@ -517,16 +517,12 @@
         background: white;
         border: 1px solid var(--border);
         border-radius: 12px;
-        padding: 14px 20px;
+        padding: 16px 20px;
         margin-bottom: 20px;
         display: flex;
-        align-items: center;
-        justify-content: space-between;
         flex-wrap: wrap;
-        gap: 16px;
+        gap: 20px;
     }
-    .filter-bar-left  { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .filter-bar-right { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
 
     .filter-group { display: flex; flex-direction: column; gap: 6px; }
 
@@ -559,6 +555,9 @@
         color: white;
         border-color: var(--primary);
     }
+    .filter-pill.active-green  { background: #16a34a; color: white; border-color: #16a34a; }
+    .filter-pill.active-blue   { background: #3B82F6; color: white; border-color: #3B82F6; }
+    .filter-pill.active-purple { background: #8B5CF6; color: white; border-color: #8B5CF6; }
 
     /* Grid view for listings */
     #listingsWrap.grid-view {
@@ -1157,74 +1156,75 @@
 
         {{-- Filter bar --}}
         <div class="filter-bar-inline">
-            {{-- LEFT: Verification Status --}}
-            <div class="filter-bar-left">
-                <span class="filter-group-label" style="margin-right:4px;">Verification</span>
-                @foreach(['all' => 'All', 'pending' => 'Pending', 'approved' => 'Approved', 'rejected' => 'Rejected'] as $key => $label)
-                    <a href="{{ route('admin.users.edit', array_merge(
-                            ['id' => $user->id],
-                            request()->only(['listing_status', 'listing_payment', 'listing_realtime']),
-                            ['listing_filter' => $key, 'active_tab' => 'listings']
-                        )) }}"
-                       class="filter-pill {{ $listingFilter === $key ? 'active' : '' }}">
-                        {{ $label }}
-                    </a>
-                @endforeach
-            </div>
 
-            {{-- RIGHT: Status + Payment + Real Time --}}
-            <div class="filter-bar-right">
-                {{-- Status --}}
-                <div class="filter-group">
-                    <span class="filter-group-label">Status</span>
-                    <div class="filter-group-pills">
-                        @foreach(['all' => 'All', 'active' => 'Active', 'on_hold' => 'On Hold'] as $key => $label)
-                            <a href="{{ route('admin.users.edit', array_merge(
-                                    ['id' => $user->id],
-                                    request()->only(['listing_filter', 'listing_payment', 'listing_realtime']),
-                                    ['listing_status' => $key, 'active_tab' => 'listings']
-                                )) }}"
-                               class="filter-pill {{ $listingStatus === $key ? 'active' : '' }}">
-                                {{ $label }}
-                            </a>
-                        @endforeach
-                    </div>
-                </div>
-
-                {{-- Payment --}}
-                <div class="filter-group">
-                    <span class="filter-group-label">Payment</span>
-                    <div class="filter-group-pills">
-                        @foreach(['all' => 'All', 'paid' => 'Paid', 'unpaid' => 'Unpaid'] as $key => $label)
-                            <a href="{{ route('admin.users.edit', array_merge(
-                                    ['id' => $user->id],
-                                    request()->only(['listing_filter', 'listing_status', 'listing_realtime']),
-                                    ['listing_payment' => $key, 'active_tab' => 'listings']
-                                )) }}"
-                               class="filter-pill {{ $listingPayment === $key ? 'active' : '' }}">
-                                {{ $label }}
-                            </a>
-                        @endforeach
-                    </div>
-                </div>
-
-                {{-- Real Time Price --}}
-                <div class="filter-group">
-                    <span class="filter-group-label">Real Time Price</span>
-                    <div class="filter-group-pills">
-                        @foreach(['all' => 'All', 'enabled' => 'Enabled', 'disabled' => 'Disabled'] as $key => $label)
-                            <a href="{{ route('admin.users.edit', array_merge(
-                                    ['id' => $user->id],
-                                    request()->only(['listing_filter', 'listing_status', 'listing_payment']),
-                                    ['listing_realtime' => $key, 'active_tab' => 'listings']
-                                )) }}"
-                               class="filter-pill {{ $listingRealtime === $key ? 'active' : '' }}">
-                                {{ $label }}
-                            </a>
-                        @endforeach
-                    </div>
+            {{-- Verification Status --}}
+            <div class="filter-group">
+                <span class="filter-group-label">Verification</span>
+                <div class="filter-group-pills">
+                    @foreach(['all' => 'All', 'pending' => 'Pending', 'approved' => 'Approved', 'rejected' => 'Rejected'] as $key => $label)
+                        <a href="{{ route('admin.users.edit', array_merge(
+                                ['id' => $user->id],
+                                request()->only(['listing_status', 'listing_payment', 'listing_realtime']),
+                                ['listing_filter' => $key, 'active_tab' => 'listings']
+                            )) }}"
+                           class="filter-pill {{ $listingFilter === $key ? 'active' : '' }}">
+                            {{ $label }}
+                        </a>
+                    @endforeach
                 </div>
             </div>
+
+            {{-- Status --}}
+            <div class="filter-group">
+                <span class="filter-group-label">Status</span>
+                <div class="filter-group-pills">
+                    @foreach(['all' => 'All', 'active' => 'Active', 'on_hold' => 'On Hold'] as $key => $label)
+                        <a href="{{ route('admin.users.edit', array_merge(
+                                ['id' => $user->id],
+                                request()->only(['listing_filter', 'listing_payment', 'listing_realtime']),
+                                ['listing_status' => $key, 'active_tab' => 'listings']
+                            )) }}"
+                           class="filter-pill {{ $listingStatus === $key ? 'active-green' : '' }}">
+                            {{ $label }}
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+
+            {{-- Payment --}}
+            <div class="filter-group">
+                <span class="filter-group-label">Payment</span>
+                <div class="filter-group-pills">
+                    @foreach(['all' => 'All', 'paid' => 'Paid', 'unpaid' => 'Unpaid'] as $key => $label)
+                        <a href="{{ route('admin.users.edit', array_merge(
+                                ['id' => $user->id],
+                                request()->only(['listing_filter', 'listing_status', 'listing_realtime']),
+                                ['listing_payment' => $key, 'active_tab' => 'listings']
+                            )) }}"
+                           class="filter-pill {{ $listingPayment === $key ? 'active-blue' : '' }}">
+                            {{ $label }}
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+
+            {{-- Real Time Price --}}
+            <div class="filter-group">
+                <span class="filter-group-label">Real-Time Price</span>
+                <div class="filter-group-pills">
+                    @foreach(['all' => 'All', 'enabled' => 'Enabled', 'disabled' => 'Disabled'] as $key => $label)
+                        <a href="{{ route('admin.users.edit', array_merge(
+                                ['id' => $user->id],
+                                request()->only(['listing_filter', 'listing_status', 'listing_payment']),
+                                ['listing_realtime' => $key, 'active_tab' => 'listings']
+                            )) }}"
+                           class="filter-pill {{ $listingRealtime === $key ? 'active-purple' : '' }}">
+                            {{ $label }}
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+
         </div>
 
         {{-- Stats summary --}}

@@ -127,11 +127,6 @@ public function reorder(Request $request)
             'slug'            => 'nullable|string|max:255',
             'alt_tag'         => 'nullable|string|max:255',
             'icon'            => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:2048',
-            'meta_image'      => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
-            'meta_title'      => 'nullable|string|max:255',
-            'meta_description'=> 'nullable|string',
-            'short_description'=> 'nullable|string',
-            'content'         => 'nullable|string',
         ]);
 
         // ── Icon ──────────────────────────────────────────────
@@ -161,29 +156,12 @@ public function reorder(Request $request)
             ];
         }
 
-        // ── Meta Image ────────────────────────────────────────
-        $metaImage = $menu->meta_image;
-
-        if ($request->hasFile('meta_image')) {
-            if ($menu->meta_image) {
-                Storage::disk('public')->delete($menu->meta_image);
-            }
-            $metaFile  = $request->file('meta_image');
-            $metaName  = time() . '_' . $metaFile->getClientOriginalName();
-            $metaImage = $metaFile->storeAs('uploads/meta', $metaName, 'public');
-        }
-
         // ── Build data ────────────────────────────────────────
         $data = [
             'category_name'       => $request->category_name,
             'slug'                => $request->slug ?: Str::slug($request->category_name),
             'category_icon_image' => $iconData,
             'icon_alt_tag'        => $request->alt_tag ?? Str::slug($request->category_name),
-            'short_description'   => $request->short_description,
-            'meta_title'          => $request->meta_title,
-            'meta_description'    => $request->meta_description,
-            'meta_image'          => $metaImage,
-            'content'             => $request->content,
             'is_active'           => $request->boolean('is_active', true),
         ];
 
@@ -224,7 +202,6 @@ public function reorder(Request $request)
         $iconPath = $menu->category_icon_image['path'] ?? null;
         if ($iconPath) Storage::disk('public')->delete($iconPath);
 
-        if ($menu->meta_image) Storage::disk('public')->delete($menu->meta_image);
 
         $menu->delete();
 

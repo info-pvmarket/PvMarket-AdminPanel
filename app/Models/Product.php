@@ -35,12 +35,9 @@ class Product extends Model
     ];
 
     protected $casts = [
-    'is_popular'          => 'boolean',
-    'real_time_price'     => 'boolean',
-    'datasheet'       => 'array', 
-    
-    
-];
+        'is_popular'      => 'boolean',
+        'real_time_price' => 'boolean',
+    ];
 public array $translatable = [
     'product_name',
     'product_description',

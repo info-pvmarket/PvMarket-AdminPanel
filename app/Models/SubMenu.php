@@ -43,10 +43,6 @@ class SubMenu extends Model
     }
 
     public array $translatable = [
-    'sub_category_name',
-    'short_description',
-    'meta_title',
-    'meta_description',
-    'content',
-];
+        'sub_category_name',
+    ];
 }

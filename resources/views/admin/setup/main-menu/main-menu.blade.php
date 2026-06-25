@@ -184,23 +184,10 @@ function renumberRows() {
     .btn-back:hover { background:#334155; border-color:#334155; }
     .current-icon { height:40px; border-radius:6px; border:1px solid var(--border); object-fit:contain; display:block; margin-bottom:8px; }
     .alert-error { padding:12px 16px; background:#FEE2E2; color:#991B1B; border:1px solid #FECACA; border-radius:8px; font-size:13.5px; margin-bottom:20px; }
-    .quill-wrapper { border:1.5px solid #CBD5E1; border-radius:8px; overflow:hidden; }
-    .quill-wrapper:focus-within { border-color:var(--primary); box-shadow:0 0 0 3px rgba(14,165,233,.1); }
 </style>
 @endsection
 
 @section('content')
-
-<link rel="stylesheet" href="https://cdn.quilljs.com/1.3.7/quill.snow.css">
-<style>
-    .ql-toolbar.ql-snow { border:none !important; border-bottom:1px solid #E2E8F0 !important; background:#F8FAFC; padding:10px 12px; font-family:inherit; }
-    .ql-container.ql-snow { border:none !important; font-family:inherit; }
-    .ql-editor { min-height:220px; font-size:13.5px; font-family:inherit; color:#1E293B; line-height:1.7; padding:14px 16px; }
-    .ql-editor.ql-blank::before { color:#CBD5E1; font-style:normal; font-size:13.5px; }
-    .ql-snow .ql-stroke { stroke:#475569; }
-    .ql-snow .ql-fill { fill:#475569; }
-    .ql-snow .ql-picker { color:#475569; }
-</style>
 
 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
     <h1 style="font-size:22px; font-weight:800; color:var(--text);">Edit Category</h1>
@@ -248,58 +235,12 @@ function renumberRows() {
 
         <hr class="section-divider">
 
-        <div class="section-title">SEO / Meta Fields</div>
-
         <div class="form-grid-2">
             <div class="form-group">
                 <label class="form-label">Slug</label>
                 <input type="text" name="slug" class="form-input"
                        value="{{ old('slug', $record->slug) }}"
                        placeholder="auto-generated if empty" id="slugField"/>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Meta Title</label>
-                <input type="text" name="meta_title" class="form-input"
-                       value="{{ old('meta_title', $record->meta_title) }}"
-                       placeholder="Meta Title"/>
-            </div>
-        </div>
-
-        <div class="form-grid-2">
-            <div class="form-group">
-                <label class="form-label">Meta Image</label>
-                @if($record->meta_image)
-                    <img src="{{ asset('storage/' . $record->meta_image) }}" class="current-icon" alt="meta"/>
-                @endif
-                <div class="form-file-wrap">
-                    <input type="file" name="meta_image" accept="image/*"/>
-                </div>
-                @if($record->meta_image)
-                    <span class="form-hint">Leave blank to keep current image</span>
-                @endif
-            </div>
-            <div class="form-group">
-                <label class="form-label">Meta Description</label>
-                <textarea name="meta_description" class="form-input"
-                          placeholder="Meta Description">{{ old('meta_description', $record->meta_description) }}</textarea>
-            </div>
-        </div>
-
-        <hr class="section-divider">
-
-        <div class="form-grid-1">
-            <div class="form-group"> 
-                <label class="form-label">Short Description</label>
-                <textarea name="short_description" class="form-input" style="min-height:90px;"
-                          placeholder="Enter short description">{{ old('short_description', lang($record, 'short_description')) }}</textarea>
-            </div>
-        </div>
-
-        <div class="form-group" style="margin-bottom:20px;">
-            <label class="form-label">Content</label>
-            <textarea name="content" id="contentInput" style="display:none;">{{ old('content', $record->content) }}</textarea>
-            <div class="quill-wrapper">
-                <div id="quillEditor"></div>
             </div>
         </div>
 
@@ -317,33 +258,8 @@ function renumberRows() {
     </form>
 </div>
 
-<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
 <script>
 (function () {
-    var quill = new Quill('#quillEditor', {
-        theme: 'snow',
-        placeholder: 'Write content here...',
-        modules: {
-            toolbar: [
-                [{ header: [1,2,3,4,5,6,false] }],
-                ['bold','italic','underline','strike'],
-                [{ color:[] },{ background:[] }],
-                [{ list:'ordered' },{ list:'bullet' }],
-                [{ align:[] }],
-                ['link','image','video'],
-                ['clean']
-            ]
-        }
-    });
-
-    var existing = document.getElementById('contentInput').value;
-    if (existing && existing.trim()) quill.clipboard.dangerouslyPasteHTML(existing);
-
-    document.getElementById('editForm').addEventListener('submit', function () {
-        var html = quill.root.innerHTML;
-        document.getElementById('contentInput').value = (html === '<p><br></p>') ? '' : html;
-    });
-
     document.querySelector('input[name="category_name"]').addEventListener('input', function () {
         const slugField = document.getElementById('slugField');
         if (!slugField.dataset.touched) {

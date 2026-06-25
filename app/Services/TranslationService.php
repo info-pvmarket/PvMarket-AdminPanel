@@ -12,42 +12,42 @@ class TranslationService
     private TranslateClient $client;
 
     public static array $modelMap = [
-    'Blog'           => [\App\Models\Blog::class,           ['heading', 'description', 'blog_comments']],
-    'Event'          => [\App\Models\Event::class,          ['heading', 'description', 'place']], // ← ADD
-    'Product'        => [\App\Models\Product::class,        ['product_name', 'description']],
-    'Brand'          => [\App\Models\Brand::class,          ['name']],
-    'news'          => [\App\Models\News::class,           ['heading', 'content']],
-    'PricePromotion' => [\App\Models\PricePromotion::class, ['heading', 'description']],
-    'PageSection'    => [\App\Models\PageSection::class,    ['title', 'subtitle', 'description', 'button_text']],
-    'PvSpotPrice'    => [\App\Models\PvSpotPrice::class,    ['heading']],
-    'main-menu'     => [\App\Models\MainMenu::class,      ['name', 'short_description', 'content']],
-    'sub-menu'      => [\App\Models\SubMenu::class,       ['name', 'short_description', 'content']],
-    'slider'        => [\App\Models\Slider::class,        ['name', 'alt_tag']],
-    'brand'         => [\App\Models\Brand::class,         ['name']],
-    'category'      => [\App\Models\Category::class,      ['name', 'short_description', 'content']],
-    'sub-category'  => [\App\Models\SubCategory::class,  ['name', 'short_description', 'content']],
-    'advertisement' => [\App\Models\Advertisement::class, ['heading', 'description']],
-    'unit'          => [\App\Models\Unit::class,          ['name']],
-    'country'       => [\App\Models\Country::class,       ['name']],
-    'coupon'        => [\App\Models\Coupon::class,        ['code', 'description']],
-    'incoterm'      => [\App\Models\Incoterm::class,      ['name', 'description']],
-    'charge'        => [\App\Models\Charge::class,        ['name', 'description']],
-    'product-specification' => [\App\Models\DetailOption::class, ['name', 'description']],
-    'product-listing' => [\App\Models\ProductListing::class, ['incoterm']],
-    'user'          => [\App\Models\User::class,          ['name']],
-    'role'          => [\App\Models\Role::class,          ['name']],
-    'sub-admin'     => [\App\Models\SubAdmin::class,     ['name']],
-    'warehouse'     => [\App\Models\Warehouse::class,     ['name', 'location']],
-    'offer'         => [\App\Models\Offer::class,         ['name', 'description']],
-    'specification' => [\App\Models\DetailOption::class, ['name', 'description']],
-    'static-page'   => [\App\Models\PageSection::class, ['title', 'subtitle', 'description', 'button_text']],
-    'commission'    => [\App\Models\Commission::class,    ['name', 'description']],
-    'inventory'     => [\App\Models\Inventory::class,     ['name', 'description']],
-    'inventory-transaction' => [\App\Models\InventoryTransaction::class, ['notes']],
-    'location'      => [\App\Models\Location::class,      ['name', 'description']],
-    'product-detail-option' => [\App\Models\ProductDetailOption::class, ['option_name', 'category_name', 'sub_category_name', 'unit_names']],
+        'Blog'           => [\App\Models\Blog::class,           ['heading', 'description', 'blog_comments']],
+        'Event'          => [\App\Models\Event::class,          ['heading', 'description', 'place']], // ← ADD
+        'Product'        => [\App\Models\Product::class,        ['product_name', 'description']],
+        'Brand'          => [\App\Models\Brand::class,          ['name']],
+        'news'          => [\App\Models\News::class,           ['heading', 'content']],
+        'PricePromotion' => [\App\Models\PricePromotion::class, ['heading', 'description']],
+        'PageSection'    => [\App\Models\PageSection::class,    ['title', 'subtitle', 'description', 'button_text']],
+        'PvSpotPrice'    => [\App\Models\PvSpotPrice::class,    ['heading']],
+        'main-menu'     => [\App\Models\MainMenu::class,      ['name', 'short_description', 'content']],
+        'sub-menu'      => [\App\Models\SubMenu::class,       ['name', 'short_description', 'content']],
+        'slider'        => [\App\Models\Slider::class,        ['name', 'alt_tag']],
+        'brand'         => [\App\Models\Brand::class,         ['name']],
+        'category'      => [\App\Models\Category::class,      ['name', 'short_description', 'content']],
+        'sub-category'  => [\App\Models\SubCategory::class,  ['name', 'short_description', 'content']],
+        'advertisement' => [\App\Models\Advertisement::class, ['heading', 'description']],
+        'unit'          => [\App\Models\Unit::class,          ['name']],
+        'country'       => [\App\Models\Country::class,       ['name']],
+        'coupon'        => [\App\Models\Coupon::class,        ['code', 'description']],
+        'incoterm'      => [\App\Models\Incoterm::class,      ['name', 'description']],
+        'charge'        => [\App\Models\Charge::class,        ['name', 'description']],
+        'product-specification' => [\App\Models\DetailOption::class, ['name', 'description']],
+        'product-listing' => [\App\Models\ProductListing::class, ['incoterm']],
+        'user'          => [\App\Models\User::class,          ['name']],
+        'role'          => [\App\Models\Role::class,          ['name']],
+        'sub-admin'     => [\App\Models\SubAdmin::class,     ['name']],
+        'warehouse'     => [\App\Models\Warehouse::class,     ['name', 'location']],
+        'offer'         => [\App\Models\Offer::class,         ['name', 'description']],
+        'specification' => [\App\Models\DetailOption::class, ['name', 'description']],
+        'static-page'   => [\App\Models\PageSection::class, ['title', 'subtitle', 'description', 'button_text']],
+        'commission'    => [\App\Models\Commission::class,    ['name', 'description']],
+        'inventory'     => [\App\Models\Inventory::class,     ['name', 'description']],
+        'inventory-transaction' => [\App\Models\InventoryTransaction::class, ['notes']],
+        'location'      => [\App\Models\Location::class,      ['name', 'description']],
+        'product-detail-option' => [\App\Models\ProductDetailOption::class, ['option_name', 'category_name', 'sub_category_name', 'unit_names']],
 
-];
+    ];
 
     public static array $languages = [
         'ar' => ['name' => 'Arabic',     'native' => 'العربية',   'flag' => '🇸🇦', 'rtl' => true],
@@ -65,24 +65,102 @@ class TranslationService
         'ko' => ['name' => 'Korean',     'native' => '한국어',     'flag' => '🇰🇷', 'rtl' => false],
     ];
 
+    // public static array $languages = [
+    //     'af'    => ['name' => 'Afrikaans',              'native' => 'Afrikaans',           'flag' => '🇿🇦', 'rtl' => false],
+    //     'sq'    => ['name' => 'Albanian',               'native' => 'Shqip',               'flag' => '🇦🇱', 'rtl' => false],
+    //     'am'    => ['name' => 'Amharic',                'native' => 'አማርኛ',              'flag' => '🇪🇹', 'rtl' => false],
+    //     'ar'    => ['name' => 'Arabic',                 'native' => 'العربية',             'flag' => '🇸🇦', 'rtl' => true],
+    //     'hy'    => ['name' => 'Armenian',               'native' => 'Հայերեն',            'flag' => '🇦🇲', 'rtl' => false],
+    //     'az'    => ['name' => 'Azerbaijani',            'native' => 'Azərbaycanca',        'flag' => '🇦🇿', 'rtl' => false],
+    //     'bn'    => ['name' => 'Bengali',                'native' => 'বাংলা',              'flag' => '🇧🇩', 'rtl' => false],
+    //     'bs'    => ['name' => 'Bosnian',                'native' => 'Bosanski',            'flag' => '🇧🇦', 'rtl' => false],
+    //     'bg'    => ['name' => 'Bulgarian',              'native' => 'Български',          'flag' => '🇧🇬', 'rtl' => false],
+    //     'ca'    => ['name' => 'Catalan',                'native' => 'Català',              'flag' => '🇪🇸', 'rtl' => false],
+    //     'zh'    => ['name' => 'Chinese (Simplified)',   'native' => '简体中文',            'flag' => '🇨🇳', 'rtl' => false],
+    //     'zh-TW' => ['name' => 'Chinese (Traditional)',  'native' => '繁體中文',            'flag' => '🇹🇼', 'rtl' => false],
+    //     'hr'    => ['name' => 'Croatian',               'native' => 'Hrvatski',            'flag' => '🇭🇷', 'rtl' => false],
+    //     'cs'    => ['name' => 'Czech',                  'native' => 'Čeština',             'flag' => '🇨🇿', 'rtl' => false],
+    //     'da'    => ['name' => 'Danish',                 'native' => 'Dansk',               'flag' => '🇩🇰', 'rtl' => false],
+    //     'fa-AF' => ['name' => 'Dari',                   'native' => 'دری',                 'flag' => '🇦🇫', 'rtl' => true],
+    //     'nl'    => ['name' => 'Dutch',                  'native' => 'Nederlands',          'flag' => '🇳🇱', 'rtl' => false],
+    //     'en'    => ['name' => 'English',                'native' => 'English',             'flag' => '🇺🇸', 'rtl' => false],
+    //     'et'    => ['name' => 'Estonian',               'native' => 'Eesti',               'flag' => '🇪🇪', 'rtl' => false],
+    //     'fa'    => ['name' => 'Persian',                'native' => 'فارسی',              'flag' => '🇮🇷', 'rtl' => true],
+    //     'tl'    => ['name' => 'Filipino',               'native' => 'Filipino',            'flag' => '🇵🇭', 'rtl' => false],
+    //     'fi'    => ['name' => 'Finnish',                'native' => 'Suomi',               'flag' => '🇫🇮', 'rtl' => false],
+    //     'fr'    => ['name' => 'French',                 'native' => 'Français',            'flag' => '🇫🇷', 'rtl' => false],
+    //     'fr-CA' => ['name' => 'French (Canada)',        'native' => 'Français (Canada)',   'flag' => '🇨🇦', 'rtl' => false],
+    //     'ka'    => ['name' => 'Georgian',               'native' => 'ქართული',            'flag' => '🇬🇪', 'rtl' => false],
+    //     'de'    => ['name' => 'German',                 'native' => 'Deutsch',             'flag' => '🇩🇪', 'rtl' => false],
+    //     'el'    => ['name' => 'Greek',                  'native' => 'Ελληνικά',           'flag' => '🇬🇷', 'rtl' => false],
+    //     'gu'    => ['name' => 'Gujarati',               'native' => 'ગુજરાતી',            'flag' => '🇮🇳', 'rtl' => false],
+    //     'ht'    => ['name' => 'Haitian Creole',         'native' => 'Kreyòl Ayisyen',      'flag' => '🇭🇹', 'rtl' => false],
+    //     'ha'    => ['name' => 'Hausa',                  'native' => 'Hausa',               'flag' => '🇳🇬', 'rtl' => false],
+    //     'he'    => ['name' => 'Hebrew',                 'native' => 'עברית',              'flag' => '🇮🇱', 'rtl' => true],
+    //     'hi'    => ['name' => 'Hindi',                  'native' => 'हिन्दी',             'flag' => '🇮🇳', 'rtl' => false],
+    //     'hu'    => ['name' => 'Hungarian',              'native' => 'Magyar',              'flag' => '🇭🇺', 'rtl' => false],
+    //     'is'    => ['name' => 'Icelandic',              'native' => 'Íslenska',            'flag' => '🇮🇸', 'rtl' => false],
+    //     'id'    => ['name' => 'Indonesian',             'native' => 'Bahasa Indonesia',    'flag' => '🇮🇩', 'rtl' => false],
+    //     'ga'    => ['name' => 'Irish',                  'native' => 'Gaeilge',             'flag' => '🇮🇪', 'rtl' => false],
+    //     'it'    => ['name' => 'Italian',                'native' => 'Italiano',            'flag' => '🇮🇹', 'rtl' => false],
+    //     'ja'    => ['name' => 'Japanese',               'native' => '日本語',              'flag' => '🇯🇵', 'rtl' => false],
+    //     'kn'    => ['name' => 'Kannada',                'native' => 'ಕನ್ನಡ',              'flag' => '🇮🇳', 'rtl' => false],
+    //     'kk'    => ['name' => 'Kazakh',                 'native' => 'Қазақша',            'flag' => '🇰🇿', 'rtl' => false],
+    //     'ko'    => ['name' => 'Korean',                 'native' => '한국어',              'flag' => '🇰🇷', 'rtl' => false],
+    //     'lv'    => ['name' => 'Latvian',                'native' => 'Latviešu',            'flag' => '🇱🇻', 'rtl' => false],
+    //     'lt'    => ['name' => 'Lithuanian',             'native' => 'Lietuvių',            'flag' => '🇱🇹', 'rtl' => false],
+    //     'mk'    => ['name' => 'Macedonian',             'native' => 'Македонски',         'flag' => '🇲🇰', 'rtl' => false],
+    //     'ms'    => ['name' => 'Malay',                  'native' => 'Bahasa Melayu',       'flag' => '🇲🇾', 'rtl' => false],
+    //     'ml'    => ['name' => 'Malayalam',              'native' => 'മലയാളം',            'flag' => '🇮🇳', 'rtl' => false],
+    //     'mt'    => ['name' => 'Maltese',                'native' => 'Malti',               'flag' => '🇲🇹', 'rtl' => false],
+    //     'mr'    => ['name' => 'Marathi',                'native' => 'मराठी',              'flag' => '🇮🇳', 'rtl' => false],
+    //     'mn'    => ['name' => 'Mongolian',              'native' => 'Монгол',             'flag' => '🇲🇳', 'rtl' => false],
+    //     'no'    => ['name' => 'Norwegian',              'native' => 'Norsk',               'flag' => '🇳🇴', 'rtl' => false],
+    //     'ps'    => ['name' => 'Pashto',                 'native' => 'پښتو',               'flag' => '🇦🇫', 'rtl' => true],
+    //     'pl'    => ['name' => 'Polish',                 'native' => 'Polski',              'flag' => '🇵🇱', 'rtl' => false],
+    //     'pt'    => ['name' => 'Portuguese (Brazil)',    'native' => 'Português',           'flag' => '🇧🇷', 'rtl' => false],
+    //     'pt-PT' => ['name' => 'Portuguese (Portugal)',  'native' => 'Português',           'flag' => '🇵🇹', 'rtl' => false],
+    //     'pa'    => ['name' => 'Punjabi',                'native' => 'ਪੰਜਾਬੀ',             'flag' => '🇮🇳', 'rtl' => false],
+    //     'ro'    => ['name' => 'Romanian',               'native' => 'Română',              'flag' => '🇷🇴', 'rtl' => false],
+    //     'ru'    => ['name' => 'Russian',                'native' => 'Русский',            'flag' => '🇷🇺', 'rtl' => false],
+    //     'sr'    => ['name' => 'Serbian',                'native' => 'Српски',             'flag' => '🇷🇸', 'rtl' => false],
+    //     'si'    => ['name' => 'Sinhala',                'native' => 'සිංහල',             'flag' => '🇱🇰', 'rtl' => false],
+    //     'sk'    => ['name' => 'Slovak',                 'native' => 'Slovenčina',          'flag' => '🇸🇰', 'rtl' => false],
+    //     'sl'    => ['name' => 'Slovenian',              'native' => 'Slovenščina',         'flag' => '🇸🇮', 'rtl' => false],
+    //     'so'    => ['name' => 'Somali',                 'native' => 'Soomaali',            'flag' => '🇸🇴', 'rtl' => false],
+    //     'es'    => ['name' => 'Spanish',                'native' => 'Español',             'flag' => '🇪🇸', 'rtl' => false],
+    //     'es-MX' => ['name' => 'Spanish (Mexico)',       'native' => 'Español (México)',    'flag' => '🇲🇽', 'rtl' => false],
+    //     'sw'    => ['name' => 'Swahili',                'native' => 'Kiswahili',           'flag' => '🇹🇿', 'rtl' => false],
+    //     'sv'    => ['name' => 'Swedish',                'native' => 'Svenska',             'flag' => '🇸🇪', 'rtl' => false],
+    //     'ta'    => ['name' => 'Tamil',                  'native' => 'தமிழ்',              'flag' => '🇮🇳', 'rtl' => false],
+    //     'te'    => ['name' => 'Telugu',                 'native' => 'తెలుగు',             'flag' => '🇮🇳', 'rtl' => false],
+    //     'th'    => ['name' => 'Thai',                   'native' => 'ไทย',                'flag' => '🇹🇭', 'rtl' => false],
+    //     'tr'    => ['name' => 'Turkish',                'native' => 'Türkçe',              'flag' => '🇹🇷', 'rtl' => false],
+    //     'uk'    => ['name' => 'Ukrainian',              'native' => 'Українська',         'flag' => '🇺🇦', 'rtl' => false],
+    //     'ur'    => ['name' => 'Urdu',                   'native' => 'اردو',                'flag' => '🇵🇰', 'rtl' => true],
+    //     'uz'    => ['name' => 'Uzbek',                  'native' => 'Oʻzbek',              'flag' => '🇺🇿', 'rtl' => false],
+    //     'vi'    => ['name' => 'Vietnamese',             'native' => 'Tiếng Việt',          'flag' => '🇻🇳', 'rtl' => false],
+    //     'cy'    => ['name' => 'Welsh',                  'native' => 'Cymraeg',             'flag' => '🏴', 'rtl' => false],
+    // ];
+
     public static function getLanguages(): array
-{
-    $available = config('languages.available', []);
-    $rtlCodes  = config('languages.rtl', []);
+    {
+        $available = config('languages.available', []);
+        $rtlCodes  = config('languages.rtl', []);
 
-    unset($available['en']);
+        unset($available['en']);
 
-    $result = [];
-    foreach ($available as $code => $name) {
-        $result[$code] = [
-            'name'   => self::$languages[$code]['name']   ?? $name,
-            'native' => self::$languages[$code]['native'] ?? $name,
-            'flag'   => self::$languages[$code]['flag']   ?? strtoupper($code),
-            'rtl'    => in_array($code, $rtlCodes),
-        ];
+        $result = [];
+        foreach ($available as $code => $name) {
+            $result[$code] = [
+                'name'   => self::$languages[$code]['name']   ?? $name,
+                'native' => self::$languages[$code]['native'] ?? $name,
+                'flag'   => self::$languages[$code]['flag']   ?? strtoupper($code),
+                'rtl'    => in_array($code, $rtlCodes),
+            ];
+        }
+        return $result;
     }
-    return $result;
-}
 
     public function __construct()
     {
@@ -120,7 +198,6 @@ class TranslationService
                 Cache::put($cacheKey, $translated, now()->addDays(30));
             }
             return $translated;
-
         } catch (\Exception $e) {
             Log::error('TranslationService::translateText — ' . $e->getMessage());
             return null;
@@ -171,8 +248,8 @@ class TranslationService
 
         // Wrap in minimal document so DOMDocument parses reliably
         $wrapped = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>'
-                 . '<div id="xlat">' . $html . '</div>'
-                 . '</body></html>';
+            . '<div id="xlat">' . $html . '</div>'
+            . '</body></html>';
 
         $dom->loadHTML($wrapped, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
         libxml_clear_errors();
@@ -315,9 +392,15 @@ class TranslationService
                 foreach ($fields as $field) {
                     $hasContent     = !empty(trim(strip_tags((string) ($record->$field ?? ''))));
                     $hasTranslation = !empty($existing[$field]);
-                    if ($hasContent && !$hasTranslation) { $needsWork = true; break; }
+                    if ($hasContent && !$hasTranslation) {
+                        $needsWork = true;
+                        break;
+                    }
                 }
-                if (!$needsWork) { $skipped++; continue; }
+                if (!$needsWork) {
+                    $skipped++;
+                    continue;
+                }
             }
 
             try {

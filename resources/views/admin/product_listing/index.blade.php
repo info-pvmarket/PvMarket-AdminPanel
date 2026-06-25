@@ -338,6 +338,7 @@
     }
     .tag-popular { background: #FEF3C7; color: #D97706; }
     .tag-soldoff { background: #FEE2E2; color: var(--red); }
+    .tag-realtime { background: #EDE9FE; color: #7C3AED; }
 
     /* ── Empty state ── */
     .empty-card {
@@ -439,16 +440,12 @@
     background: white;
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 14px 20px;
+    padding: 16px 20px;
     margin-bottom: 20px;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
     flex-wrap: wrap;
-    gap: 16px;
+    gap: 20px;
 }
-.filter-bar-left  { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.filter-bar-right { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
 
 .filter-group { display: flex; flex-direction: column; gap: 6px; }
 
@@ -459,6 +456,8 @@
     text-transform: uppercase;
     letter-spacing: .4px;
 }
+
+.filter-group-pills { display: flex; gap: 6px; flex-wrap: wrap; }
 
 /* ── Grid view ── */
 #listingsWrap.grid-view {
@@ -489,8 +488,6 @@
     height: 100%;  /* add this */
 }
 
-.filter-group-pills { display: flex; gap: 6px; flex-wrap: wrap; }
-
 .filter-pill {
     padding: 5px 16px;
     border-radius: 20px;
@@ -512,6 +509,7 @@
 }
 .filter-pill.active-green  { background: #16a34a; color: white; border-color: #16a34a; }
 .filter-pill.active-blue   { background: var(--blue); color: white; border-color: var(--blue); }
+.filter-pill.active-purple { background: #8B5CF6; color: white; border-color: #8B5CF6; }
 </style>
 @endsection
 
@@ -627,56 +625,70 @@
 {{-- ── Filter bar ── --}}
 <div class="filter-bar">
 
-    {{-- LEFT: Verification Status --}}
-    <div class="filter-bar-left">
-        <span class="filter-group-label" style="margin-right:4px;">Verification Status</span>
-        @foreach(['all' => 'All', 'pending' => 'Pending', 'approved' => 'Approved', 'rejected' => 'Rejected'] as $key => $label)
-            <a href="{{ route('product_listing.index', array_merge(
-                    request()->only(['warehouse_id', 'status_filter', 'payment_filter', 'search']),
-                    ['filter' => $key]
-                )) }}"
-               class="filter-pill {{ $filter === $key ? 'active' : '' }}">
-                {{ $label }}
-            </a>
-        @endforeach
+    {{-- Verification Status --}}
+    <div class="filter-group">
+        <span class="filter-group-label">Verification</span>
+        <div class="filter-group-pills">
+            @foreach(['all' => 'All', 'pending' => 'Pending', 'approved' => 'Approved', 'rejected' => 'Rejected'] as $key => $label)
+                <a href="{{ route('product_listing.index', array_merge(
+                        request()->only(['warehouse_id', 'status_filter', 'payment_filter', 'real_time_price', 'search']),
+                        ['filter' => $key]
+                    )) }}"
+                   class="filter-pill {{ $filter === $key ? 'active' : '' }}">
+                    {{ $label }}
+                </a>
+            @endforeach
+        </div>
     </div>
 
-    {{-- RIGHT: Status + Payment --}}
-    <div class="filter-bar-right">
-
-        {{-- Status --}}
-        <div class="filter-group">
-            <span class="filter-group-label">Status</span>
-            <div class="filter-group-pills">
-                @foreach(['all' => 'All', 'active' => 'Active', 'on_hold' => 'On Hold'] as $key => $label)
-                    <a href="{{ route('product_listing.index', array_merge(
-                            request()->only(['warehouse_id', 'filter', 'payment_filter', 'search']),
-                            ['status_filter' => $key]
-                        )) }}"
-                       class="filter-pill {{ ($statusFilter ?? 'all') === $key ? 'active' : '' }}">
-                        {{ $label }}
-                    </a>
-                @endforeach
-            </div>
+    {{-- Status --}}
+    <div class="filter-group">
+        <span class="filter-group-label">Status</span>
+        <div class="filter-group-pills">
+            @foreach(['all' => 'All', 'active' => 'Active', 'on_hold' => 'On Hold'] as $key => $label)
+                <a href="{{ route('product_listing.index', array_merge(
+                        request()->only(['warehouse_id', 'filter', 'payment_filter', 'real_time_price', 'search']),
+                        ['status_filter' => $key]
+                    )) }}"
+                   class="filter-pill {{ ($statusFilter ?? 'all') === $key ? 'active-green' : '' }}">
+                    {{ $label }}
+                </a>
+            @endforeach
         </div>
-
-        {{-- Payment --}}
-        <div class="filter-group">
-            <span class="filter-group-label">Payment</span>
-            <div class="filter-group-pills">
-                @foreach(['all' => 'All', 'paid' => 'Paid', 'unpaid' => 'Unpaid'] as $key => $label)
-                    <a href="{{ route('product_listing.index', array_merge(
-                            request()->only(['warehouse_id', 'filter', 'status_filter', 'search']),
-                            ['payment_filter' => $key]
-                        )) }}"
-                       class="filter-pill {{ ($paymentFilter ?? 'all') === $key ? 'active' : '' }}">
-                        {{ $label }}
-                    </a>
-                @endforeach
-            </div>
-        </div>
-
     </div>
+
+    {{-- Payment --}}
+    <div class="filter-group">
+        <span class="filter-group-label">Payment</span>
+        <div class="filter-group-pills">
+            @foreach(['all' => 'All', 'paid' => 'Paid', 'unpaid' => 'Unpaid'] as $key => $label)
+                <a href="{{ route('product_listing.index', array_merge(
+                        request()->only(['warehouse_id', 'filter', 'status_filter', 'real_time_price', 'search']),
+                        ['payment_filter' => $key]
+                    )) }}"
+                   class="filter-pill {{ ($paymentFilter ?? 'all') === $key ? 'active-blue' : '' }}">
+                    {{ $label }}
+                </a>
+            @endforeach
+        </div>
+    </div>
+
+    {{-- Real-Time Price --}}
+    <div class="filter-group">
+        <span class="filter-group-label">Real-Time Price</span>
+        <div class="filter-group-pills">
+            @foreach(['all' => 'All', 'yes' => 'Yes', 'no' => 'No'] as $key => $label)
+                <a href="{{ route('product_listing.index', array_merge(
+                        request()->only(['warehouse_id', 'filter', 'status_filter', 'payment_filter', 'search']),
+                        ['real_time_price' => $key]
+                    )) }}"
+                   class="filter-pill {{ ($realTimePriceFilter ?? 'all') === $key ? 'active-purple' : '' }}">
+                    {{ $label }}
+                </a>
+            @endforeach
+        </div>
+    </div>
+
 </div>
 
     {{-- ── Listings ── --}}
@@ -749,6 +761,9 @@
 
                         {{-- Tags --}}
                         <div class="listing-tags">
+                            @if(!empty($listing->real_time_price))
+                                <span class="tag tag-realtime">📈 Real Time</span>
+                            @endif
                             @if(!empty($listing->is_popular))
                                 <span class="tag tag-popular">⭐ Popular</span>
                             @endif

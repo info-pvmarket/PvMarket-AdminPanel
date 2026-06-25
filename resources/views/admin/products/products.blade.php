@@ -557,6 +557,48 @@ document.addEventListener('DOMContentLoaded', function () {
 
 @section('styles')
 <style>
+    /* Filter bar */
+    .filter-bar {
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px 20px;
+        margin-bottom: 20px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+    .filter-group { display: flex; flex-direction: column; gap: 6px; }
+    .filter-group-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: .4px;
+    }
+    .filter-group-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+    .filter-pill {
+        padding: 5px 16px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 500;
+        border: 1.5px solid var(--border);
+        background: white;
+        color: var(--text);
+        cursor: pointer;
+        text-decoration: none;
+        transition: all .2s;
+        font-family: inherit;
+    }
+    .filter-pill:hover,
+    .filter-pill.active {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+    .filter-pill.active-green  { background: #16a34a; color: white; border-color: #16a34a; }
+    .filter-pill.active-purple { background: #8B5CF6; color: white; border-color: #8B5CF6; }
+
     .content-panel { background:white; border:1px solid var(--border); border-radius:12px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.04); }
     .table-toolbar { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; border-bottom:1px solid var(--border); gap:12px; flex-wrap:wrap; background:#FAFBFD; }
     .search-group { display:flex; align-items:center; gap:8px; }
@@ -635,9 +677,53 @@ document.addEventListener('DOMContentLoaded', function () {
     </div>
 @endif
 
+{{-- Filter Bar --}}
+<div class="filter-bar">
+    {{-- Verification Status --}}
+    <div class="filter-group">
+        <span class="filter-group-label">Verification</span>
+        <div class="filter-group-pills">
+            @foreach(['all' => 'All', 'pending' => 'Pending', 'verified' => 'Verified', 'rejected' => 'Rejected'] as $key => $label)
+                <a href="{{ route('admin.products.index', array_merge(
+                        request()->only(['listings_filter', 'search', 'entries']),
+                        ['verification_status' => $key]
+                    )) }}"
+                   class="filter-pill {{ ($verificationFilter ?? 'all') === $key ? 'active' : '' }}">
+                    {{ $label }}
+                </a>
+            @endforeach
+        </div>
+    </div>
+
+    {{-- Listings --}}
+    <div class="filter-group">
+        <span class="filter-group-label">Listings</span>
+        <div class="filter-group-pills">
+            @foreach(['all' => 'All', 'has_listings' => 'Has Listings', 'no_listings' => 'No Listings'] as $key => $label)
+                <a href="{{ route('admin.products.index', array_merge(
+                        request()->only(['verification_status', 'search', 'entries']),
+                        ['listings_filter' => $key]
+                    )) }}"
+                   class="filter-pill {{ ($listingsFilter ?? 'all') === $key ? 'active-purple' : '' }}">
+                    {{ $label }}
+                </a>
+            @endforeach
+        </div>
+    </div>
+</div>
+
 <div class="content-panel">
     <div class="table-toolbar">
         <form method="GET" action="{{ route('admin.products.index') }}" class="search-group">
+            @if(request('verification_status'))
+                <input type="hidden" name="verification_status" value="{{ request('verification_status') }}">
+            @endif
+            @if(request('listings_filter'))
+                <input type="hidden" name="listings_filter" value="{{ request('listings_filter') }}">
+            @endif
+            @if(request('entries'))
+                <input type="hidden" name="entries" value="{{ request('entries') }}">
+            @endif
             <label>Search:</label>
             <div class="search-input-wrap">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -648,6 +734,15 @@ document.addEventListener('DOMContentLoaded', function () {
             </div>
         </form>
         <form method="GET" action="{{ route('admin.products.index') }}" class="entries-group">
+            @if(request('verification_status'))
+                <input type="hidden" name="verification_status" value="{{ request('verification_status') }}">
+            @endif
+            @if(request('listings_filter'))
+                <input type="hidden" name="listings_filter" value="{{ request('listings_filter') }}">
+            @endif
+            @if(request('search'))
+                <input type="hidden" name="search" value="{{ request('search') }}">
+            @endif
             Show
             <select name="entries" class="entries-select" onchange="this.form.submit()">
                 @foreach([10,25,50,100] as $n)
@@ -655,9 +750,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 @endforeach
             </select>
             entries
-            @if(request('search'))
-                <input type="hidden" name="search" value="{{ request('search') }}">
-            @endif
         </form>
     </div>
 

@@ -9,6 +9,7 @@ use App\Models\Unit;
 use App\Models\ProductDetailOption;
 use App\Models\MainMenu;
 use App\Models\SubMenu;
+use App\Models\ProductListing;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -63,6 +64,13 @@ class ProductController extends Controller
         // Filter by assigned users
         $this->filterByAssignedUsers($query, 'created_by');
 
+        // Verification status filter
+        $verificationFilter = $request->get('verification_status', 'all');
+        if ($verificationFilter !== 'all') {
+            $query->where('verification_status', $verificationFilter);
+        }
+
+        // Search filter
         if ($request->filled('search')) {
             $s = $request->search;
             $query->where(function ($q) use ($s) {
@@ -72,26 +80,56 @@ class ProductController extends Controller
             });
         }
 
+        // Listings filter - get product IDs that have listings
+        $listingsFilter = $request->get('listings_filter', 'all');
+        if ($listingsFilter !== 'all') {
+            // Get product IDs that have at least one listing
+            $productIdsWithListings = ProductListing::whereNull('deleted_at')
+                ->pluck('product_id')
+                ->filter()
+                ->map(function ($id) {
+                    if ($id instanceof \MongoDB\BSON\ObjectId) {
+                        return $id;
+                    }
+                    return new \MongoDB\BSON\ObjectId((string) $id);
+                })
+                ->unique()
+                ->values()
+                ->toArray();
+
+            if ($listingsFilter === 'has_listings') {
+                $query->whereIn('_id', $productIdsWithListings);
+            } elseif ($listingsFilter === 'no_listings') {
+                if (!empty($productIdsWithListings)) {
+                    $query->whereNotIn('_id', $productIdsWithListings);
+                }
+                // If no listings exist at all, all products have no listings (no filter needed)
+            }
+        }
+
         $products = $query->orderBy('created_at', 'desc')
                   ->paginate($request->get('entries', 10));
 
-// Collect all updated_by ObjectIds and resolve to names in one query
-$updatedByIds = $products->pluck('updated_by')
-                         ->filter()
-                         ->map(fn($id) => new \MongoDB\BSON\ObjectId((string) $id))
-                         ->unique()
-                         ->values()
-                         ->toArray();
+        // Collect all updated_by ObjectIds and resolve to names in one query
+        $updatedByIds = $products->pluck('updated_by')
+                                 ->filter()
+                                 ->map(fn($id) => new \MongoDB\BSON\ObjectId((string) $id))
+                                 ->unique()
+                                 ->values()
+                                 ->toArray();
 
-$userNames = \App\Models\User::whereIn('_id', $updatedByIds)
-                              ->get(['_id', 'name'])
-                              ->mapWithKeys(fn($u) => [(string) $u->_id => $u->name])
-                              ->toArray();
-return view('admin.products.products', [
-    'mode'      => 'index',
-    'products'  => $products,
-    'userNames' => $userNames,
-]);
+        $userNames = \App\Models\User::whereIn('_id', $updatedByIds)
+                                      ->get(['_id', 'name'])
+                                      ->mapWithKeys(fn($u) => [(string) $u->_id => $u->name])
+                                      ->toArray();
+
+        return view('admin.products.products', [
+            'mode'               => 'index',
+            'products'           => $products,
+            'userNames'          => $userNames,
+            'verificationFilter' => $verificationFilter,
+            'listingsFilter'     => $listingsFilter,
+        ]);
     }
 
     // ── Create ────────────────────────────────────────

@@ -20,11 +20,6 @@ class MainMenu extends Model
         'icon_alt_tag',
         'is_hold',
         'created_by',
-        'short_description',
-        'meta_title',
-        'meta_description',
-        'meta_image',
-        'content',
         'sort_order',
         'is_active',
     ];
@@ -44,9 +39,5 @@ class MainMenu extends Model
 
     public array $translatable = [
         'category_name',
-        'short_description',
-        'meta_title',
-        'meta_description',
-        'content',
     ];
 }
