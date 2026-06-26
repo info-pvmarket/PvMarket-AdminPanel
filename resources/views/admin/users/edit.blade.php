@@ -1161,7 +1161,7 @@
             <div class="filter-group">
                 <span class="filter-group-label">Verification</span>
                 <div class="filter-group-pills">
-                    @foreach(['all' => 'All', 'pending' => 'Pending', 'approved' => 'Approved', 'rejected' => 'Rejected'] as $key => $label)
+                    @foreach(['all' => 'All', 'pending' => 'Pending', 'verified' => 'Verified', 'rejected' => 'Rejected'] as $key => $label)
                         <a href="{{ route('admin.users.edit', array_merge(
                                 ['id' => $user->id],
                                 request()->only(['listing_status', 'listing_payment', 'listing_realtime']),
@@ -1234,8 +1234,8 @@
                 <div class="stat-label">Total Listings</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">{{ $listings->where('verification_status', 'approved')->count() }}</div>
-                <div class="stat-label">Approved</div>
+                <div class="stat-value">{{ $listings->where('verification_status', 'verified')->count() }}</div>
+                <div class="stat-label">Verified</div>
             </div>
             <div class="stat-card">
                 <div class="stat-value">{{ $listings->where('verification_status', 'pending')->count() }}</div>
@@ -1294,8 +1294,8 @@
                             <div class="listing-tags">
                                 @if($vStatus === 'pending')
                                     <span class="tag tag-pending">⏳ Pending Approval</span>
-                                @elseif($vStatus === 'approved')
-                                    <span class="tag tag-approved">✓ Approved</span>
+                                @elseif($vStatus === 'verified')
+                                    <span class="tag tag-approved">✓ Verified</span>
                                 @elseif($vStatus === 'rejected')
                                     <span class="tag tag-rejected">✗ Rejected</span>
                                 @endif
@@ -1337,15 +1337,15 @@
                             </span>
                             @endif
 
-                            {{-- Approve Listing --}}
-                            @if($vStatus !== 'approved')
+                            {{-- Verify Listing --}}
+                            @if($vStatus !== 'verified')
                             <form method="POST" action="{{ route('admin.users.listing-approve', ['userId' => $user->id, 'listingId' => $listingId]) }}" style="margin:0;">
                                 @csrf
                                 <input type="hidden" name="listing_filter" value="{{ $listingFilter }}">
                                 <input type="hidden" name="listing_status" value="{{ $listingStatus }}">
                                 <input type="hidden" name="listing_payment" value="{{ $listingPayment }}">
                                 <input type="hidden" name="listing_realtime" value="{{ $listingRealtime }}">
-                                <button type="submit" class="icon-btn" title="Approve Listing"
+                                <button type="submit" class="icon-btn" title="Verify Listing"
                                         style="background:#F0FDF4; border-color:#BBF7D0;"
                                         onclick="return confirm('Approve this listing?')">
                                     <svg width="14" height="14" fill="none" stroke="#16a34a" stroke-width="2" viewBox="0 0 24 24">

@@ -629,7 +629,7 @@
     <div class="filter-group">
         <span class="filter-group-label">Verification</span>
         <div class="filter-group-pills">
-            @foreach(['all' => 'All', 'pending' => 'Pending', 'approved' => 'Approved', 'rejected' => 'Rejected'] as $key => $label)
+            @foreach(['all' => 'All', 'pending' => 'Pending', 'verified' => 'Verified', 'rejected' => 'Rejected'] as $key => $label)
                 <a href="{{ route('product_listing.index', array_merge(
                         request()->only(['warehouse_id', 'status_filter', 'payment_filter', 'real_time_price', 'search']),
                         ['filter' => $key]
@@ -796,20 +796,20 @@
     </span>
     @endif
 
-    {{-- Approve Listing --}}
-    @if($listing->verification_status !== 'approved')
+    {{-- Verify Listing --}}
+    @if($listing->verification_status !== 'verified')
     <form method="POST" action="{{ route('product_listing.approveListing', $listing->id) }}" style="margin:0;">
         @csrf
-        <button type="submit" class="icon-btn" title="Approve Listing"
+        <button type="submit" class="icon-btn" title="Verify Listing"
                 style="background:#F0FDF4; border-color:#BBF7D0;"
-                onclick="return confirm('Approve this listing?')">
+                onclick="return confirm('Verify this listing?')">
             <svg width="14" height="14" fill="none" stroke="#16a34a" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
         </button>
     </form>
     @else
-    <span class="icon-btn" title="Listing Approved" style="background:#D1FAE5; border-color:#6EE7B7; cursor:default;">
+    <span class="icon-btn" title="Listing Verified" style="background:#D1FAE5; border-color:#6EE7B7; cursor:default;">
         <svg width="14" height="14" fill="none" stroke="#059669" stroke-width="2.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>

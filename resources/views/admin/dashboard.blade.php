@@ -228,8 +228,8 @@
                     <td>{{ $listing->user?->name ?? 'N/A' }}</td>
                     <td>{{ number_format($listing->total_quantity ?? 0) }}</td>
                     <td>
-                        @if($listing->verification_status === 'approved')
-                        <span class="badge badge-success">Approved</span>
+                        @if($listing->verification_status === 'verified')
+                        <span class="badge badge-success">Verified</span>
                         @elseif($listing->verification_status === 'pending')
                         <span class="badge badge-warning">Pending</span>
                         @else

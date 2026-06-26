@@ -106,7 +106,7 @@ public function warehouse()
     public function getVerificationLabelAttribute(): string
     {
         return match ($this->verification_status) {
-            'approved' => 'Approved',
+            'verified' => 'Verified',
             'pending'  => 'Pending approval',
             'rejected' => 'Rejected',
             default    => ucfirst($this->verification_status),

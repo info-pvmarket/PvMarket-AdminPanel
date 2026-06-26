@@ -498,11 +498,11 @@ class ProductListingController extends Controller
     {
         $listing = ProductListing::findOrFail($id);
         $listing->update([
-            'verification_status' => 'approved',
+            'verification_status' => 'verified',
             'is_active'           => true,
         ]);
 
-        return back()->with('success', 'Listing approved successfully.');
+        return back()->with('success', 'Listing verified successfully.');
     }
 
     // ── API: All Warehouses ─────────────────────────────────────
