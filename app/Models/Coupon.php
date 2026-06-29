@@ -3,31 +3,34 @@
 namespace App\Models;
 
 use MongoDB\Laravel\Eloquent\Model;
-use App\Traits\HasTranslations;
 
 class Coupon extends Model
 {
-    use HasTranslations;
     protected $connection = 'mongodb';
     protected $collection = 'coupons';
 
     protected $fillable = [
-    'code',
-    'discount_type',
-    'discount_value',
-    'min_order_amount',
-    'usage_limit',
-    'start_date',
-    'end_date',
-    'status',
-    'description',
-];
+        'code',
+        'type',
+        'plan_name',
+        'products',
+        'warehouses',
+        'duration_days',
+        'max_uses',
+        'current_uses',
+        'valid_from',
+        'valid_until',
+        'is_active',
+    ];
 
     protected $casts = [
-        'is_active'       => 'boolean',
-        'discount_months' => 'integer',
-    ];
-    public array $translatable = [
-        'description',
+        'products'      => 'integer',
+        'warehouses'    => 'integer',
+        'duration_days' => 'integer',
+        'max_uses'      => 'integer',
+        'current_uses'  => 'integer',
+        'is_active'     => 'boolean',
+        'valid_from'    => 'datetime',
+        'valid_until'   => 'datetime',
     ];
 }
