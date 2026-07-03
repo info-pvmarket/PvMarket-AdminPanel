@@ -5,9 +5,12 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\ProductListing;
+use App\Models\InventoryTransaction;
 use App\Models\User;
 use Illuminate\Http\Request;
 use App\Services\TranslationService;
+use MongoDB\BSON\ObjectId;
 
 class SalesController extends Controller
 {
@@ -90,11 +93,78 @@ class SalesController extends Controller
     {
         $request->validate(['order_status' => 'required|integer|min:0|max:4']);
 
+        $newStatus = (int) $request->order_status;
+
+        // Fetch the order
         $order = Order::findOrFail($id);
+        $oldStatus = (int) $order->order_status;
+
+        // Get the listing
+        $listing = ProductListing::find($order->offer_id);
+
+        // CASE 1: Transitioning TO confirmed (status 1) - reduce stock
+        if ($newStatus === 1 && $oldStatus !== 1 && $listing) {
+            $quantity = (int) $order->total_qty;
+            $currentStock = InventoryTransaction::currentStock((string) $listing->_id);
+
+            // Create inventory transaction for sale
+            InventoryTransaction::create([
+                'listing_id'       => new ObjectId((string) $listing->_id),
+                'product_id'       => $listing->product_id,
+                'warehouse_id'     => $listing->warehouse_id,
+                'user_id'          => $listing->user_id,
+                'transaction_type' => 'sale',
+                'quantity'         => $quantity,
+                'quantity_before'  => $currentStock,
+                'quantity_after'   => $currentStock - $quantity,
+                'quantity_change'  => $quantity,
+                'type'             => 'deduction',
+                'reason'           => 'Sale confirmed - Order #' . $order->unique_id,
+                'reference_type'   => 'order',
+                'reference_id'     => new ObjectId($id),
+                'notes'            => 'Sale confirmed - Order #' . $order->unique_id,
+                'created_by'       => new ObjectId(auth()->id()),
+            ]);
+
+            // Reduce total_quantity in product listing
+            $newQuantity = max(0, (int) $listing->total_quantity - $quantity);
+            $listing->update(['total_quantity' => $newQuantity]);
+        }
+
+        // CASE 2: Transitioning TO cancelled (status 4) FROM confirmed (status 1) - restore stock
+        if ($newStatus === 4 && $oldStatus === 1 && $listing) {
+            $quantity = (int) $order->total_qty;
+            $currentStock = InventoryTransaction::currentStock((string) $listing->_id);
+
+            // Create inventory transaction for sale cancellation (add stock back)
+            InventoryTransaction::create([
+                'listing_id'       => new ObjectId((string) $listing->_id),
+                'product_id'       => $listing->product_id,
+                'warehouse_id'     => $listing->warehouse_id,
+                'user_id'          => $listing->user_id,
+                'transaction_type' => 'sale_cancelled',
+                'quantity'         => $quantity,
+                'quantity_before'  => $currentStock,
+                'quantity_after'   => $currentStock + $quantity,
+                'quantity_change'  => $quantity,
+                'type'             => 'addition',
+                'reason'           => 'Sale cancelled - Order #' . $order->unique_id,
+                'reference_type'   => 'order',
+                'reference_id'     => new ObjectId($id),
+                'notes'            => 'Sale cancelled - Order #' . $order->unique_id,
+                'created_by'       => new ObjectId(auth()->id()),
+            ]);
+
+            // Add back to total_quantity in product listing
+            $newQuantity = (int) $listing->total_quantity + $quantity;
+            $listing->update(['total_quantity' => $newQuantity]);
+        }
+
+        // Update order status
         $order->update([
-    'order_status' => $request->order_status,
-    'updated_by'   => auth()->id(),  // mutator handles ObjectId cast automatically
-]);
+            'order_status' => $newStatus,
+            'updated_by'   => auth()->id(),
+        ]);
 
         return response()->json(['success' => true]);
     }

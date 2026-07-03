@@ -317,6 +317,11 @@ class ProductListingController extends Controller
 
         $currentStock = \App\Models\InventoryTransaction::currentStock($id);
 
+        // Fetch images explicitly
+        $listingImages = ProductListingImage::where('product_listing_id', new \MongoDB\BSON\ObjectId($id))
+            ->orderBy('sort_order')
+            ->get();
+
         return view('admin.product_listing.edit', compact(
             'listing',
             'sellTypes',
@@ -335,6 +340,7 @@ class ProductListingController extends Controller
             'warehouses',
             'inventoryHistory',
             'currentStock',
+            'listingImages',
         ));
     }
     // ── Update ──────────────────────────────────────────────────────

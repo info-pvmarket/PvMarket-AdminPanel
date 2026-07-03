@@ -1214,13 +1214,13 @@
                 <div style="padding:16px 18px;">
 
                     {{-- Existing images --}}
-                    @if($listing->images->count() > 0)
+                    @if($listingImages->count() > 0)
     <p class="img-section-label">Current Images</p>
     <div class="img-grid" id="existingImagesGrid">
-        @foreach($listing->images as $img)
-            @if(!empty($img->image['path']))
+        @foreach($listingImages as $img)
+            @if(!empty($img->image['url']))
             <div class="img-grid-item" id="img-wrapper-{{ $loop->index }}">
-                <img src="{{ asset('storage/' . $img->image['path']) }}"
+                <img src="{{ $img->image['url'] }}"
                      alt="{{ $img->image['original_name'] ?? 'image' }}"
                      onerror="this.style.display='none'">
                 <button type="button"
@@ -1229,7 +1229,7 @@
                         title="Remove image">✕</button>
                 <input type="hidden"
                        name="existing_image_ids[]"
-                       value="{{ $img->id }}"
+                       value="{{ $img->_id }}"
                        id="existing-input-{{ $loop->index }}">
             </div>
             @endif

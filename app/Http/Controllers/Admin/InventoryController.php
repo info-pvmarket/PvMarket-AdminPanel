@@ -114,9 +114,9 @@ $listing->alert_record_id     = $alert ? (string) $alert->_id : null;
             'notes'    => 'nullable|string|max:500',
         ]);
 
-        $listing = ProductListing::where('_id', new ObjectId($listingId))
-                         ->where('user_id', new ObjectId(Auth::id()))
-                                 ->firstOrFail();
+        $query = ProductListing::where('_id', new ObjectId($listingId));
+        $this->filterByAssignedUsers($query, 'user_id');
+        $listing = $query->firstOrFail();
 
         $transactionType = $request->type === 'add' ? 'stock_add' : 'stock_reduce';
         $quantity        = (int) $request->quantity;
@@ -171,9 +171,9 @@ InventoryTransaction::create($txData);
 
     public function history(string $listingId)
     {
-        $listing = ProductListing::where('_id', new ObjectId($listingId))
-                         ->where('user_id', new ObjectId(Auth::id()))
-                                 ->firstOrFail();
+        $query = ProductListing::where('_id', new ObjectId($listingId));
+        $this->filterByAssignedUsers($query, 'user_id');
+        $listing = $query->firstOrFail();
 
         $transactions = InventoryTransaction::forListing($listingId)
             ->stockMovements()               // excludes alert_settings records
@@ -202,9 +202,9 @@ InventoryTransaction::create($txData);
 
 public function getAlert(string $listingId)
 {
-    $listing = ProductListing::where('_id', new ObjectId($listingId))
-                     ->where('user_id', new ObjectId(Auth::id()))
-                             ->firstOrFail();
+    $query = ProductListing::where('_id', new ObjectId($listingId));
+    $this->filterByAssignedUsers($query, 'user_id');
+    $listing = $query->firstOrFail();
 
     $alert = StockAlert::getAlert($listingId, (string) Auth::id());
 
@@ -226,9 +226,9 @@ public function saveAlert(Request $request, string $listingId)
         'email_enabled' => 'boolean',
     ]);
 
-    $listing = ProductListing::where('_id', new ObjectId($listingId))
-                             ->where('user_id', new ObjectId(Auth::id()))
-                             ->firstOrFail();
+    $query = ProductListing::where('_id', new ObjectId($listingId));
+    $this->filterByAssignedUsers($query, 'user_id');
+    $listing = $query->firstOrFail();
 
     // Update existing or create new
     $alert = StockAlert::where('listing_id', new ObjectId($listingId))

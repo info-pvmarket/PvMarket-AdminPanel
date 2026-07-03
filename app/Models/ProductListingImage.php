@@ -8,7 +8,7 @@ use App\Casts\AsObjectId;
 class ProductListingImage extends Model
 {
     protected $connection = 'mongodb';
-    protected $collection = 'product_listings_images';
+    protected $collection = 'product_listing_images';
 
     protected $fillable = [
         'product_listing_id',

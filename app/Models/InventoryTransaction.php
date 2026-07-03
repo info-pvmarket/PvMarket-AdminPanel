@@ -90,7 +90,7 @@ public function scopeForUser($query, string $userId)
     public function scopeStockMovements($query)
     {
         return $query->whereIn('transaction_type', [
-            'initial_stock', 'stock_add', 'stock_reduce',
+            'initial_stock', 'stock_add', 'stock_reduce', 'sale', 'sale_cancelled',
         ]);
     }
 
@@ -101,8 +101,8 @@ public function scopeForUser($query, string $userId)
      */
     public static function currentStock(string $listingId): int
 {
-    $addTypes    = ['initial_stock', 'stock_add'];
-    $removeTypes = ['stock_reduce'];
+    $addTypes    = ['initial_stock', 'stock_add', 'sale_cancelled'];
+    $removeTypes = ['stock_reduce', 'sale'];
 
     $added = static::where('listing_id', new \MongoDB\BSON\ObjectId($listingId))
                    ->whereIn('transaction_type', $addTypes)
@@ -122,11 +122,13 @@ public function scopeForUser($query, string $userId)
     public function getTransactionLabelAttribute(): string
     {
         return match ($this->transaction_type) {
-            'initial_stock'  => 'Initial Stock',
-            'stock_add'      => 'Stock Added',
-            'stock_reduce'   => 'Stock Reduced',
-            'alert_settings' => 'Alert Settings',
-            default          => ucfirst(str_replace('_', ' ', $this->transaction_type)),
+            'initial_stock'    => 'Initial Stock',
+            'stock_add'        => 'Stock Added',
+            'stock_reduce'     => 'Stock Reduced',
+            'sale'             => 'Sale',
+            'sale_cancelled'   => 'Sale Cancelled',
+            'alert_settings'   => 'Alert Settings',
+            default            => ucfirst(str_replace('_', ' ', $this->transaction_type)),
         };
     }
 
@@ -135,6 +137,6 @@ public function scopeForUser($query, string $userId)
      */
     public function getIsAdditionAttribute(): bool
     {
-        return in_array($this->transaction_type, ['initial_stock', 'stock_add']);
+        return in_array($this->transaction_type, ['initial_stock', 'stock_add', 'sale_cancelled']);
     }
 }

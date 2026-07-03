@@ -714,7 +714,7 @@
                     <span class="badge-paid">Paid</span>
                 @endif
                 <img
-                    src="{{ $firstImage && !empty($firstImage->image['path']) ? asset('storage/' . $firstImage->image['path']) : asset('images/placeholder.png') }}"
+                    src="{{ $firstImage && !empty($firstImage->image['url']) ? $firstImage->image['url'] : asset('images/placeholder.png') }}"
                     class="listing-thumb"
                     onerror="this.src='https://placehold.co/110x110/f3f4f6/9ca3af?text=No+Image'"
                 >
