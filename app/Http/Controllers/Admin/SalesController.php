@@ -11,13 +11,20 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use App\Services\TranslationService;
 use MongoDB\BSON\ObjectId;
+use App\Traits\FiltersAssignedUsers;
 
 class SalesController extends Controller
 {
+    use FiltersAssignedUsers;
+
     public function __construct(protected TranslationService $translator) {}
     public function index(Request $request)
 {
-    $query = Order::where('is_active', true);
+    // $query = Order::where('is_active', true);
+
+    $query = Order::query();
+
+     $this->filterByAssignedUsers($query, 'created_by');
 
     if ($request->filled('user_id')) {
         $query->where('user_id', new \MongoDB\BSON\ObjectId($request->user_id));
@@ -51,6 +58,7 @@ class SalesController extends Controller
     if ($request->filled('user_id')) {
         $user = User::find($request->user_id);
     }
+    
 
     // ── CHANGED: map the current page items only, then set them back ──
     $productIds = collect($orders->items())
@@ -75,6 +83,8 @@ class SalesController extends Controller
 
     // ── CHANGED: append all current query params so filters survive page clicks ──
     $orders->appends($request->query());
+
+    dd($orders, $products, $user);
 
     return view('admin.sales.index', compact('orders', 'products', 'user'));
 }

@@ -60,9 +60,12 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         $query = Product::query();
+         
 
         // Filter by assigned users
         $this->filterByAssignedUsers($query, 'created_by');
+
+        $query->where('is_active', true);
 
         // Verification status filter
         $verificationFilter = $request->get('verification_status', 'all');
@@ -70,6 +73,7 @@ class ProductController extends Controller
             $query->where('verification_status', $verificationFilter);
         }
 
+        
         // Search filter
         if ($request->filled('search')) {
             $s = $request->search;
@@ -79,6 +83,7 @@ class ProductController extends Controller
                   ->orWhere('sku_code',    'like', "%{$s}%");
             });
         }
+       
 
         // Listings filter - get product IDs that have listings
         $listingsFilter = $request->get('listings_filter', 'all');
@@ -122,6 +127,7 @@ class ProductController extends Controller
                                       ->get(['_id', 'name'])
                                       ->mapWithKeys(fn($u) => [(string) $u->_id => $u->name])
                                       ->toArray();
+
 
         return view('admin.products.products', [
             'mode'               => 'index',
