@@ -127,7 +127,7 @@
     width: 100%;
     border-collapse: collapse;
     font-size: 13px;
-    min-width: 1100px; /* ADD THIS so columns don't squish */
+    min-width: 1450px;
 }
 
 .sales-table thead tr {
@@ -215,6 +215,46 @@
     font-size: 11px;
     font-weight: 600;
     color: var(--text);
+}
+
+.product-name-main {
+    max-width: 180px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.35;
+}
+
+.product-sku {
+    padding: 2px 8px;
+    background: #EFF6FF;
+    border: 1px solid #BFDBFE;
+    border-radius: 4px;
+    color: var(--primary-d);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.detail-cell {
+    min-width: 190px;
+    text-align: left !important;
+    line-height: 1.45;
+}
+
+.detail-primary {
+    font-weight: 800;
+    color: var(--text);
+    margin-bottom: 3px;
+}
+
+.detail-line {
+    color: var(--muted);
+    font-size: 12px;
+    word-break: break-word;
+}
+
+.detail-label {
+    color: var(--primary-d);
+    font-weight: 700;
 }
 
 /* ── Qty cell ── */
@@ -400,8 +440,8 @@
                 <th onclick="sortTable(3)"><span class="th-sort">Total Cost </span></th>
                 <th>Payment Method</th>
                 <th>Partial Payment Amount</th>
-                <th onclick="sortTable(6)"><span class="th-sort">Buyer Company </span></th>
-                <th onclick="sortTable(7)"><span class="th-sort">Seller Company </span></th>
+                <th onclick="sortTable(6)"><span class="th-sort">Buyer Details </span></th>
+                <th onclick="sortTable(7)"><span class="th-sort">Seller Details </span></th>
                 <th>Order Status</th>
                 <th>Delivery Charge</th>
                 <th onclick="sortTable(10)"><span class="th-sort">Ordered At </span></th>
@@ -411,7 +451,17 @@
             @forelse($orders as $order)
             @php
                 $product   = $order->product_info;
-                $imgUrl    = $product && $product->images ? asset('storage/' . (is_array($product->images) ? $product->images[0] : $product->images)) : null;
+                $listing   = $order->product_listing;
+                $buyer     = $order->buyer_info;
+                $seller    = $order->seller_info;
+                $imageData = $order->listing_image?->image;
+                $imagePath = data_get($imageData, 'url') ?: data_get($imageData, 'path');
+                if (!$imagePath && is_string($imageData)) {
+                    $imagePath = $imageData;
+                }
+                $imgUrl = $imagePath
+                    ? (str_starts_with($imagePath, 'http') ? $imagePath : asset('storage/' . $imagePath))
+                    : null;
                 $currency  = (!empty($order->payment_currency) && $order->payment_currency !== 'null')
              ? $order->payment_currency
              : ((!empty($order->purchased_currency) && $order->purchased_currency !== 'null')
@@ -449,11 +499,12 @@ $total     = (!empty($order->payment_currency_total) && $order->payment_currency
                         @else
                             <div class="product-img-placeholder">No img</div>
                         @endif
-                        @if($product)
-    <span class="product-code">
-        {{ $product->product_name }}
-    </span>
-@endif
+                        <span class="product-name-main">
+                            {{ $product ? (lang($product, 'product_name') ?? $product->product_name) : '-' }}
+                        </span>
+                        @if($listing?->sku_code)
+                            <span class="product-sku">SKU: {{ $listing->sku_code }}</span>
+                        @endif
                     </div>
                 </td>
 
@@ -527,14 +578,46 @@ $total     = (!empty($order->payment_currency_total) && $order->payment_currency
                     @endif
                 </td>
 
-                {{-- Buyer Company --}}
-                <td class="company-name">
-                    {{ $order->buyer_company_name ?? '-' }}
+                {{-- Buyer Details --}}
+                <td class="detail-cell">
+                    @if($buyer)
+                        <div class="detail-primary">{{ $buyer->company_name ?: ($buyer->name ?: '-') }}</div>
+                        @if(!empty($buyer->company_name) && !empty($buyer->name))
+                            <div class="detail-line"><span class="detail-label">Name:</span> {{ $buyer->name }}</div>
+                        @endif
+                        @if(!empty($buyer->email))
+                            <div class="detail-line"><span class="detail-label">Email:</span> {{ $buyer->email }}</div>
+                        @endif
+                        @if(!empty($buyer->mobile))
+                            <div class="detail-line"><span class="detail-label">Mobile:</span> {{ $buyer->mobile }}</div>
+                        @endif
+                        @if(!empty($buyer->vat_id))
+                            <div class="detail-line"><span class="detail-label">VAT:</span> {{ $buyer->vat_id }}</div>
+                        @endif
+                    @else
+                        <span class="dash">-</span>
+                    @endif
                 </td>
 
-                {{-- Seller Company --}}
-                <td class="company-name">
-                    {{ $order->seller_company_name ?? '-' }}
+                {{-- Seller Details --}}
+                <td class="detail-cell">
+                    @if($seller)
+                        <div class="detail-primary">{{ $seller->company_name ?: ($seller->name ?: '-') }}</div>
+                        @if(!empty($seller->company_name) && !empty($seller->name))
+                            <div class="detail-line"><span class="detail-label">Name:</span> {{ $seller->name }}</div>
+                        @endif
+                        @if(!empty($seller->email))
+                            <div class="detail-line"><span class="detail-label">Email:</span> {{ $seller->email }}</div>
+                        @endif
+                        @if(!empty($seller->mobile))
+                            <div class="detail-line"><span class="detail-label">Mobile:</span> {{ $seller->mobile }}</div>
+                        @endif
+                        @if(!empty($seller->vat_id))
+                            <div class="detail-line"><span class="detail-label">VAT:</span> {{ $seller->vat_id }}</div>
+                        @endif
+                    @else
+                        <span class="dash">-</span>
+                    @endif
                 </td>
 
                 {{-- Order Status --}}
@@ -584,7 +667,7 @@ $total     = (!empty($order->payment_currency_total) && $order->payment_currency
 
     {{-- Footer count --}}
     <div class="table-footer">
-    <span>{{ $orders->firstItem() ?? 0 }}–{{ $orders->lastItem() ?? 0 }} of {{ $orders->total() }} entries</span>
+    <span id="countLabel">{{ $orders->firstItem() ?? 0 }}-{{ $orders->lastItem() ?? 0 }} of {{ $orders->total() }} entries</span>
 
     @if ($orders->hasPages())
     <nav style="display:flex; align-items:center; gap:4px;">

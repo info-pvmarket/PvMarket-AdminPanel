@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductListing;
+use App\Models\ProductListingImage;
 use App\Models\InventoryTransaction;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -31,7 +32,19 @@ class SalesController extends Controller
     }
 
     if ($request->filled('product_id')) {
-        $query->where('offer_id', new \MongoDB\BSON\ObjectId($request->product_id));
+        $productListingIds = ProductListing::where('product_id', new ObjectId((string) $request->product_id))
+            ->get(['_id'])
+            ->pluck('_id')
+            ->filter()
+            ->map(fn($id) => new ObjectId((string) $id))
+            ->values()
+            ->all();
+
+        if (empty($productListingIds)) {
+            $query->whereRaw(['_id' => ['$exists' => false]]);
+        } else {
+            $query->whereIn('offer_id', $productListingIds);
+        }
     }
 
     if ($request->filled('search')) {
@@ -61,22 +74,76 @@ class SalesController extends Controller
     
 
     // ── CHANGED: map the current page items only, then set them back ──
-    $productIds = collect($orders->items())
+    $listingIds = collect($orders->items())
         ->pluck('offer_id')
         ->filter()
         ->unique()
-        ->values()
-        ->map(fn($id) => new \MongoDB\BSON\ObjectId((string)$id))
-        ->toArray();
+        ->map(fn($id) => (string) $id)
+        ->values();
 
-    $products_map = Product::whereIn('_id', $productIds)
-        ->get()
-        ->keyBy(fn($p) => (string)$p->_id);
+    $listingsMap = $listingIds->isEmpty()
+        ? collect()
+        : ProductListing::whereIn('_id', $listingIds)
+            ->get()
+            ->keyBy(fn($listing) => (string) $listing->_id);
+
+    $productIds = $listingsMap->pluck('product_id')
+        ->filter()
+        ->unique()
+        ->map(fn($id) => (string) $id)
+        ->values();
+
+    $productsMap = $productIds->isEmpty()
+        ? collect()
+        : Product::whereIn('_id', $productIds)
+            ->get()
+            ->keyBy(fn($product) => (string) $product->_id);
+
+    $buyerIds = collect($orders->items())
+        ->pluck('user_id')
+        ->filter()
+        ->unique()
+        ->map(fn($id) => (string) $id)
+        ->values();
+
+    $sellerIds = $listingsMap->pluck('user_id')
+        ->filter()
+        ->unique()
+        ->map(fn($id) => (string) $id)
+        ->values();
+
+    $userIds = $buyerIds->merge($sellerIds)->unique()->values();
+
+    $usersMap = $userIds->isEmpty()
+        ? collect()
+        : User::whereIn('_id', $userIds)
+            ->get()
+            ->keyBy(fn($user) => (string) $user->_id);
+
+    $listingObjectIds = $listingIds
+        ->map(fn($id) => new ObjectId((string) $id))
+        ->all();
+
+    $listingImagesMap = empty($listingObjectIds)
+        ? collect()
+        : ProductListingImage::whereIn('product_listing_id', $listingObjectIds)
+            ->orderBy('sort_order')
+            ->get()
+            ->groupBy(fn($image) => (string) $image->product_listing_id);
 
     // Mutate the paginator's items in place
-    $orders->getCollection()->transform(function ($order) use ($products_map) {
-        $product = $products_map[(string)$order->offer_id] ?? null;
-        $order->product_info         = $product;
+    $orders->getCollection()->transform(function ($order) use ($listingsMap, $productsMap, $usersMap, $listingImagesMap) {
+        $listing = $listingsMap[(string) $order->offer_id] ?? null;
+        $product = $listing ? ($productsMap[(string) $listing->product_id] ?? null) : null;
+        $buyer = $usersMap[(string) $order->user_id] ?? null;
+        $seller = $listing ? ($usersMap[(string) $listing->user_id] ?? null) : null;
+        $listingImages = $listing ? ($listingImagesMap[(string) $listing->_id] ?? collect()) : collect();
+
+        $order->product_listing = $listing;
+        $order->product_info = $product;
+        $order->buyer_info = $buyer;
+        $order->seller_info = $seller;
+        $order->listing_image = $listingImages->first();
         $order->product_name_display = $product?->product_name ?? '—';
         return $order;
     });
@@ -84,7 +151,7 @@ class SalesController extends Controller
     // ── CHANGED: append all current query params so filters survive page clicks ──
     $orders->appends($request->query());
 
-    dd($orders, $products, $user);
+    // dd($orders, $products, $user);
 
     return view('admin.sales.index', compact('orders', 'products', 'user'));
 }
