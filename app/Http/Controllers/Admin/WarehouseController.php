@@ -88,6 +88,7 @@ class WarehouseController extends Controller
             'is_active'                 => true,
             'is_primary'                => false,
             'is_paid'                   => false,
+            'payment_status'            => 'pending',
             'created_by'                => new \MongoDB\BSON\ObjectId(Auth::id()),
             'updated_by'                => new \MongoDB\BSON\ObjectId(Auth::id()),
         ];
@@ -163,8 +164,9 @@ class WarehouseController extends Controller
     public function markAsPaid($id)
     {
         Warehouse::findOrFail($id)->update([
-            'is_paid'    => true,
-            'updated_by' => Auth::user()->name,
+            'is_paid'        => true,
+            'payment_status' => 'paid',
+            'updated_by'     => Auth::user()->name,
         ]);
 
         return redirect()->route('admin.warehouses.index')

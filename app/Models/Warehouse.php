@@ -7,7 +7,8 @@ use App\Traits\HasTranslations;
 
 class Warehouse extends Model
 {
-        use HasTranslations;
+    use HasTranslations;
+
     protected $connection = 'mongodb';
     protected $collection = 'warehouses';
 
@@ -26,6 +27,7 @@ class Warehouse extends Model
         'ddp_deliverable_countries', // array of ObjectIds
         'is_active',
         'is_paid',
+        'payment_status',
         'is_primary',
         'created_by',
         'updated_by',
@@ -37,17 +39,26 @@ class Warehouse extends Model
         'ddp_deliverable_countries' => 'array',
         'is_primary'                => 'boolean',
     ];
-    
+
     public array $translatable = [
-    'warehouse_name',
-    'city',
-    'country',
-];
+        'warehouse_name',
+        'city',
+        'country',
+    ];
 
     public function getNameAttribute(): ?string
-{
-    return $this->warehouse_name;
-}
+    {
+        return $this->warehouse_name;
+    }
+
+    public function getPaymentStatusAttribute($value): string
+    {
+        if ($this->is_paid) {
+            return 'paid';
+        }
+
+        return $value ?: 'pending';
+    }
 
     public function getTable(): string
     {
