@@ -214,6 +214,7 @@
         <hr class="divider">
 
         {{-- ── Popular Product ── --}}
+        @if($mode === 'create')
         <div class="section-header" onclick="toggleSection('popular')">
             <div class="section-title">Popular Product</div>
             <div class="section-toggle" id="toggle-popular">−</div>
@@ -247,6 +248,8 @@
         <hr class="divider">
 
         {{-- ── Product Details ── --}}
+        @endif
+
         <div class="section-header" onclick="toggleSection('details')">
             <div class="section-title">Product Details</div>
             <div class="section-toggle" id="toggle-details">−</div>
@@ -699,7 +702,7 @@ document.addEventListener('DOMContentLoaded', function () {
     <div class="filter-group">
         <span class="filter-group-label">Listings</span>
         <div class="filter-group-pills">
-            @foreach(['all' => 'All', 'has_listings' => 'Has Listings', 'no_listings' => 'No Listings'] as $key => $label)
+            @foreach(['all' => 'All Listings', 'has_listings' => 'Has Listings', 'no_listings' => 'No Listings'] as $key => $label)
                 <a href="{{ route('admin.products.index', array_merge(
                         request()->only(['verification_status', 'search', 'entries']),
                         ['listings_filter' => $key]
@@ -781,6 +784,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     @php
     $updatedById = (string) ($product->updated_by ?? '');
     $updatedName = $userNames[$updatedById] ?? '—';
+    if ($updatedById !== '' && !preg_match('/^[a-f\d]{24}$/i', $updatedById) && !isset($userNames[$updatedById])) {
+        $updatedName = $updatedById;
+    }
 @endphp
 <span class="updater-badge" title="{{ $updatedName }}">
     {{ $updatedName }}

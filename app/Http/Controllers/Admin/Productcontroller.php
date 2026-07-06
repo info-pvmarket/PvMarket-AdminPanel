@@ -4,22 +4,19 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Models\ProductListing;
 use App\Models\Brand;
 use App\Models\Unit;
 use App\Models\ProductDetailOption;
 use App\Models\MainMenu;
 use App\Models\SubMenu;
-use App\Models\ProductListing;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use App\Services\TranslationService;
-use App\Traits\FiltersAssignedUsers;
 
 class ProductController extends Controller
 {
-    use FiltersAssignedUsers;
-
     public function __construct(protected TranslationService $translator) {}
     // ── SKU Generator ─────────────────────────────────
     private function generateSku(string $categoryName): string
@@ -62,11 +59,6 @@ class ProductController extends Controller
         $query = Product::query();
          
 
-        // Filter by assigned users
-        $this->filterByAssignedUsers($query, 'created_by');
-
-        $query->where('is_active', true);
-
         // Verification status filter
         $verificationFilter = $request->get('verification_status', 'all');
         if ($verificationFilter !== 'all') {
@@ -83,34 +75,27 @@ class ProductController extends Controller
                   ->orWhere('sku_code',    'like', "%{$s}%");
             });
         }
-       
 
-        // Listings filter - get product IDs that have listings
+        // Listing presence filter
         $listingsFilter = $request->get('listings_filter', 'all');
         if ($listingsFilter !== 'all') {
-            // Get product IDs that have at least one listing
             $productIdsWithListings = ProductListing::whereNull('deleted_at')
                 ->pluck('product_id')
                 ->filter()
-                ->map(function ($id) {
-                    if ($id instanceof \MongoDB\BSON\ObjectId) {
-                        return $id;
-                    }
-                    return new \MongoDB\BSON\ObjectId((string) $id);
-                })
+                ->map(fn ($id) => (string) $id)
+                ->filter(fn ($id) => preg_match('/^[a-f\d]{24}$/i', $id))
                 ->unique()
+                ->map(fn ($id) => new \MongoDB\BSON\ObjectId($id))
                 ->values()
                 ->toArray();
 
             if ($listingsFilter === 'has_listings') {
                 $query->whereIn('_id', $productIdsWithListings);
-            } elseif ($listingsFilter === 'no_listings') {
-                if (!empty($productIdsWithListings)) {
-                    $query->whereNotIn('_id', $productIdsWithListings);
-                }
-                // If no listings exist at all, all products have no listings (no filter needed)
+            } elseif ($listingsFilter === 'no_listings' && !empty($productIdsWithListings)) {
+                $query->whereNotIn('_id', $productIdsWithListings);
             }
         }
+       
 
         $products = $query->orderBy('created_at', 'desc')
                   ->paginate($request->get('entries', 10));
@@ -118,8 +103,10 @@ class ProductController extends Controller
         // Collect all updated_by ObjectIds and resolve to names in one query
         $updatedByIds = $products->pluck('updated_by')
                                  ->filter()
-                                 ->map(fn($id) => new \MongoDB\BSON\ObjectId((string) $id))
+                                 ->map(fn($id) => (string) $id)
+                                 ->filter(fn($id) => preg_match('/^[a-f\d]{24}$/i', $id))
                                  ->unique()
+                                 ->map(fn($id) => new \MongoDB\BSON\ObjectId($id))
                                  ->values()
                                  ->toArray();
 
@@ -273,8 +260,6 @@ class ProductController extends Controller
     'brand_id'              => $request->brand_id ? new \MongoDB\BSON\ObjectId($request->brand_id) : null,
     'pieces_per_pallet'     => $request->pieces_per_pallet,
     'pallets_per_container' => $request->pallets_per_container,
-    'is_popular'            => $request->boolean('is_popular'),
-    'real_time_price'       => $request->boolean('real_time_price'),
     'updated_by'            => new \MongoDB\BSON\ObjectId(Auth::id()),
 ];
 
