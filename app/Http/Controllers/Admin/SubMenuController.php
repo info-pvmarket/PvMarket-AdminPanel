@@ -12,6 +12,16 @@ use App\Services\TranslationService;
 class SubMenuController extends Controller
 {
     public function __construct(protected TranslationService $translator) {}
+
+    private function stockEnabledMainMenus()
+    {
+        return MainMenu::where('stock_value', true)
+            ->where('is_active', '!=', false)
+            ->where('is_hold', '!=', true)
+            ->orderBy('category_name')
+            ->get();
+    }
+
     public function index(Request $request)
     {
         $query = SubMenu::query();
@@ -31,7 +41,7 @@ class SubMenuController extends Controller
 
     public function create()
     {
-        $mainMenus = MainMenu::orderBy('category_name')->get();
+        $mainMenus = $this->stockEnabledMainMenus();
 
         return view('admin.setup.sub-menu.sub-menu', [
             'mode'      => 'create',
@@ -75,7 +85,15 @@ class SubMenuController extends Controller
     public function edit($id)
     {
         $record    = SubMenu::findOrFail($id);
-        $mainMenus = MainMenu::orderBy('category_name')->get();
+        $mainMenus = $this->stockEnabledMainMenus();
+
+        if ($record->category_id && !$mainMenus->contains('id', (string) $record->category_id)) {
+            $currentMenu = MainMenu::find($record->category_id);
+            if ($currentMenu) {
+                $mainMenus->push($currentMenu);
+                $mainMenus = $mainMenus->sortBy('category_name')->values();
+            }
+        }
 
         return view('admin.setup.sub-menu.sub-menu', [
             'mode'      => 'edit',
