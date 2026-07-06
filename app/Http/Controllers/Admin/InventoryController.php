@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use MongoDB\BSON\ObjectId;
 use App\Models\StockAlert;
 use App\traits\HasTranslations;
+use App\Services\TranslationService;
 
 class InventoryController extends Controller
 {

@@ -171,8 +171,12 @@ $validated['slug']            = $request->filled('slug')
                                   ? \Illuminate\Support\Str::slug($request->slug)
                                   : \Illuminate\Support\Str::slug($request->product_id . '-' . time());
 $validated['real_time_price'] = $request->boolean('real_time_price', false);
+$validated['is_solar_listing'] = $request->boolean('is_solar_listing', false);
         $validated['is_active']           = $request->boolean('is_active', true);
         $validated['is_paid']             = false;
+        $validated['solar_tier'] = $request->boolean('is_solar_listing') 
+    ? $request->input('solar_tier') 
+    : null;
         $validated['is_sold_off']         = $request->boolean('is_sold_off', false);
         $validated['is_popular']          = $request->boolean('is_popular', false);
         $validated['sku_code']            = 'PV-' . rand(1000000000, 9999999999) . '-' . rand(1000, 9999);
@@ -228,9 +232,10 @@ if ($request->hasFile('images')) {
             'created_by'  => new \MongoDB\BSON\ObjectId(Auth::id()),
         ]);
     }
-    return redirect()->route('product_listing.index')
-                 ->with('success', 'Your listing has been created and is pending approval.');
 }
+return redirect()->route('product_listing.index')
+                 ->with('success', 'Your listing has been created and is pending approval.');
+    }  // ← closes store()
 
     // ── Show ────────────────────────────────────────────────────────
 
@@ -325,10 +330,14 @@ $validated['slug']            = $request->filled('slug')
                                   ? \Illuminate\Support\Str::slug($request->slug)
                                   : $listing->slug;
 $validated['real_time_price'] = $request->boolean('real_time_price', false);
+$validated['is_solar_listing'] = $request->boolean('is_solar_listing', false);
         $validated['main_category_id'] = new \MongoDB\BSON\ObjectId($request->main_category_id);
 $validated['sub_category_id']  = new \MongoDB\BSON\ObjectId($request->sub_category_id);
 $validated['product_id']       = new \MongoDB\BSON\ObjectId($request->product_id);
 $validated['warehouse_id']     = new \MongoDB\BSON\ObjectId($request->warehouse_id);
+$validated['solar_tier'] = $request->boolean('is_solar_listing') 
+    ? $request->input('solar_tier') 
+    : null;
 
         // Convert max_quantity: empty string → null
         $slotsAsObjects = [];
@@ -386,6 +395,8 @@ if ($request->hasFile('images')) {
 $listing->update($validated);
 return redirect()->route('product_listing.index')
                  ->with('success', 'Listing updated successfully.');
+
+    }
 
     // ── Destroy ─────────────────────────────────────────────────────
 

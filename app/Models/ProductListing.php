@@ -34,8 +34,10 @@ class ProductListing extends Model
         'incoterm_id',
         'slug',
         'real_time_price',
+        'is_solar_listing',
         'approved_at',
         'approved_by',
+        'solar_tier',
     ];
 
     protected $casts = [
@@ -47,6 +49,8 @@ class ProductListing extends Model
     'total_quantity' => 'integer',
     'incoterm_id'      => AsObjectId::class,
     'real_time_price'  => 'boolean',
+    'is_solar_listing' => 'boolean',
+    'solar_tier' => 'string',
     
 ];
 public array $translatable = [

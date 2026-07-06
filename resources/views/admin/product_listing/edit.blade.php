@@ -945,6 +945,46 @@
                         </label>
                     </div>
 
+                    {{-- 5. Add to Solar Listings --}}
+<div class="toggle-row">
+    <div class="toggle-left">
+        <div class="toggle-icon" style="background:#F0FDF4; color:#16a34a;">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M12 3v1m0 16v1m8.66-13l-.87.5M4.21 17.5l-.87.5M20.66 17.5l-.87-.5M4.21 6.5l-.87-.5M21 12h-1M4 12H3"/>
+                <circle cx="12" cy="12" r="4"/>
+            </svg>
+        </div>
+        <div>
+            <div class="toggle-info-title">Add to Solar Listings</div>
+            <div class="toggle-info-sub">Feature this offer in the Solar Analysis product listings</div>
+        </div>
+    </div>
+    <div style="display:flex; align-items:center; gap:12px;">
+        {{-- Tier dropdown --}}
+        <div id="solarTierWrapper" style="display:none;">
+            <select name="solar_tier" id="solarTierSelect"
+                    style="padding:6px 12px; border:1px solid var(--border); border-radius:8px;
+                           font-size:.82rem; color:var(--text); background:#fff;
+                           font-family:inherit; outline:none; cursor:pointer;
+                           transition:border-color .15s;">
+                <option value="">Select Tier</option>
+                <option value="premium"     {{-- edit only: {{ ($listing->solar_tier ?? '') === 'premium'     ? 'selected' : '' }} --}}>⭐ Premium</option>
+                <option value="recommended" {{-- edit only: {{ ($listing->solar_tier ?? '') === 'recommended' ? 'selected' : '' }} --}}>✅ Recommended</option>
+                <option value="value"       {{-- edit only: {{ ($listing->solar_tier ?? '') === 'value'       ? 'selected' : '' }} --}}>💰 Value</option>
+            </select>
+        </div>
+        {{-- Toggle --}}
+        <label class="toggle-switch">
+            <input type="checkbox" name="is_solar_listing" value="1"
+                   id="toggleSolarListing"
+                   {{-- edit only: {{ !empty($listing->is_solar_listing) ? 'checked' : '' }} --}}>
+            <span class="toggle-track"></span>
+            <span class="toggle-thumb"></span>
+        </label>
+    </div>
+</div>
+
                 </div>{{-- end toggle-section --}}
             </div>
 
@@ -1802,6 +1842,26 @@ function submitAdjust() {
     .catch(() => showToast('Network error.', 'error'));
 }
 
+// ── Toggle: Solar Listing → show/hide tier dropdown ──────────
+(function() {
+    const toggle  = document.getElementById('toggleSolarListing');
+    const wrapper = document.getElementById('solarTierWrapper');
+    const select  = document.getElementById('solarTierSelect');
+
+    function syncTier() {
+        if (toggle.checked) {
+            wrapper.style.display = 'block';
+            select.required = true;
+        } else {
+            wrapper.style.display = 'none';
+            select.required = false;
+            select.value = '';
+        }
+    }
+
+    toggle.addEventListener('change', syncTier);
+    syncTier(); // run on page load
+})();
 // ── Alert Modal ───────────────────────────────────────────────
 function openAlert(el) {
     currentAlertListingId = el.dataset.id;

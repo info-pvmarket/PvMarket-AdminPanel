@@ -36,6 +36,7 @@ use App\Http\Controllers\Admin\CommissionController;
 use App\Http\Controllers\Admin\InventoryController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\LocationController;
+use App\Http\Controllers\Admin\ProjectApprovalController;
 
  
 
@@ -339,6 +340,13 @@ Route::prefix('admin/setup')->name('admin.setup.')->group(function () {
     Route::put   ('languages/{code}',             [LanguageController::class, 'update'])   ->name('languages.update');
     Route::delete('languages/{code}',             [LanguageController::class, 'destroy'])  ->name('languages.destroy');
 
+});
+
+Route::prefix('admin/project-approvals')->name('admin.project-approvals.')->group(function () {
+    Route::get('/',                     [\App\Http\Controllers\Admin\ProjectApprovalController::class, 'index'])->name('index');
+    Route::post('/{project}/approve',   [\App\Http\Controllers\Admin\ProjectApprovalController::class, 'approve'])->name('approve');
+    Route::post('/{project}/reject',    [\App\Http\Controllers\Admin\ProjectApprovalController::class, 'reject'])->name('reject');
+    Route::get('/{project}',            [\App\Http\Controllers\Admin\ProjectApprovalController::class, 'show'])->name('show');
 });
 
 
