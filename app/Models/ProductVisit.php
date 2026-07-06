@@ -18,7 +18,11 @@ class ProductVisit extends Model
         'offer_id',
         'no_of_times',
         'visit_date',
+        'last_visited_at',
+        'products',
         'is_active',
+        'created_at',
+        'updated_at',
     ];
 
     protected $casts = [

@@ -247,7 +247,7 @@
                             1 => 'lt-1', 2 => 'lt-2', 3 => 'lt-3', 4 => 'lt-4', default => 'lt-2'
                         };
                         $ltLabel = match((int)$lead->lead_type) {
-                            1 => 'Book Free', 2 => 'Spot Price', 3 => 'Contact', 4 => 'Newsletter', default => 'Lead'
+                            1 => 'Book Free', 2 => 'Spot Price', 3 => 'Generic', 4 => 'Newsletter', default => 'Lead'
                         };
                     @endphp
                     <span class="badge-lead-type {{ $ltClass }}">{{ $ltLabel }}</span>

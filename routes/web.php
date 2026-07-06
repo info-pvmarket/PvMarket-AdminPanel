@@ -433,6 +433,10 @@ Route::middleware('auth')->group(function () {
     // ══════════════════════════════════════════════════════════════════════
     Route::prefix('admin/leads/visits')->name('admin.leads.visits.')->middleware('admin.permission:leads.visits')->group(function () {
         Route::get('/', [LeadController::class, 'productVisits'])->name('index');
+        Route::patch('/{id}/products/{index}', [LeadController::class, 'updateVisitProduct'])->name('products.update');
+        Route::post('/{id}/products/{index}/notes', [LeadController::class, 'addVisitProductNote'])->name('products.notes.store');
+        Route::patch('/{id}/products/{index}/notes/{noteIndex}', [LeadController::class, 'updateVisitProductNote'])->name('products.notes.update');
+        Route::delete('/{id}/products/{index}/notes/{noteIndex}', [LeadController::class, 'deleteVisitProductNote'])->name('products.notes.destroy');
         Route::delete('/{id}', [LeadController::class, 'destroyVisit'])->name('destroy');
         Route::get('/export', [LeadController::class, 'exportVisits'])->name('export');
     });

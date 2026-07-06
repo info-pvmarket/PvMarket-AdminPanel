@@ -41,7 +41,7 @@ class LeadGeneration extends Model
         return match((int)$this->lead_type) {
             1 => 'Book Free',
             2 => 'Spot Price',
-            3 => 'Contact',
+            3 => 'Generic',
             4 => 'Newsletter',
             default => 'Unknown',
         };
