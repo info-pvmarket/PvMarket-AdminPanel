@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\SeoApiController;
+use App\Http\Controllers\Api\SolarAnalysisController;
 
 /*
 |--------------------------------------------------------------------------
@@ -48,3 +49,18 @@ Route::get('seo-meta', [SeoApiController::class, 'getSeoMeta']);
  * Returns array of URLs with lastmod, changefreq, priority for XML sitemap
  */
 Route::get('seo-meta/sitemap', [SeoApiController::class, 'getAllForSitemap']);
+
+Route::prefix('solar-analysis')->group(function () {
+    Route::post('analyze', [SolarAnalysisController::class, 'analyze']);
+    Route::get('products', [SolarAnalysisController::class, 'products']);
+    Route::post('save', [SolarAnalysisController::class, 'save']);
+    Route::get('projects', [SolarAnalysisController::class, 'projects']);
+    Route::get('projects/{project}', [SolarAnalysisController::class, 'show']);
+    Route::post('projects/{project}/submit', [SolarAnalysisController::class, 'submit']);
+    Route::get('marketplace', [SolarAnalysisController::class, 'marketplace']);
+    Route::get('marketplace/{project}', [SolarAnalysisController::class, 'marketplaceShow']);
+    Route::post('quotes/submit', [SolarAnalysisController::class, 'submitQuote']);
+    Route::get('projects/{project}/quotes', [SolarAnalysisController::class, 'quotes']);
+    Route::get('projects/{project}/pdf', [SolarAnalysisController::class, 'pdf']);
+    Route::get('projects/{project}/pdf-base64', [SolarAnalysisController::class, 'pdfBase64']);
+});

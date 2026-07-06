@@ -183,6 +183,12 @@ class ProductListingController extends Controller
             'total_quantity'                   => 'required|integer|min:1',
             'lead_time'                        => 'required|integer|min:0',
             'is_active'                        => 'nullable|boolean',
+            'is_solar_listing'                 => 'nullable|boolean',
+            'solar_tier'                       => 'nullable|required_if:is_solar_listing,1|in:premium,recommended,value',
+            'solar_grid_types'                 => 'nullable|required_if:is_solar_listing,1|array|min:1',
+            'solar_grid_types.*'               => 'in:on-grid,off-grid,hybrid',
+            'solar_phase_types'                => 'nullable|required_if:is_solar_listing,1|array|min:1',
+            'solar_phase_types.*'              => 'in:single,three',
             'images.*'                         => 'nullable|image|mimes:jpeg,png,webp|max:5120',
             'slots'                            => 'required|array|min:1',
             'slots.*.min_quantity'             => 'required|integer|min:0',
@@ -208,6 +214,10 @@ class ProductListingController extends Controller
         $validated['is_paid']             = false;
         $validated['is_sold_off']         = $request->boolean('is_sold_off', false);
         $validated['is_popular']          = $request->boolean('is_popular', false);
+        $validated['is_solar_listing']    = $request->boolean('is_solar_listing', false);
+        $validated['solar_tier']          = $validated['is_solar_listing'] ? $request->input('solar_tier') : null;
+        $validated['solar_grid_types']    = $validated['is_solar_listing'] ? array_values($request->input('solar_grid_types', [])) : [];
+        $validated['solar_phase_types']   = $validated['is_solar_listing'] ? array_values($request->input('solar_phase_types', [])) : [];
         $validated['sku_code']            = 'PV-' . rand(1000000000, 9999999999) . '-' . rand(1000, 9999);
 
         // Convert max_quantity: empty string → null
@@ -358,6 +368,12 @@ class ProductListingController extends Controller
             'total_quantity'                   => 'required|integer|min:1',
             'lead_time'                        => 'required|integer|min:0',
             'is_active'                        => 'nullable|boolean',
+            'is_solar_listing'                 => 'nullable|boolean',
+            'solar_tier'                       => 'nullable|required_if:is_solar_listing,1|in:premium,recommended,value',
+            'solar_grid_types'                 => 'nullable|required_if:is_solar_listing,1|array|min:1',
+            'solar_grid_types.*'               => 'in:on-grid,off-grid,hybrid',
+            'solar_phase_types'                => 'nullable|required_if:is_solar_listing,1|array|min:1',
+            'solar_phase_types.*'              => 'in:single,three',
             'slots'                            => 'required|array|min:1',
             'slots.*.min_quantity'             => 'required|integer|min:0',
             'slots.*.max_quantity'             => 'nullable|integer|min:1',
@@ -374,6 +390,10 @@ class ProductListingController extends Controller
         $validated['is_active']   = $request->boolean('is_active');
         $validated['is_sold_off'] = $request->boolean('is_sold_off', false);
         $validated['is_popular']  = $request->boolean('is_popular', false);
+        $validated['is_solar_listing'] = $request->boolean('is_solar_listing', false);
+        $validated['solar_tier'] = $validated['is_solar_listing'] ? $request->input('solar_tier') : null;
+        $validated['solar_grid_types'] = $validated['is_solar_listing'] ? array_values($request->input('solar_grid_types', [])) : [];
+        $validated['solar_phase_types'] = $validated['is_solar_listing'] ? array_values($request->input('solar_phase_types', [])) : [];
         $validated['incoterm_id']     = new \MongoDB\BSON\ObjectId($request->incoterm_id);
         $validated['slug']            = $request->filled('slug')
             ? \Illuminate\Support\Str::slug($request->slug)

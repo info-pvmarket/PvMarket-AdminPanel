@@ -41,6 +41,7 @@ use App\Http\Controllers\Admin\RfqRequestController;
 use App\Http\Controllers\Admin\MarketController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\SeoMetaController;
+use App\Http\Controllers\Admin\ProjectApprovalController;
 
 // ── Redirect root to login ──────────────────────────────────────────────
 Route::get('/', function () {
@@ -439,6 +440,14 @@ Route::middleware('auth')->group(function () {
         Route::delete('/{id}/products/{index}/notes/{noteIndex}', [LeadController::class, 'deleteVisitProductNote'])->name('products.notes.destroy');
         Route::delete('/{id}', [LeadController::class, 'destroyVisit'])->name('destroy');
         Route::get('/export', [LeadController::class, 'exportVisits'])->name('export');
+    });
+
+    // PROJECT APPROVALS
+    Route::prefix('admin/project-approvals')->name('admin.project-approvals.')->group(function () {
+        Route::get('/', [ProjectApprovalController::class, 'index'])->name('index');
+        Route::post('/{project}/approve', [ProjectApprovalController::class, 'approve'])->name('approve');
+        Route::post('/{project}/reject', [ProjectApprovalController::class, 'reject'])->name('reject');
+        Route::get('/{project}', [ProjectApprovalController::class, 'show'])->name('show');
     });
 
     // ══════════════════════════════════════════════════════════════════════
