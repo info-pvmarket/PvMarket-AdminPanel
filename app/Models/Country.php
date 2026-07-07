@@ -36,7 +36,12 @@ class Country extends Model
     public function getFlagUrlAttribute(): ?string
     {
         if (!$this->flag) return null;
+
+        if (preg_match('/^https?:\/\//i', $this->flag)) {
+            return $this->flag;
+        }
+
         $baseUrl = rtrim(config('filesystems.disks.r2.url'), '/');
-        return $baseUrl . '/' . $this->flag;
+        return $baseUrl . '/' . ltrim($this->flag, '/');
     }
 }

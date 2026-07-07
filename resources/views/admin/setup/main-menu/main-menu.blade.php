@@ -214,16 +214,21 @@ function renumberRows() {
             </div>
             <div class="form-group">
                 <label class="form-label">Menu Icon</label>
-                @if(!empty($record->category_icon_image['url']))
-    <img src="{{ asset('storage/' . $record->category_icon_image['url']) }}"
-         class="current-icon" alt="current"/>
-@endif
+                @php
+                    $currentIconUrl = $record->category_icon_image['url'] ?? $record->category_icon_image['path'] ?? null;
+                    $currentIconSrc = $currentIconUrl
+                        ? (preg_match('/^https?:\/\//i', $currentIconUrl) ? $currentIconUrl : asset('storage/' . ltrim($currentIconUrl, '/')))
+                        : null;
+                @endphp
+                @if($currentIconSrc)
+                    <img src="{{ $currentIconSrc }}" class="current-icon" alt="{{ $record->icon_alt_tag ?? 'current' }}"/>
+                @endif
                 <div class="form-file-wrap">
                     <input type="file" name="icon" accept="image/*"/>
                 </div>
-                @if(!empty($record->category_icon_image['url']))
-    <span class="form-hint">Leave blank to keep current icon</span>
-@endif
+                @if($currentIconSrc)
+                    <span class="form-hint">Leave blank to keep current icon</span>
+                @endif
             </div>
             <div class="form-group">
                 <label class="form-label">Alt Tag</label>
@@ -402,9 +407,14 @@ function renumberRows() {
                     {{ $menus->firstItem() + $index }}
                 </td>
                 <td class="center">
-                    @if(!empty($menu->category_icon_image['url']))
-    <img src="{{ asset('storage/' . $menu->category_icon_image['url']) }}"
-         class="menu-icon-thumb" alt="{{ $menu->icon_alt_tag ?? '' }}"/>
+                    @php
+                        $menuIconUrl = $menu->category_icon_image['url'] ?? $menu->category_icon_image['path'] ?? null;
+                        $menuIconSrc = $menuIconUrl
+                            ? (preg_match('/^https?:\/\//i', $menuIconUrl) ? $menuIconUrl : asset('storage/' . ltrim($menuIconUrl, '/')))
+                            : null;
+                    @endphp
+                    @if($menuIconSrc)
+                        <img src="{{ $menuIconSrc }}" class="menu-icon-thumb" alt="{{ $menu->icon_alt_tag ?? '' }}"/>
 @else
                         <span style="color:#CBD5E1; font-size:12px;">—</span>
                     @endif

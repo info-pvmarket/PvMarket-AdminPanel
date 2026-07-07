@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Company;
+use App\Models\CompanyDocument;
 use App\Models\User;
 use App\Models\Order;
 use App\Models\ProductListing;
@@ -13,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Services\TranslationService;
 use App\Traits\FiltersAssignedUsers;
+use MongoDB\BSON\ObjectId;
 
 class UserController extends Controller
 {
@@ -56,10 +59,16 @@ class UserController extends Controller
     public function edit(Request $request, $id)
     {
         $user = User::findOrFail($id);
-        $userId = new \MongoDB\BSON\ObjectId($id);
+        $userId = new ObjectId($id);
+        $company = Company::where('user_id', $userId)->first();
 
-        // ── Documents ─────────────────────────────────────────────────
-        $documents = $user->documents ?? [];
+        // ── Company Documents ─────────────────────────────────────────
+        $documents = $company
+            ? CompanyDocument::where('company_id', new ObjectId((string) $company->_id))
+                ->whereNull('deleted_at')
+                ->orderBy('uploaded_at', 'desc')
+                ->get()
+            : collect();
 
         // ── Listings (ProductListings by this user) ───────────────────
         $listingsQuery = ProductListing::where('user_id', $userId);
@@ -177,7 +186,7 @@ class UserController extends Controller
             'sales',
             'salesListingsMap',
             'buyerUsersMap'
-        ));
+        ) + compact('company'));
     }
 
     public function updateBasic(Request $request, $id)
@@ -206,19 +215,40 @@ class UserController extends Controller
     public function updateCompany(Request $request, $id)
     {
         $user = User::findOrFail($id);
+        $company = $this->companyForUser($user);
 
         $request->validate([
             'company_name' => 'nullable|string|max:255',
             'vat_id'       => 'nullable|string|max:100',
         ]);
 
+        $companyName = $request->input('company_name');
+        $vatId = $request->input('vat_id');
+        $enableEditable = $request->boolean('enable_editable');
+        $allowDocumentUpload = $request->boolean('allow_document_upload');
+        $companyVerified = $request->boolean('company_verified');
+        $showVerifiedBadge = $request->boolean('show_verified_batch');
+
+        $company->fill([
+            'company_name'        => $companyName,
+            'name'                => $companyName,
+            'vat_no'              => $vatId,
+            'is_editable'         => $enableEditable,
+            'allow_doc'           => $allowDocumentUpload,
+            'seller_verified'     => $companyVerified,
+            'company_verified'    => $companyVerified,
+            'show_verified_batch' => $showVerifiedBadge,
+            'is_active'           => $company->exists ? ($company->is_active ?? true) : true,
+        ]);
+        $company->save();
+
         $user->update([
-            'company_name'         => $request->company_name,
-            'vat_id'               => $request->vat_id,
-            'enable_editable'      => $request->boolean('enable_editable'),
-            'allow_document_upload'=> $request->boolean('allow_document_upload'),
-            'company_verified'     => $request->boolean('company_verified'),
-            'show_verified_batch'  => $request->boolean('show_verified_batch'),
+            'company_name'           => $companyName,
+            'vat_id'                 => $vatId,
+            'enable_editable'        => $enableEditable,
+            'allow_document_upload'  => $allowDocumentUpload,
+            'company_verified'       => $companyVerified,
+            'show_verified_batch'    => $showVerifiedBadge,
         ]);
 
         return redirect()->route('admin.users.edit', ['id' => $id, 'active_tab' => 'company'])
@@ -228,13 +258,41 @@ class UserController extends Controller
     public function toggleCompanyVerified(Request $request, $id)
     {
         $user = User::findOrFail($id);
-        $user->update(['company_verified' => !($user->company_verified ?? false)]);
+        $company = $this->companyForUser($user);
+        $nextVerified = !($company->seller_verified ?? $company->company_verified ?? $user->company_verified ?? false);
+
+        $company->fill([
+            'seller_verified'  => $nextVerified,
+            'company_verified' => $nextVerified,
+        ]);
+        $company->save();
+
+        $user->update(['company_verified' => $nextVerified]);
 
         // Preserve the current active tab from request
         $activeTab = $request->input('active_tab', 'basic');
 
         return redirect()->route('admin.users.edit', ['id' => $id, 'active_tab' => $activeTab])
                          ->with('success', 'Company verification status updated.');
+    }
+
+    private function companyForUser(User $user): Company
+    {
+        $userId = new ObjectId((string) $user->_id);
+
+        $company = Company::where('user_id', $userId)->first();
+
+        if ($company) {
+            return $company;
+        }
+
+        return new Company([
+            'user_id'      => $userId,
+            'company_name' => $user->company_name ?? $user->name,
+            'name'         => $user->company_name ?? $user->name,
+            'vat_no'       => $user->vat_id ?? '',
+            'is_active'    => true,
+        ]);
     }
 
     public function export(Request $request)
@@ -340,22 +398,34 @@ public function assignAdmin(Request $request, $userId)
     public function verifyDocument(Request $request, $userId, $docIndex)
     {
         $user = User::findOrFail($userId);
-        $status = $request->input('status'); // 'verified', 'rejected', 'pending'
+        $request->validate([
+            'status' => 'required|in:verified,pending',
+        ]);
 
-        $documents = $user->documents ?? [];
+        $status = $request->input('status');
+        $company = Company::where('user_id', new ObjectId((string) $user->_id))->first();
 
-        if (!isset($documents[$docIndex])) {
+        try {
+            $documentId = new ObjectId($docIndex);
+        } catch (\Throwable $e) {
+            $documentId = null;
+        }
+
+        $document = $company && $documentId
+            ? CompanyDocument::where('_id', $documentId)
+                ->where('company_id', new ObjectId((string) $company->_id))
+                ->first()
+            : null;
+        if (!$document) {
             return redirect()->route('admin.users.edit', ['id' => $userId, 'active_tab' => 'documents'])
                 ->with('error', 'Document not found.');
         }
 
-        $documents[$docIndex]['status'] = $status;
-        $documents[$docIndex]['verified_at'] = $status === 'verified' ? now()->toISOString() : null;
-        $documents[$docIndex]['verified_by'] = $status === 'verified' ? Auth::id() : null;
+        $document->update([
+            'is_verified' => $status === 'verified',
+        ]);
 
-        $user->update(['documents' => $documents]);
-
-        $statusLabel = ucfirst($status);
+        $statusLabel = $status === 'verified' ? 'Verified' : 'Pending';
         return redirect()->route('admin.users.edit', ['id' => $userId, 'active_tab' => 'documents'])
             ->with('success', "Document marked as {$statusLabel}.");
     }

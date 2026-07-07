@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\Controller;
 use App\Services\TranslationService;
-use App\Models\Location;    
+use App\Models\Market;
 
 class AdvertisementController extends ResourceController
 {
@@ -112,7 +112,7 @@ public function create()
 {
     return view($this->view, [
         'mode'      => 'create',
-        'locations' => Location::orderBy('country_name')->get(),
+        'markets'   => Market::where('is_active', '!=', false)->orderBy('name')->get(),
     ]);
 }
 public function edit($id)
@@ -120,7 +120,7 @@ public function edit($id)
     return view($this->view, [
         'mode'      => 'edit',
         'record'    => Advertisement::findOrFail($id),
-        'locations' => Location::orderBy('country_name')->get(),
+        'markets'   => Market::where('is_active', '!=', false)->orderBy('name')->get(),
     ]);
 }
 }

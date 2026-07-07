@@ -19,7 +19,8 @@ class BrandController extends Controller
             $query->where('name', 'like', '%' . $request->search . '%');
         }
         $brands = $query->orderBy('menu_order', 'asc')
-                        ->paginate($request->get('entries', 10));
+                        ->paginate($request->get('entries', 10))
+                        ->withQueryString();
 
         return view('admin.setup.brands.brands', [
             'mode'   => 'index',

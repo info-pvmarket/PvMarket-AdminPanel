@@ -82,11 +82,18 @@
 
         <div class="form-group">
             <label class="form-label">Country Flag</label>
-            @if($record->flag)
+            @php
+                $flagSrc = $record->flag
+                    ? (preg_match('/^https?:\/\//i', $record->flag)
+                        ? $record->flag
+                        : rtrim(config('filesystems.disks.r2.url'), '/') . '/' . ltrim($record->flag, '/'))
+                    : null;
+            @endphp
+            @if($flagSrc)
                 <div style="margin-bottom:8px;">
-                    <img src="{{ $record->flag_url }}"
-                         style="height:40px; width:40px; border-radius:50%;
-                                object-fit:cover; border:1px solid var(--border);"/>
+                    <img src="{{ $flagSrc }}"
+                          style="height:40px; width:40px; border-radius:50%;
+                                 object-fit:cover; border:1px solid var(--border);"/>
                 </div>
             @endif
             <div class="form-file-wrap">
@@ -302,8 +309,15 @@
 
                 {{-- Flag --}}
                 <td class="center">
-                    @if($country->flag)
-                        <img src="{{  $country->flag_url  }}"
+                    @php
+                        $flagSrc = $country->flag
+                            ? (preg_match('/^https?:\/\//i', $country->flag)
+                                ? $country->flag
+                                : rtrim(config('filesystems.disks.r2.url'), '/') . '/' . ltrim($country->flag, '/'))
+                            : null;
+                    @endphp
+                    @if($flagSrc)
+                        <img src="{{ $flagSrc }}"
                              alt="{{ $country->alt_tag ?? $country->name }}"
                              class="flag-img"/>
                     @else

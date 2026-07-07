@@ -1,8 +1,9 @@
 {{-- views/admin/setup/brands/brands.blade.php --}}
 {{-- Handles: index | create | edit --}}
 
-@if($mode === 'create')
 @extends('layouts.admin')
+
+@if($mode === 'create')
 
 {{-- ═══ CREATE MODE ═══ --}}
 @section('title', 'Add Brand')
@@ -194,8 +195,6 @@ function renumber() {
 
 
 {{-- ═══ EDIT MODE ═══ --}}
-@extends('layouts.admin')
-
 @section('title', 'Edit Brand')
 
 @section('styles')
@@ -268,10 +267,16 @@ function renumber() {
             {{-- Brand Image --}}
             <div class="form-group">
                 <label class="form-label">Brand Image</label>
-                @if(!empty($record->image['url']))
-    <img src="{{ asset('storage/' . $record->image['url']) }}"
+                @php
+                    $currentImageUrl = $record->image['url'] ?? $record->image['path'] ?? null;
+                    $currentImageSrc = $currentImageUrl
+                        ? (preg_match('/^https?:\/\//i', $currentImageUrl) ? $currentImageUrl : asset('storage/' . ltrim($currentImageUrl, '/')))
+                        : null;
+                @endphp
+                @if($currentImageSrc)
+                    <img src="{{ $currentImageSrc }}"
                          class="current-img"
-                         alt="{{ $record->alt_tag ?? $record->name }}"/>
+                         alt="{{ $record->image_alt ?? $record->alt_tag ?? $record->name }}"/>
                 @endif
                 <div class="form-file-wrap">
                     <input type="file" name="image" accept="image/*"/>
@@ -321,8 +326,6 @@ function renumber() {
 
 
 {{-- ═══ INDEX MODE ═══ --}}
-@extends('layouts.admin')
-
 @section('title', 'Brands')
 
 @section('styles')
@@ -339,7 +342,11 @@ function renumber() {
     .entries-group { display:flex; align-items:center; gap:7px; font-size:13.5px; color:var(--muted); font-weight:500; }
     .entries-select { padding:7px 26px 7px 10px; border:1.5px solid var(--border); border-radius:7px; font-family:inherit; font-size:13px; font-weight:600; color:var(--text); background:white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 7px center; -webkit-appearance:none; appearance:none; outline:none; cursor:pointer; }
     .entries-select:hover,.entries-select:focus { border-color:var(--primary); }
-    .data-table { width:100%; border-collapse:collapse; }
+    .table-scroll { width:100%; overflow-x:auto; }
+    .table-scroll::-webkit-scrollbar { height:8px; }
+    .table-scroll::-webkit-scrollbar-track { background:#F1F5F9; }
+    .table-scroll::-webkit-scrollbar-thumb { background:#CBD5E1; border-radius:999px; }
+    .data-table { width:100%; min-width:720px; border-collapse:collapse; }
     .data-table thead { background:#F0F9FF; }
     .data-table th { padding:11px 16px; text-align:left; font-size:12px; font-weight:700; color:var(--primary-d); text-transform:uppercase; letter-spacing:.5px; border-bottom:2px solid #BAE6FD; white-space:nowrap; }
     .data-table th.center,.data-table td.center { text-align:center; }
@@ -348,9 +355,9 @@ function renumber() {
     .data-table tbody tr:nth-child(odd) td { background:white; }
     .data-table tbody tr:nth-child(even) td { background:#FAFBFD; }
     .data-table tbody tr:hover td { background:#E0F2FE !important; }
-    .brand-img-wrap { display:flex; align-items:center; justify-content:center; height:80px; }
-    .brand-img { max-height:70px; max-width:180px; object-fit:contain; border-radius:6px; }
-    .brand-img-placeholder { width:120px; height:60px; border:1.5px dashed var(--border); background:var(--light); border-radius:6px; display:flex; align-items:center; justify-content:center; color:#CBD5E1; }
+    .brand-img-wrap { display:flex; align-items:center; justify-content:center; height:64px; }
+    .brand-img { max-height:52px; max-width:130px; object-fit:contain; border-radius:6px; }
+    .brand-img-placeholder { width:104px; height:52px; border:1.5px dashed var(--border); background:var(--light); border-radius:6px; display:flex; align-items:center; justify-content:center; color:#CBD5E1; }
     .brand-name { font-weight:700; font-size:15px; color:var(--text); }
     .brand-slug { font-size:12px; color:var(--muted); margin-top:3px; font-family:monospace; }
     .order-badge { display:inline-flex; align-items:center; justify-content:center; min-width:28px; height:28px; padding:0 8px; background:#F0F9FF; border:1.5px solid #BAE6FD; border-radius:6px; font-size:13px; font-weight:700; color:var(--primary-d); }
@@ -365,10 +372,42 @@ function renumber() {
     .action-icon.toggle:hover { background:#D1FAE5; border-color:#10B981; }
     .action-icon.delete:hover { background:#FEE2E2; border-color:#EF4444; }
     .table-footer { padding:12px 20px; font-size:13px; color:var(--muted); border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; background:#FAFBFD; }
-    .pagination { display:flex; gap:3px; list-style:none; }
-    .pagination li a,.pagination li span { display:flex; align-items:center; justify-content:center; min-width:32px; height:32px; padding:0 8px; border-radius:6px; border:1.5px solid var(--border); font-size:13px; font-weight:500; text-decoration:none; color:var(--text); background:white; transition:all .15s; }
-    .pagination li.active span { background:var(--primary-d); border-color:var(--primary-d); color:white; }
-    .pagination li a:hover { border-color:var(--primary); color:var(--primary); background:var(--primary-l); }
+    .pager { display:flex; align-items:center; gap:4px; flex-wrap:wrap; justify-content:flex-end; }
+    .pager-link,
+    .pager-current,
+    .pager-disabled,
+    .pager-ellipsis { display:inline-flex; align-items:center; justify-content:center; min-width:34px; height:34px; padding:0 9px; border-radius:6px; border:1.5px solid var(--border); background:white; font-size:13px; font-weight:600; text-decoration:none; }
+    .pager-link { color:var(--text); transition:all .15s; }
+    .pager-link:hover { border-color:var(--primary); color:var(--primary); background:var(--primary-l); }
+    .pager-current { border-color:var(--primary-d); background:var(--primary-d); color:white; }
+    .pager-disabled { color:#CBD5E1; cursor:not-allowed; }
+    .pager-ellipsis { color:var(--muted); }
+    @media (max-width:1100px) {
+        .data-table { min-width:0; table-layout:fixed; }
+        .data-table th,
+        .data-table td { padding:10px 6px; font-size:12.5px; }
+        .data-table th:nth-child(1),
+        .data-table td:nth-child(1) { width:44px !important; }
+        .data-table th:nth-child(2),
+        .data-table td:nth-child(2) { width:96px !important; }
+        .data-table th:nth-child(3),
+        .data-table td:nth-child(3) { width:auto !important; }
+        .data-table th:nth-child(4),
+        .data-table td:nth-child(4) { width:64px !important; }
+        .data-table th:nth-child(5),
+        .data-table td:nth-child(5) { width:78px !important; }
+        .data-table th:nth-child(6),
+        .data-table td:nth-child(6) { width:82px !important; }
+        .brand-img-wrap { height:48px; }
+        .brand-img { max-height:40px; max-width:82px; }
+        .brand-img-placeholder { width:74px; height:40px; }
+        .brand-name { font-size:13px; }
+        .brand-slug { font-size:10.5px; line-height:1.2; overflow-wrap:anywhere; }
+        .order-badge { min-width:24px; height:24px; padding:0 6px; font-size:12px; }
+        .action-btns { gap:4px; }
+        .action-icon { width:28px; height:28px; }
+        .action-icon svg { width:13px; height:13px; }
+    }
     .empty-state { text-align:center; padding:52px 20px; color:var(--muted); }
     .empty-state svg { width:42px; height:42px; margin:0 auto 12px; opacity:.2; display:block; }
     .empty-state p { font-size:14px; font-weight:500; }
@@ -405,6 +444,9 @@ function renumber() {
 <div class="content-panel">
     <div class="table-toolbar">
         <form method="GET" action="{{ route('admin.setup.brands.index') }}" class="search-group">
+            @if(request('entries'))
+                <input type="hidden" name="entries" value="{{ request('entries') }}">
+            @endif
             <label>Search:</label>
             <div class="search-input-wrap">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -429,14 +471,15 @@ function renumber() {
         </form>
     </div>
 
+    <div class="table-scroll">
     <table class="data-table">
         <thead>
             <tr>
                 <th class="center" style="width:70px;">S.No</th>
-                <th class="center" style="width:160px;">Brand Image</th>
+                <th class="center" style="width:160px;">Logo</th>
                 <th>Brand</th>
                 <th class="center" style="width:100px;">Order</th>
-                <th class="center" style="width:100px;">Show Menu</th>
+                <th class="center" style="width:100px;">Menu</th>
                 <th class="center" style="width:130px;">Action</th>
             </tr>
         </thead>
@@ -448,10 +491,16 @@ function renumber() {
                 </td>
                 <td class="center">
                     <div class="brand-img-wrap">
-                        @if(!empty($brand->image['url']))
-    <img src="{{ asset('storage/' . $brand->image['url']) }}"
+                        @php
+                            $brandImageUrl = $brand->image['url'] ?? $brand->image['path'] ?? null;
+                            $brandImageSrc = $brandImageUrl
+                                ? (preg_match('/^https?:\/\//i', $brandImageUrl) ? $brandImageUrl : asset('storage/' . ltrim($brandImageUrl, '/')))
+                                : null;
+                        @endphp
+                        @if($brandImageSrc)
+                            <img src="{{ $brandImageSrc }}"
                                  class="brand-img"
-                                 alt="{{ $brand->alt_tag ?? $brand->name }}"/>
+                                 alt="{{ $brand->image_alt ?? $brand->alt_tag ?? $brand->name }}"/>
                         @else
                             <div class="brand-img-placeholder">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -536,12 +585,13 @@ function renumber() {
             @endforelse
         </tbody>
     </table>
+    </div>
 
     <div class="table-footer">
     <span>{{ $brands->firstItem() ?? 0 }}–{{ $brands->lastItem() ?? 0 }} of {{ $brands->total() }} entries</span>
 
     @if ($brands->hasPages())
-    <nav style="display:flex; align-items:center; gap:4px;">
+    <nav class="pager">
         @if ($brands->onFirstPage())
             <span style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:6px;border:1.5px solid var(--border);background:white;color:#CBD5E1;cursor:not-allowed;font-size:16px;">‹</span>
         @else

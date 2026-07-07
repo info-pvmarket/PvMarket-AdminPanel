@@ -29,6 +29,12 @@ class User extends Authenticatable
     'email_verified',
     'email_verified_at',
     'assigned_admin_id',
+    'company_name',
+    'vat_id',
+    'enable_editable',
+    'allow_document_upload',
+    'company_verified',
+    'show_verified_batch',
 ];
 
 protected $casts = [
@@ -39,6 +45,10 @@ protected $casts = [
     'is_hold'            => 'boolean',
     'email_verified'     => 'boolean',
     'email_verified_at'  => 'datetime',
+    'enable_editable'    => 'boolean',
+    'allow_document_upload' => 'boolean',
+    'company_verified'   => 'boolean',
+    'show_verified_batch'=> 'boolean',
     'password'           => 'hashed',
 ];
 public array $translatable = [

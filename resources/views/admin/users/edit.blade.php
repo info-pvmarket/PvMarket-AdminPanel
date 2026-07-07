@@ -808,6 +808,12 @@
 @php
     // Determine active tab from request or session
     $activeTab = request('active_tab') ?? session('active_tab', 'basic');
+    $companyNameValue = old('company_name', $company->company_name ?? $company->name ?? $user->company_name ?? '');
+    $vatIdValue = old('vat_id', $company->vat_no ?? $user->vat_id ?? '');
+    $enableEditableChecked = old('enable_editable', $company->is_editable ?? $user->enable_editable ?? false);
+    $allowDocumentUploadChecked = old('allow_document_upload', $company->allow_doc ?? $user->allow_document_upload ?? false);
+    $companyVerifiedChecked = old('company_verified', $company->seller_verified ?? $company->company_verified ?? $user->company_verified ?? false);
+    $showVerifiedBadgeChecked = old('show_verified_batch', $company->show_verified_batch ?? $user->show_verified_batch ?? false);
 @endphp
 
 {{-- ── Outer header ── --}}
@@ -842,8 +848,8 @@
                 @csrf @method('PATCH')
                 <input type="hidden" name="active_tab" value="{{ $activeTab }}">
                 <button type="submit" class="verified-toggle-btn"
-                        title="{{ ($user->company_verified ?? false) ? 'Click to unverify' : 'Click to verify' }}">
-                    @if($user->company_verified ?? false)
+                        title="{{ $companyVerifiedChecked ? 'Click to unverify' : 'Click to verify' }}">
+                    @if($companyVerifiedChecked)
                         <span style="color:#10B981; font-size:26px;">✓</span>
                     @else
                         <span style="color:#F97316; font-size:26px;">✗</span>
@@ -997,22 +1003,22 @@
             <div class="checkbox-row">
                 <label class="checkbox-item">
                     <input type="checkbox" name="enable_editable" value="1"
-                           {{ ($user->enable_editable ?? false) ? 'checked' : '' }}/>
+                           {{ $enableEditableChecked ? 'checked' : '' }}/>
                     Enable Editable
                 </label>
                 <label class="checkbox-item">
                     <input type="checkbox" name="allow_document_upload" value="1"
-                           {{ ($user->allow_document_upload ?? false) ? 'checked' : '' }}/>
+                           {{ $allowDocumentUploadChecked ? 'checked' : '' }}/>
                     Allow Document Upload
                 </label>
                 <label class="checkbox-item">
                     <input type="checkbox" name="company_verified" value="1"
-                           {{ ($user->company_verified ?? false) ? 'checked' : '' }}/>
+                           {{ $companyVerifiedChecked ? 'checked' : '' }}/>
                     Company VERIFIED
                 </label>
                 <label class="checkbox-item">
                     <input type="checkbox" name="show_verified_batch" value="1"
-                           {{ ($user->show_verified_batch ?? false) ? 'checked' : '' }}/>
+                           {{ $showVerifiedBadgeChecked ? 'checked' : '' }}/>
                     Show verified Batch
                 </label>
             </div>
@@ -1022,12 +1028,12 @@
                 <div class="form-col">
                     <label class="form-label">Company Name:</label>
                     <input type="text" name="company_name" class="form-input"
-                           value="{{ old('company_name', $user->company_name ?? '') }}"/>
+                           value="{{ $companyNameValue }}"/>
                 </div>
                 <div class="form-col">
                     <label class="form-label">VAT ID:</label>
                     <input type="text" name="vat_id" class="form-input"
-                           value="{{ old('vat_id', $user->vat_id ?? '') }}"/>
+                           value="{{ $vatIdValue }}"/>
                 </div>
             </div>
 
@@ -1052,7 +1058,18 @@
         <div class="section-title">Documents</div>
 
         @if(count($documents) > 0)
-            @foreach($documents as $index => $doc)
+            @foreach($documents as $doc)
+                @php
+                    $status = $doc->is_verified ? 'verified' : 'pending';
+                    $badgeClass = $doc->is_verified ? 'badge-success' : 'badge-warning';
+                    $documentUrl = $doc->url ?: ($doc->path ?: $doc->filename);
+                    if ($documentUrl && !preg_match('/^https?:\/\//i', $documentUrl)) {
+                        $documentUrl = asset('storage/' . ltrim($documentUrl, '/'));
+                    }
+                    $uploadedAt = $doc->uploaded_at
+                        ? \Carbon\Carbon::parse($doc->uploaded_at)->format('M d, Y H:i')
+                        : 'N/A';
+                @endphp
                 <div class="document-card">
                     <div class="document-info">
                         <div class="document-icon">
@@ -1062,28 +1079,22 @@
                             </svg>
                         </div>
                         <div class="document-details">
-                            <h4>{{ $doc['name'] ?? 'Document ' . ($index + 1) }}</h4>
+                            <h4>{{ $doc->document_type ?: ($doc->original_name ?: 'Company Document') }}</h4>
                             <p>
-                                Uploaded: {{ isset($doc['uploaded_at']) ? \Carbon\Carbon::parse($doc['uploaded_at'])->format('M d, Y H:i') : 'N/A' }}
+                                {{ $doc->original_name ?: $doc->filename ?: 'Document file' }}
+                                <br>
+                                Uploaded: {{ $uploadedAt }}
                             </p>
                         </div>
                     </div>
 
                     <div class="document-actions">
                         {{-- Status badge --}}
-                        @php
-                            $status = $doc['status'] ?? 'pending';
-                            $badgeClass = match($status) {
-                                'verified' => 'badge-success',
-                                'rejected' => 'badge-danger',
-                                default => 'badge-warning',
-                            };
-                        @endphp
                         <span class="badge {{ $badgeClass }}">{{ ucfirst($status) }}</span>
 
                         {{-- View document --}}
-                        @if(isset($doc['url']) || isset($doc['path']))
-                            <a href="{{ asset('storage/' . ($doc['path'] ?? $doc['url'])) }}"
+                        @if($documentUrl)
+                            <a href="{{ $documentUrl }}"
                                target="_blank"
                                class="btn-action btn-action-info">
                                 View
@@ -1093,7 +1104,7 @@
                         {{-- Verification actions --}}
                         @if($status !== 'verified')
                             <form method="POST"
-                                  action="{{ route('admin.users.verify-document', ['userId' => $user->id, 'docIndex' => $index]) }}"
+                                  action="{{ route('admin.users.verify-document', ['userId' => $user->id, 'docIndex' => $doc->id]) }}"
                                   style="display:inline;">
                                 @csrf
                                 <input type="hidden" name="status" value="verified"/>
@@ -1101,13 +1112,13 @@
                             </form>
                         @endif
 
-                        @if($status !== 'rejected')
+                        @if($status === 'verified')
                             <form method="POST"
-                                  action="{{ route('admin.users.verify-document', ['userId' => $user->id, 'docIndex' => $index]) }}"
+                                  action="{{ route('admin.users.verify-document', ['userId' => $user->id, 'docIndex' => $doc->id]) }}"
                                   style="display:inline;">
                                 @csrf
-                                <input type="hidden" name="status" value="rejected"/>
-                                <button type="submit" class="btn-action btn-action-danger">Reject</button>
+                                <input type="hidden" name="status" value="pending"/>
+                                <button type="submit" class="btn-action btn-action-danger">Mark Pending</button>
                             </form>
                         @endif
                     </div>

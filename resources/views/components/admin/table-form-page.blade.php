@@ -50,6 +50,27 @@
         padding: 20px 24px 24px;
     }
 
+    .form-table-scroll {
+        width: 100%;
+        overflow-x: auto;
+        margin-bottom: 20px;
+        padding-bottom: 4px;
+    }
+
+    .form-table-scroll::-webkit-scrollbar {
+        height: 8px;
+    }
+
+    .form-table-scroll::-webkit-scrollbar-track {
+        background: #F1F5F9;
+        border-radius: 999px;
+    }
+
+    .form-table-scroll::-webkit-scrollbar-thumb {
+        background: #CBD5E1;
+        border-radius: 999px;
+    }
+
     /* Add More — right aligned */
     .add-more-wrap {
         display: flex;
@@ -82,8 +103,9 @@
     /* Table */
     .form-table {
         width: 100%;
+        min-width: max-content;
         border-collapse: collapse;
-        margin-bottom: 20px;
+        margin-bottom: 0;
     }
 
     .form-table thead tr {
@@ -249,6 +271,7 @@
     <form method="POST" action="{{ $action }}" enctype="multipart/form-data" id="tableForm">
         @csrf
 
+        <div class="form-table-scroll">
         <table class="form-table">
             <thead>
                 <tr>
@@ -268,6 +291,7 @@
                 </tr>
             </tbody>
         </table>
+        </div>
 
         <div class="save-wrap">
             <button type="submit" class="btn-save">

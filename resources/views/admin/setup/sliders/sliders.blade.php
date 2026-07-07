@@ -28,7 +28,7 @@
         <th class="center">Slider Image</th>
         <th>Slider</th>
         <th class="center">Slider Type</th>
-        <th class="center">Location</th>
+        <th class="center">Market</th>
         <th>Redirect Link</th>
         <th class="center" style="width:130px;">Action</th>
     </x-slot>
@@ -94,13 +94,19 @@
         <span style="color:#CBD5E1;">—</span>
     @endif
 </td>
-{{-- Location --}}
+{{-- Market --}}
 <td class="center">
     @php
-        $location = \App\Models\Location::find($slider->location_id);
+        $market = \App\Models\Market::find($slider->location_id);
+        if (!$market && $slider->location_id) {
+            $legacyLocation = \App\Models\Location::find($slider->location_id);
+            $market = $legacyLocation
+                ? \App\Models\Market::where('name', $legacyLocation->country_name)->first()
+                : null;
+        }
     @endphp
 
-    {{ $location->country_name ?? '-' }}
+    {{ $market->name ?? '-' }}
 </td>
             {{-- Link --}}
             <td>
@@ -232,7 +238,7 @@
     <th style="min-width:160px;">Alt Tag</th>
     <th style="min-width:200px;">Redirect Link</th>
     <th style="min-width:140px;">Slider Type <span style="color:#EF4444;">*</span></th>
-    <th style="min-width:160px;">Location <span style="color:#EF4444;">*</span></th>
+    <th style="min-width:160px;">Market <span style="color:#EF4444;">*</span></th>
     {{-- ✅ Added --}}
 </x-slot>
 
@@ -260,11 +266,11 @@
     </td>
     <td>
     <select name="sliders[{INDEX}][location_id]" required>
-        <option value="">Select Country</option>
+        <option value="">Select Market</option>
 
-        @foreach($locations as $location)
-            <option value="{{ (string)$location->_id }}">
-                {{ $location->country_name }}
+        @foreach($markets as $market)
+            <option value="{{ (string)$market->_id }}">
+                {{ $market->name }}@if($market->code) ({{ strtoupper($market->code) }}) @endif
             </option>
         @endforeach
     </select>
@@ -384,22 +390,35 @@ document.addEventListener('DOMContentLoaded', function () {
         </div>
         <div class="form-group">
     <label class="form-label">
-        Country <span>*</span>
+        Market <span>*</span>
     </label>
+
+    @php
+        $selectedMarketId = (string) old('location_id', $record->location_id);
+        if (!$markets->contains(fn($market) => (string) $market->_id === $selectedMarketId) && $record->location_id) {
+            $legacyLocation = \App\Models\Location::find($record->location_id);
+            $matchedMarket = $legacyLocation
+                ? $markets->first(fn($market) => strcasecmp($market->name, $legacyLocation->country_name) === 0)
+                : null;
+            if ($matchedMarket) {
+                $selectedMarketId = (string) $matchedMarket->_id;
+            }
+        }
+    @endphp
 
     <select
         name="location_id"
         class="form-input"
         required
     >
-        <option value="">Select Country</option>
+        <option value="">Select Market</option>
 
-        @foreach($locations as $location)
+        @foreach($markets as $market)
             <option
-                value="{{ (string)$location->_id }}"
-                {{ (string)$record->location_id === (string)$location->_id ? 'selected' : '' }}
+                value="{{ (string)$market->_id }}"
+                {{ $selectedMarketId === (string)$market->_id ? 'selected' : '' }}
             >
-                {{ $location->country_name }}
+                {{ $market->name }}@if($market->code) ({{ strtoupper($market->code) }}) @endif
             </option>
         @endforeach
 

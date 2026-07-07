@@ -12,8 +12,15 @@
         {{ $label }}@if($required)<span>*</span>@endif
     </label>
 
-    @if($currentImage)
-        <img src="{{ asset('storage/' . $currentImage) }}"
+    @php
+        $currentImageSrc = $currentImage;
+        if ($currentImageSrc && !preg_match('/^https?:\/\//i', $currentImageSrc)) {
+            $currentImageSrc = asset('storage/' . ltrim($currentImageSrc, '/'));
+        }
+    @endphp
+
+    @if($currentImageSrc)
+        <img src="{{ $currentImageSrc }}"
              class="img-preview" alt="Current Image"/>
     @endif
 
@@ -22,11 +29,11 @@
             type="file"
             name="{{ $name }}"
             accept="{{ $accept }}"
-            {{ $required && !$currentImage ? 'required' : '' }}
+            {{ $required && !$currentImageSrc ? 'required' : '' }}
         />
     </div>
 
-    @if($currentImage)
+    @if($currentImageSrc)
         <span class="form-hint">{{ $hint }}</span>
     @endif
 </div>

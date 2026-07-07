@@ -6,7 +6,7 @@ use App\Models\Slider;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use App\Services\TranslationService;
-use App\Models\Location;
+use App\Models\Market;
 
 class SliderController extends ResourceController
 {
@@ -32,7 +32,7 @@ class SliderController extends ResourceController
     'sliders.*.location_id' => 'required',
     'sliders'                 => 'required|array|min:1',
     'sliders.*.name'          => 'required|string|max:255',
-    'sliders.*.slider_type'   => 'required|string|in:top,bottom,side,popup',
+    'sliders.*.slider_type'   => 'required|string|in:top,advertisement',
     'sliders.*.redirect_link' => 'nullable|url',
     'sliders.*.alt_tag'       => 'nullable|string|max:255',
     'sliders.*.image'         => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
@@ -147,23 +147,23 @@ class SliderController extends ResourceController
     }
     public function create()
 {
-    $locations = Location::orderBy('country_name')->get();
+    $markets = Market::where('is_active', '!=', false)->orderBy('name')->get();
 
     return view($this->view, [
         'mode' => 'create',
-        'locations' => $locations,
+        'markets' => $markets,
     ]);
 }
 public function edit($id)
 {
     $record = Slider::findOrFail($id);
 
-    $locations = Location::orderBy('country_name')->get();
+    $markets = Market::where('is_active', '!=', false)->orderBy('name')->get();
 
     return view($this->view, [
         'mode' => 'edit',
         'record' => $record,
-        'locations' => $locations,
+        'markets' => $markets,
     ]);
 }
 }

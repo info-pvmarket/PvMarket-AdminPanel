@@ -15,7 +15,7 @@
     <x-slot name="columns">
     <th class="center">Advertisement Image</th>
     <th>Advertisement</th>
-    <th class="center">Location</th>
+    <th class="center">Market</th>
     <th>Redirect Link</th>
     <th class="center" style="width:130px;">Action</th>
 </x-slot>
@@ -40,12 +40,18 @@
                 @endif
             </td>
             <td style="font-weight:600;">{{ $ad->title }}</td>
-            <td class="center">
+<td class="center">
     @php
-        $location = \App\Models\Location::find($ad->location_id);
+        $market = \App\Models\Market::find($ad->location_id);
+        if (!$market && $ad->location_id) {
+            $legacyLocation = \App\Models\Location::find($ad->location_id);
+            $market = $legacyLocation
+                ? \App\Models\Market::where('name', $legacyLocation->country_name)->first()
+                : null;
+        }
     @endphp
 
-    {{ $location->country_name ?? '-' }}
+    {{ $market->name ?? '-' }}
 </td>
             <td>
                 @if($ad->redirect_link)
@@ -145,7 +151,7 @@
         </div>
         <div class="form-group">
     <label class="form-label">
-        Country <span>*</span>
+        Market <span>*</span>
     </label>
 
     <select
@@ -153,11 +159,11 @@
         class="form-input"
         required
     >
-        <option value="">Select Country</option>
+        <option value="">Select Market</option>
 
-        @foreach($locations as $location)
-            <option value="{{ (string)$location->_id }}">
-                {{ $location->country_name }}
+        @foreach($markets as $market)
+            <option value="{{ (string)$market->_id }}">
+                {{ $market->name }}@if($market->code) ({{ strtoupper($market->code) }}) @endif
             </option>
         @endforeach
     </select>
@@ -193,22 +199,35 @@
         </div>
         <div class="form-group">
     <label class="form-label">
-        Country <span>*</span>
+        Market <span>*</span>
     </label>
+
+    @php
+        $selectedMarketId = (string) old('location_id', $record->location_id);
+        if (!$markets->contains(fn($market) => (string) $market->_id === $selectedMarketId) && $record->location_id) {
+            $legacyLocation = \App\Models\Location::find($record->location_id);
+            $matchedMarket = $legacyLocation
+                ? $markets->first(fn($market) => strcasecmp($market->name, $legacyLocation->country_name) === 0)
+                : null;
+            if ($matchedMarket) {
+                $selectedMarketId = (string) $matchedMarket->_id;
+            }
+        }
+    @endphp
 
     <select
         name="location_id"
         class="form-input"
         required
     >
-        <option value="">Select Country</option>
+        <option value="">Select Market</option>
 
-        @foreach($locations as $location)
+        @foreach($markets as $market)
             <option
-                value="{{ (string)$location->_id }}"
-                {{ (string)$record->location_id === (string)$location->_id ? 'selected' : '' }}
+                value="{{ (string)$market->_id }}"
+                {{ $selectedMarketId === (string)$market->_id ? 'selected' : '' }}
             >
-                {{ $location->country_name }}
+                {{ $market->name }}@if($market->code) ({{ strtoupper($market->code) }}) @endif
             </option>
         @endforeach
     </select>

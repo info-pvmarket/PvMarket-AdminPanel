@@ -268,8 +268,10 @@
 
     <div class="table-footer">
         <span>{{ $firstItem }}–{{ $lastItem }} of {{ $total }} entries</span>
-        @if($paginator)
-            {{ $paginator->appends(request()->query())->links() }}
+        @if(isset($pagination) && trim((string) $pagination) !== '')
+            {{ $pagination }}
+        @elseif($paginator)
+            <x-admin.pagination :paginator="$paginator->appends(request()->query())" />
         @endif
     </div>
 

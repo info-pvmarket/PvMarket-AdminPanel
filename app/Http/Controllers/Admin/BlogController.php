@@ -15,7 +15,7 @@ class BlogController extends Controller
 
     public function index(Request $request)
     {
-        $query = Blog::query();
+        $query = $this->nonFaqBlogsQuery();
 
         if ($request->filled('search')) {
             $query->where('title', 'like', '%' . $request->search . '%');
@@ -32,7 +32,9 @@ class BlogController extends Controller
 
     public function create()
     {
-        $allBlogs = Blog::orderBy('title')->get(['_id', 'title']);
+        $allBlogs = $this->nonFaqBlogsQuery()
+                         ->orderBy('title')
+                         ->get(['_id', 'title']);
 
         return view('admin.knowledge-hub.blogs.blogs', [
             'mode'     => 'create',
@@ -89,7 +91,8 @@ class BlogController extends Controller
     public function edit($id)
     {
         $record   = Blog::findOrFail($id);
-        $allBlogs = Blog::where('_id', '!=', $id)
+        $allBlogs = $this->nonFaqBlogsQuery()
+                        ->where('_id', '!=', $id)
                         ->orderBy('title')
                         ->get(['_id', 'title']);
 
@@ -271,6 +274,16 @@ class BlogController extends Controller
             'mime_type'     => $file->getMimeType(),
             'alt'           => $alt ?? '',
         ];
+    }
+
+    private function nonFaqBlogsQuery()
+    {
+        return Blog::query()
+            ->where(function ($query) {
+                $query->where('is_faq', false)
+                      ->orWhereNull('is_faq')
+                      ->orWhereRaw(['is_faq' => ['$exists' => false]]);
+            });
     }
 
     private function attachTranslations(array $data, $modelInstance): array

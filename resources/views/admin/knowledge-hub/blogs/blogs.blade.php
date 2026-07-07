@@ -389,12 +389,20 @@
 
                 <td class="center">
                     @php
-                        $thumbUrl = $blog->image['url'] ?? null;
+                        $thumbUrl = data_get($blog->image, 'url')
+                            ?: data_get($blog->image, 'path')
+                            ?: (is_string($blog->image ?? null) ? $blog->image : null);
+
+                        if ($thumbUrl && !preg_match('/^https?:\/\//i', $thumbUrl)) {
+                            $thumbUrl = asset('storage/' . ltrim($thumbUrl, '/'));
+                        }
+
+                        $thumbAlt = data_get($blog->image, 'alt') ?: $blog->alt_tag ?: $blog->title;
                     @endphp
                     @if($thumbUrl)
-                        <img src="{{ asset('storage/' . $thumbUrl) }}"
+                        <img src="{{ $thumbUrl }}"
                              class="blog-thumb"
-                             alt="{{ $blog->image['alt'] ?? $blog->title }}"/>
+                             alt="{{ $thumbAlt }}"/>
                     @else
                         <span class="no-image">—</span>
                     @endif
