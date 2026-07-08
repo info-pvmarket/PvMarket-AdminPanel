@@ -62,6 +62,22 @@
     .status-badge.approved { background: #f0fdf4; color: var(--green); }
     .status-badge.rejected { background: #fef2f2; color: var(--red); }
 
+    .quote-list { display: grid; gap: 12px; margin-bottom: 20px; max-height: 300px; overflow-y: auto; padding-right: 4px; }
+    .quote-card { border: 1px solid var(--border); border-radius: 12px; padding: 14px; background: #fff; }
+    .quote-card.pending { border-color: #fde68a; background: #fffbeb; }
+    .quote-card.approved { border-color: #bbf7d0; background: #f0fdf4; }
+    .quote-card.rejected { border-color: #fecaca; background: #fef2f2; }
+    .quote-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+    .quote-epc { font-size: 13px; font-weight: 800; color: var(--text); }
+    .quote-email { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .quote-price { font-size: 18px; font-weight: 800; color: var(--primary); white-space: nowrap; }
+    .quote-meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; font-size: 11px; color: #6b7280; }
+    .quote-note { font-size: 12px; color: #4b5563; line-height: 1.45; margin-top: 8px; }
+    .quote-actions { display: flex; justify-content: flex-end; margin-top: 12px; }
+    .quote-approve-btn { display: inline-flex; align-items: center; gap: 6px; border: none; border-radius: 8px; background: var(--green); color: #fff; font-size: 12px; font-weight: 700; padding: 8px 12px; cursor: pointer; font-family: inherit; }
+    .quote-approve-btn:hover { filter: brightness(.95); }
+    .quote-approve-btn:disabled { opacity: .65; cursor: not-allowed; }
+
     .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
 .detail-item .di-label { font-size: 11px; color: #9ca3af; margin-bottom: 3px; text-transform: uppercase; letter-spacing: .4px; }
 .detail-item .di-value { font-size: 13px; font-weight: 600; color: var(--text); }
@@ -251,13 +267,18 @@
 
 {{-- View Details Modal --}}
 <div class="modal-backdrop" id="viewModal" onclick="backdropClose('viewModal',event)">
-    <div class="modal-box" style="max-width:560px;">
+    <div class="modal-box" style="max-width:720px;">
         <button class="modal-close" onclick="closeModal('viewModal')">×</button>
         <div class="modal-title">Project Details</div>
         <div class="modal-subtitle" id="viewProjectName"></div>
 
         <div id="viewDetailsBody" style="margin-bottom:20px;">
-            <div style="text-align:center;padding:30px;color:#9ca3af;">Loading…</div>
+            <div style="text-align:center;padding:30px;color:#9ca3af;">Loading...</div>
+        </div>
+
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;">EPC Quotes</div>
+        <div class="quote-list" id="viewQuotesList">
+            <div style="text-align:center;padding:16px;color:#9ca3af;font-size:12px;">Loading...</div>
         </div>
 
         <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;">Approval History</div>
@@ -300,6 +321,98 @@ function debounceSearch() {
 }
 
 function refreshProjects() { window.location.reload(); }
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;',
+    }[ch]));
+}
+
+function formatMoney(value) {
+    const amount = Number(value || 0);
+    return `$${amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+}
+
+function renderQuotes(quotes) {
+    const wrap = document.getElementById('viewQuotesList');
+    if (!quotes || quotes.length === 0) {
+        wrap.innerHTML = '<div style="text-align:center;padding:16px;color:#9ca3af;font-size:12px;">No EPC quotes submitted yet.</div>';
+        return;
+    }
+
+    wrap.innerHTML = quotes.map(quote => {
+        const status = String(quote.admin_status || 'pending').toLowerCase();
+        const statusLabel = status.replace(/[_-]+/g, ' ');
+        const quoteId = escapeHtml(quote.id || '');
+        const canApprove = status !== 'approved' && quote.id;
+        const details = [
+            quote.validity_days ? `Validity: ${escapeHtml(quote.validity_days)} days` : '',
+            quote.created_at ? `Submitted: ${escapeHtml(quote.created_at)}` : '',
+            quote.approved_at ? `Approved: ${escapeHtml(quote.approved_at)}` : '',
+        ].filter(Boolean).join(' &bull; ');
+
+        return `
+            <div class="quote-card ${escapeHtml(status)}">
+                <div class="quote-head">
+                    <div>
+                        <div class="quote-epc">${escapeHtml(quote.epc?.name || 'N/A')}</div>
+                        <div class="quote-email">${escapeHtml(quote.epc?.email || '')}</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div class="quote-price">${formatMoney(quote.service_charge)}</div>
+                        <span class="status-badge ${escapeHtml(status)}" style="text-transform:capitalize;">${escapeHtml(statusLabel)}</span>
+                    </div>
+                </div>
+                ${details ? `<div class="quote-meta">${details}</div>` : ''}
+                ${quote.scope_of_work ? `<div class="quote-note"><strong>Scope:</strong> ${escapeHtml(quote.scope_of_work)}</div>` : ''}
+                ${quote.terms_and_conditions ? `<div class="quote-note"><strong>Terms:</strong> ${escapeHtml(quote.terms_and_conditions)}</div>` : ''}
+                ${quote.epc_notes ? `<div class="quote-note"><strong>Notes:</strong> ${escapeHtml(quote.epc_notes)}</div>` : ''}
+                ${canApprove ? `
+                    <div class="quote-actions">
+                        <button class="quote-approve-btn" data-quote-id="${quoteId}" onclick="approveProjectQuote(this)">
+                            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                            Approve Quote
+                        </button>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+function approveProjectQuote(button) {
+    const quoteId = button.dataset.quoteId;
+    if (!currentProjectId || !quoteId) return;
+
+    button.disabled = true;
+    button.textContent = 'Approving...';
+
+    fetch(`/admin/project-approvals/${currentProjectId}/quotes/${encodeURIComponent(quoteId)}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+        body: JSON.stringify({}),
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) {
+            showToast('Quote approved.', 'success');
+            loadProjectDetails(currentProjectId);
+        } else {
+            showToast(d.message || 'Failed to approve quote.', 'error');
+            button.disabled = false;
+            button.textContent = 'Approve Quote';
+        }
+    })
+    .catch(() => {
+        showToast('Network error.', 'error');
+        button.disabled = false;
+        button.textContent = 'Approve Quote';
+    });
+}
 
 function openApprove(el) {
     currentProjectId = el.dataset.id;
@@ -348,55 +461,75 @@ function submitReject() {
 function openView(el) {
     currentProjectId = el.dataset.id;
     document.getElementById('viewProjectName').textContent = '';
-    document.getElementById('viewDetailsBody').innerHTML = '<div style="text-align:center;padding:30px;color:#9ca3af;">Loading…</div>';
+    document.getElementById('viewDetailsBody').innerHTML = '<div style="text-align:center;padding:30px;color:#9ca3af;">Loading...</div>';
+    document.getElementById('viewQuotesList').innerHTML = '<div style="text-align:center;padding:16px;color:#9ca3af;font-size:12px;">Loading...</div>';
     document.getElementById('viewHistoryList').innerHTML = '';
     document.getElementById('viewModal').classList.add('open');
 
-    fetch(`/admin/project-approvals/${currentProjectId}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    loadProjectDetails(currentProjectId);
+}
+
+function loadProjectDetails(projectId) {
+    fetch(`/admin/project-approvals/${projectId}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
         .then(r => r.json())
         .then(d => {
-            if (!d.success) { showToast('Failed to load details.', 'error'); return; }
+            if (!d.success) {
+                showToast('Failed to load details.', 'error');
+                renderQuotes([]);
+                return;
+            }
             const p = d.project;
 
             document.getElementById('viewProjectName').textContent = p.project_name;
 
             document.getElementById('viewDetailsBody').innerHTML = `
                 <div class="detail-grid">
-                    <div class="detail-item"><div class="di-label">Customer</div><div class="di-value">${p.customer_name ?? 'N/A'}</div></div>
-                    <div class="detail-item"><div class="di-label">Type</div><div class="di-value">${p.project_type ?? 'N/A'}</div></div>
-                    <div class="detail-item"><div class="di-label">Capacity</div><div class="di-value">${p.capacity_kw ? p.capacity_kw + ' kW' : 'N/A'}</div></div>
-                    <div class="detail-item"><div class="di-label">Location</div><div class="di-value">${p.location ?? 'N/A'}</div></div>
-                    <div class="detail-item"><div class="di-label">Status</div><div class="di-value"><span class="status-badge ${p.status}">${p.status_label}</span></div></div>
-                    <div class="detail-item"><div class="di-label">Submitted By</div><div class="di-value">${p.submitted_by}</div></div>
-                    <div class="detail-item"><div class="di-label">Submitted At</div><div class="di-value">${p.submitted_at ?? 'N/A'}</div></div>
-                    ${p.reviewed_by ? `<div class="detail-item"><div class="di-label">Reviewed By</div><div class="di-value">${p.reviewed_by}</div></div>` : ''}
-                    ${p.reviewed_at ? `<div class="detail-item"><div class="di-label">Reviewed At</div><div class="di-value">${p.reviewed_at}</div></div>` : ''}
-                    ${p.description ? `<div class="detail-item full"><div class="di-label">Description</div><div class="di-value" style="font-weight:400;">${p.description}</div></div>` : ''}
-                    ${p.review_notes ? `<div class="detail-item full"><div class="di-label">Review Notes</div><div class="di-value" style="font-weight:400;">${p.review_notes}</div></div>` : ''}
+                    <div class="detail-item"><div class="di-label">Customer</div><div class="di-value">${escapeHtml(p.customer_name ?? 'N/A')}</div></div>
+                    <div class="detail-item"><div class="di-label">Type</div><div class="di-value">${escapeHtml(p.project_type ?? 'N/A')}</div></div>
+                    <div class="detail-item"><div class="di-label">Capacity</div><div class="di-value">${p.capacity_kw ? escapeHtml(p.capacity_kw) + ' kW' : 'N/A'}</div></div>
+                    <div class="detail-item"><div class="di-label">Location</div><div class="di-value">${escapeHtml(p.location ?? 'N/A')}</div></div>
+                    <div class="detail-item"><div class="di-label">Status</div><div class="di-value"><span class="status-badge ${escapeHtml(p.status)}">${escapeHtml(p.status_label)}</span></div></div>
+                    <div class="detail-item"><div class="di-label">Submitted By</div><div class="di-value">${escapeHtml(p.submitted_by)}</div></div>
+                    <div class="detail-item"><div class="di-label">Submitted At</div><div class="di-value">${escapeHtml(p.submitted_at ?? 'N/A')}</div></div>
+                    ${p.reviewed_by ? `<div class="detail-item"><div class="di-label">Reviewed By</div><div class="di-value">${escapeHtml(p.reviewed_by)}</div></div>` : ''}
+                    ${p.reviewed_at ? `<div class="detail-item"><div class="di-label">Reviewed At</div><div class="di-value">${escapeHtml(p.reviewed_at)}</div></div>` : ''}
+                    ${p.description ? `<div class="detail-item full"><div class="di-label">Description</div><div class="di-value" style="font-weight:400;">${escapeHtml(p.description)}</div></div>` : ''}
+                    ${p.review_notes ? `<div class="detail-item full"><div class="di-label">Review Notes</div><div class="di-value" style="font-weight:400;">${escapeHtml(p.review_notes)}</div></div>` : ''}
                 </div>
             `;
 
-            if (d.logs.length === 0) {
+            renderQuotes(d.quotes || []);
+
+            const logs = d.logs || [];
+            if (logs.length === 0) {
                 document.getElementById('viewHistoryList').innerHTML = '<div style="text-align:center;padding:16px;color:#9ca3af;font-size:12px;">No history yet.</div>';
             } else {
                 const iconMap = {
                     Approved: `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>`,
                     Rejected: `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
                     Submitted: `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/></svg>`,
+                    'Quote approved': `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>`,
                 };
-                document.getElementById('viewHistoryList').innerHTML = d.logs.map(log => `
+                document.getElementById('viewHistoryList').innerHTML = logs.map(log => {
+                    const action = String(log.action || '');
+                    const actionClass = action.toLowerCase().includes('approved') ? 'approved' : action.toLowerCase();
+                    return `
                     <div class="history-item">
-                        <div class="history-icon ${log.action.toLowerCase()}">${iconMap[log.action] ?? ''}</div>
+                        <div class="history-icon ${escapeHtml(actionClass)}">${iconMap[action] ?? ''}</div>
                         <div class="history-body">
-                            <div class="history-type">${log.action}</div>
-                            ${log.notes ? `<div class="history-detail">${log.notes}</div>` : ''}
-                            <div class="history-meta-row">${log.created_at ?? ''}</div>
+                            <div class="history-type">${escapeHtml(action)}</div>
+                            ${log.notes ? `<div class="history-detail">${escapeHtml(log.notes)}</div>` : ''}
+                            <div class="history-meta-row">${escapeHtml(log.created_at ?? '')}</div>
                         </div>
                     </div>
-                `).join('');
+                `;
+                }).join('');
             }
         })
-        .catch(() => showToast('Network error.', 'error'));
+        .catch(() => {
+            renderQuotes([]);
+            showToast('Network error.', 'error');
+        });
 }
 </script>
 @endsection

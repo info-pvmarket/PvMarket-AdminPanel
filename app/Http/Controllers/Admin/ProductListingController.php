@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\MainMenu;
 use App\Models\SubMenu;
 use App\Models\Product;
+use App\Models\Brand;
 use App\Models\Warehouse;
 use App\Models\Commission;
 use App\Services\TranslationService;
@@ -35,10 +36,44 @@ class ProductListingController extends Controller
         $this->filterByAssignedUsers($query, 'user_id');
 
         if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('sku_code', 'like', "%{$search}%");
-            });
+            $search = trim($request->search);
+
+            if ($search !== '') {
+                $brandIdCandidates = Brand::where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('slug', 'like', "%{$search}%");
+                })
+                    ->pluck('_id')
+                    ->flatMap(fn($id) => $this->mongoIdCandidates($id))
+                    ->unique(fn($id) => is_object($id) ? get_class($id) . ':' . (string) $id : 'string:' . $id)
+                    ->values()
+                    ->all();
+
+                $productQuery = Product::where(function ($q) use ($search, $brandIdCandidates) {
+                    $q->where('product_name', 'like', "%{$search}%")
+                        ->orWhere('sku_code', 'like', "%{$search}%")
+                        ->orWhere('brand_name', 'like', "%{$search}%");
+
+                    if (!empty($brandIdCandidates)) {
+                        $q->orWhereIn('brand_id', $brandIdCandidates);
+                    }
+                });
+
+                $productIdCandidates = $productQuery
+                    ->pluck('_id')
+                    ->flatMap(fn($id) => $this->mongoIdCandidates($id))
+                    ->unique(fn($id) => is_object($id) ? get_class($id) . ':' . (string) $id : 'string:' . $id)
+                    ->values()
+                    ->all();
+
+                $query->where(function ($q) use ($search, $productIdCandidates) {
+                    $q->where('sku_code', 'like', "%{$search}%");
+
+                    if (!empty($productIdCandidates)) {
+                        $q->orWhereIn('product_id', $productIdCandidates);
+                    }
+                });
+            }
         }
 
 
@@ -561,5 +596,24 @@ class ProductListingController extends Controller
         }
 
         return $data;
+    }
+
+    private function mongoIdCandidates($id): array
+    {
+        $stringId = is_object($id) && method_exists($id, '__toString')
+            ? (string) $id
+            : (string) $id;
+
+        if ($stringId === '') {
+            return [];
+        }
+
+        $candidates = [$stringId];
+
+        if (preg_match('/^[a-f\d]{24}$/i', $stringId)) {
+            $candidates[] = new \MongoDB\BSON\ObjectId($stringId);
+        }
+
+        return $candidates;
     }
 }

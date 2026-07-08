@@ -318,14 +318,35 @@
     }
 
     .slot-row {
-        display: flex;
-        justify-content: space-between;
+        display: grid;
+        grid-template-columns: minmax(160px, 1fr) minmax(260px, auto);
+        gap: 16px;
         align-items: center;
         padding: 6px 0;
         border-bottom: 1px solid #F3F4F6;
     }
     .slot-row:last-child { border-bottom: none; }
-    .slot-price { color: var(--primary); font-weight: 700; }
+    .slot-pricing {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(90px, 1fr));
+        gap: 10px;
+        text-align: right;
+    }
+    .slot-price-cell small {
+        display: block;
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: .3px;
+        margin-bottom: 2px;
+    }
+    .slot-price-cell strong {
+        color: var(--text);
+        font-size: 12px;
+        white-space: nowrap;
+    }
+    .slot-price-cell.total strong { color: var(--primary); font-weight: 800; }
 
     /* ── Tags row (popular/sold) ── */
     .listing-tags { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
@@ -359,6 +380,8 @@
         .listing-card { flex-direction: column; }
         .listing-thumb { width: 100%; height: 180px; }
         .listing-meta { grid-template-columns: 1fr 1fr; }
+        .slot-row { grid-template-columns: 1fr; }
+        .slot-pricing { text-align: left; }
         .header-right { width: 100%; }
         .warehouse-select { width: 100%; min-width: unset; }
     }
@@ -599,7 +622,7 @@
         <input type="text"
                name="search"
                class="search-input"
-               placeholder="Search by product name, SKU..."
+               placeholder="Search by product name, brand, SKU..."
                value="{{ request('search') }}"
                oninput="debounceSearch(this.form)">
 
@@ -704,6 +727,25 @@
     $slots         = $listing->slots ?? [];
     $listingImgs   = $imagesMap[(string)$listing->_id] ?? collect();
     $firstImage    = $listingImgs->first();
+    $slotValue = function ($slot, string $key, $default = null) {
+        return is_array($slot) ? ($slot[$key] ?? $default) : ($slot->{$key} ?? $default);
+    };
+    $slotPricing = function ($slot) use ($slotValue) {
+        $price = (float) ($slotValue($slot, 'price', 0) ?: 0);
+        $commission = (float) ($slotValue($slot, 'commission_percentage', 0) ?: 0);
+        $totalPrice = $slotValue($slot, 'total_price');
+
+        if ($totalPrice === null || $totalPrice === '') {
+            $totalPrice = $price + ($price * $commission / 100);
+        }
+
+        return [
+            'price' => $price,
+            'commission' => $commission,
+            'total_price' => (float) $totalPrice,
+        ];
+    };
+    $firstSlotPricing = count($slots) > 0 ? $slotPricing($slots[0]) : null;
 @endphp
 
         <div class="listing-card" id="card-{{ $listing->id }}">
@@ -874,6 +916,20 @@
                         <label>Currency</label>
                         <span>{{ $listing->currency_id }}</span>
                     </div>
+                    @if($firstSlotPricing)
+                        <div class="meta-item">
+                            <label>Price</label>
+                            <span>{{ $listing->currency_id }} {{ number_format($firstSlotPricing['price'], 2) }}</span>
+                        </div>
+                        <div class="meta-item">
+                            <label>Commission</label>
+                            <span>{{ rtrim(rtrim(number_format($firstSlotPricing['commission'], 2), '0'), '.') }}%</span>
+                        </div>
+                        <div class="meta-item">
+                            <label>Total Price</label>
+                            <span>{{ $listing->currency_id }} {{ number_format($firstSlotPricing['total_price'], 2) }}</span>
+                        </div>
+                    @endif
                 </div>
 
                 {{-- Slots footer --}}
@@ -891,13 +947,14 @@
 
                     <div id="slots-{{ $listing->id }}" class="slots-detail" style="display:none;">
                         @foreach($slots as $i => $slot)
+                            @php
+                                $minQty = $slotValue($slot, 'min_quantity', 0);
+                                $maxQty = $slotValue($slot, 'max_quantity');
+                                $pricing = $slotPricing($slot);
+                            @endphp
                             <div class="slot-row">
                                 <span>
                                     <strong>Tier {{ $i + 1 }}:</strong>
-                                    @php
-    $minQty = is_array($slot) ? $slot['min_quantity'] : $slot->min_quantity ?? 0;
-    $maxQty = is_array($slot) ? ($slot['max_quantity'] ?? null) : ($slot->max_quantity ?? null);
-@endphp
 Min {{ number_format($minQty) }}
 @if(!empty($maxQty))
     – Max {{ number_format($maxQty) }} pcs
@@ -905,9 +962,20 @@ Min {{ number_format($minQty) }}
     pcs &amp; above
 @endif
                                 </span>
-                                <span class="slot-price">
-                                    {{ $listing->currency_id }} {{ number_format(is_array($slot) ? $slot['price'] : $slot->price ?? 0, 2) }}
-                                </span>
+                                <div class="slot-pricing">
+                                    <span class="slot-price-cell">
+                                        <small>Price</small>
+                                        <strong>{{ $listing->currency_id }} {{ number_format($pricing['price'], 2) }}</strong>
+                                    </span>
+                                    <span class="slot-price-cell">
+                                        <small>Commission</small>
+                                        <strong>{{ rtrim(rtrim(number_format($pricing['commission'], 2), '0'), '.') }}%</strong>
+                                    </span>
+                                    <span class="slot-price-cell total">
+                                        <small>Total Price</small>
+                                        <strong>{{ $listing->currency_id }} {{ number_format($pricing['total_price'], 2) }}</strong>
+                                    </span>
+                                </div>
                             </div>
                         @endforeach
                     </div>

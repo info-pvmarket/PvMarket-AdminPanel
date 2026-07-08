@@ -113,6 +113,41 @@ class ProjectApprovalController extends Controller
 
     // ── History ───────────────────────────────────────────────────
     // ── View Details ──────────────────────────────────────────────
+    public function approveQuote(string $projectId, string $quoteId)
+    {
+        $project = Project::findOrFail($projectId);
+        $quotes = $project->quotes ?? [];
+        $quoteFound = false;
+
+        foreach ($quotes as $index => $quote) {
+            if ((string) ($quote['id'] ?? '') !== $quoteId) {
+                continue;
+            }
+
+            $quotes[$index]['admin_status'] = 'approved';
+            $quotes[$index]['approved_by'] = Auth::id();
+            $quotes[$index]['approved_at'] = now()->toIso8601String();
+            $quoteFound = true;
+            break;
+        }
+
+        if (!$quoteFound) {
+            return response()->json(['success' => false, 'message' => 'Quote not found.'], 404);
+        }
+
+        $project->quotes = $quotes;
+        $project->save();
+
+        ProjectApprovalLog::create([
+            'project_id'    => new ObjectId($projectId),
+            'action'        => 'quote_approved',
+            'performed_by'  => new ObjectId(Auth::id()),
+            'notes'         => 'Approved EPC quote ' . $quoteId,
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Quote approved.']);
+    }
+
     public function show(string $projectId)
     {
         $project = Project::with(['submitter', 'reviewer'])->findOrFail($projectId);
@@ -144,6 +179,21 @@ class ProjectApprovalController extends Controller
                 'reviewed_at'    => $project->reviewed_at?->format('d M Y, H:i'),
                 'review_notes'   => $project->review_notes,
             ],
+            'quotes' => collect($project->quotes ?? [])->map(fn($quote) => [
+                'id' => (string) ($quote['id'] ?? ''),
+                'epc' => [
+                    'name' => $quote['epc']['name'] ?? 'N/A',
+                    'email' => $quote['epc']['email'] ?? '',
+                ],
+                'service_charge' => (float) ($quote['service_charge'] ?? 0),
+                'validity_days' => $quote['validity_days'] ?? null,
+                'scope_of_work' => $quote['scope_of_work'] ?? null,
+                'terms_and_conditions' => $quote['terms_and_conditions'] ?? null,
+                'epc_notes' => $quote['epc_notes'] ?? null,
+                'admin_status' => $quote['admin_status'] ?? 'pending',
+                'created_at' => $quote['created_at'] ?? null,
+                'approved_at' => $quote['approved_at'] ?? null,
+            ])->values(),
             'logs' => $logs,
         ]);
     }

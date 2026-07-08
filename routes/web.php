@@ -447,6 +447,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [ProjectApprovalController::class, 'index'])->name('index');
         Route::post('/{project}/approve', [ProjectApprovalController::class, 'approve'])->name('approve');
         Route::post('/{project}/reject', [ProjectApprovalController::class, 'reject'])->name('reject');
+        Route::post('/{project}/quotes/{quote}/approve', [ProjectApprovalController::class, 'approveQuote'])->name('quotes.approve');
         Route::get('/{project}', [ProjectApprovalController::class, 'show'])->name('show');
     });
 

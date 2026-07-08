@@ -216,7 +216,7 @@ class SolarAnalysisController extends Controller
             ->paginate((int) $request->query('per_page', 12));
 
         return response()->json([
-            'data' => collect($projects->items())->map(fn (Project $project) => $this->projectPayload($project))->values(),
+            'data' => collect($projects->items())->map(fn (Project $project) => $this->projectPayload($project, true))->values(),
             'meta' => [
                 'current_page' => $projects->currentPage(),
                 'last_page' => $projects->lastPage(),
@@ -225,12 +225,15 @@ class SolarAnalysisController extends Controller
         ]);
     }
 
-    public function marketplaceShow(string $project)
+    public function marketplaceShow(Request $request, string $project)
     {
-        $found = Project::with(['submitter'])->findOrFail($project);
+        $found = Project::with(['submitter'])
+            ->where('status', 'approved')
+            ->findOrFail($project);
+        $user = $this->userFromRequest($request);
 
         return response()->json([
-            'project' => $this->projectPayload($found),
+            'project' => $this->projectPayload($found, true, $user),
         ]);
     }
 
@@ -239,6 +242,11 @@ class SolarAnalysisController extends Controller
         $user = $this->userFromRequest($request);
         if (!$user) {
             return response()->json(['message' => 'Authentication required.'], 401);
+        }
+
+        $user->loadMissing('role');
+        if (($user->role?->slug ?? null) !== 'epc-company') {
+            return response()->json(['message' => 'Only EPC company users can submit quotes.'], 403);
         }
 
         $validator = Validator::make($request->all(), [
@@ -258,7 +266,22 @@ class SolarAnalysisController extends Controller
         }
 
         $project = Project::findOrFail($request->input('project_id'));
+        if ($project->status !== 'approved') {
+            return response()->json(['message' => 'Quotes can only be submitted for approved marketplace projects.'], 422);
+        }
+
         $quotes = $project->quotes ?? [];
+        $hasExistingQuote = collect($quotes)->contains(function ($quote) use ($user) {
+            $quoteUserId = (string) data_get($quote, 'epc.id', '');
+            $quoteEmail = strtolower((string) data_get($quote, 'epc.email', ''));
+
+            return $quoteUserId === (string) $user->_id || $quoteEmail === strtolower((string) $user->email);
+        });
+
+        if ($hasExistingQuote) {
+            return response()->json(['message' => 'You have already submitted a quote for this project.'], 409);
+        }
+
         $quotes[] = [
             'id' => (string) Str::uuid(),
             'epc' => [
@@ -284,12 +307,14 @@ class SolarAnalysisController extends Controller
         ]);
     }
 
-    public function quotes(string $project)
+    public function quotes(Request $request, string $project)
     {
         $found = Project::findOrFail($project);
+        $quotes = $this->visibleMarketplaceQuotes($found->quotes ?? [], $found, $this->userFromRequest($request));
 
         return response()->json([
-            'quotes' => $found->quotes ?? [],
+            'quotes' => $quotes,
+            'quotes_count' => count($quotes),
         ]);
     }
 
@@ -683,9 +708,16 @@ class SolarAnalysisController extends Controller
         return 'data:image/svg+xml;base64,' . base64_encode($svg);
     }
 
-    private function projectPayload(Project $project): array
+    private function projectPayload(Project $project, bool $approvedQuotesOnly = false, ?User $currentUser = null): array
     {
-        $quotes = $project->quotes ?? [];
+        $allQuotes = array_values($project->quotes ?? []);
+        $approvedQuotes = $this->approvedQuotes($allQuotes);
+        $quotes = $approvedQuotesOnly
+            ? $this->visibleMarketplaceQuotes($allQuotes, $project, $currentUser)
+            : $allQuotes;
+        $currentUserQuoteStatus = $currentUser
+            ? $this->currentUserQuoteStatus($allQuotes, $currentUser)
+            : null;
 
         return [
             'id' => (string) $project->_id,
@@ -718,12 +750,80 @@ class SolarAnalysisController extends Controller
             'selected_products' => $project->selected_products ?? [],
             'quotes' => $quotes,
             'quotes_count' => count($quotes),
-            'approved_quotes_count' => count(array_filter($quotes, fn ($quote) => ($quote['admin_status'] ?? null) === 'approved')),
+            'approved_quotes_count' => count($approvedQuotes),
+            'has_current_user_quote' => $currentUserQuoteStatus !== null,
+            'current_user_quote_status' => $currentUserQuoteStatus,
             'user' => $project->submitter ? [
+                'id' => (string) $project->submitter->_id,
                 'name' => $project->submitter->name,
                 'email' => $project->submitter->email,
             ] : null,
         ];
+    }
+
+    private function approvedQuotes(array $quotes): array
+    {
+        return array_values(array_filter($quotes, fn ($quote) => data_get($quote, 'admin_status') === 'approved'));
+    }
+
+    private function visibleMarketplaceQuotes(array $quotes, Project $project, ?User $currentUser): array
+    {
+        $isProjectOwner = $currentUser ? $this->isProjectOwner($project, $currentUser) : false;
+
+        return collect($quotes)
+            ->filter(function ($quote) use ($currentUser) {
+                return data_get($quote, 'admin_status') === 'approved'
+                    || ($currentUser && $this->isQuoteOwner($quote, $currentUser));
+            })
+            ->map(function ($quote) use ($currentUser, $isProjectOwner) {
+                $isQuoteOwner = $currentUser ? $this->isQuoteOwner($quote, $currentUser) : false;
+                return $this->marketplaceQuotePayload($quote, $isProjectOwner || $isQuoteOwner);
+            })
+            ->values()
+            ->all();
+    }
+
+    private function marketplaceQuotePayload(array $quote, bool $canViewPrivateFields): array
+    {
+        $payload = $quote;
+        $payload['can_view_price'] = $canViewPrivateFields;
+        $payload['can_view_identity'] = $canViewPrivateFields;
+
+        if (!$canViewPrivateFields) {
+            $payload['service_charge'] = null;
+            $payload['epc'] = [
+                'name' => 'EPC Company',
+                'email' => null,
+            ];
+            unset($payload['scope_of_work'], $payload['terms_and_conditions'], $payload['epc_notes']);
+        }
+
+        return $payload;
+    }
+
+    private function isProjectOwner(Project $project, User $user): bool
+    {
+        return (string) $project->submitted_by === (string) $user->_id
+            || strtolower((string) $project->submitter?->email) === strtolower((string) $user->email);
+    }
+
+    private function isQuoteOwner(array $quote, User $user): bool
+    {
+        $quoteUserId = (string) data_get($quote, 'epc.id', '');
+        $quoteEmail = strtolower((string) data_get($quote, 'epc.email', ''));
+
+        return $quoteUserId === (string) $user->_id || $quoteEmail === strtolower((string) $user->email);
+    }
+
+    private function currentUserQuoteStatus(array $quotes, User $user): ?string
+    {
+        foreach ($quotes as $quote) {
+            if ($this->isQuoteOwner($quote, $user)) {
+                return (string) data_get($quote, 'admin_status', 'pending');
+            }
+        }
+
+        return null;
     }
 
     private function stripDataUri(?string $value): ?string
