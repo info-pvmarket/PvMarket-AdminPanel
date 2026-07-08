@@ -168,7 +168,7 @@ class SalesController extends Controller
     // ── Update order status ───────────────────────────────────────
     public function updateStatus(Request $request, $id)
     {
-        $request->validate(['order_status' => 'required|integer|min:0|max:4']);
+        $request->validate(['order_status' => 'required|integer|min:0|max:6']);
 
         $newStatus = (int) $request->order_status;
 

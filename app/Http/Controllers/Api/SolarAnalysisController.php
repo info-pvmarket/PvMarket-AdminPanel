@@ -841,17 +841,44 @@ class SolarAnalysisController extends Controller
 
     private function minimalPdf(string $title): string
     {
-        $safeTitle = str_replace(['\\', '(', ')'], ['\\\\', '\(', '\)'], $title);
+        $escape = static fn (string $value): string => str_replace(['\\', '(', ')'], ['\\\\', '\(', '\)'], $value);
 
-        return "%PDF-1.1\n"
-            . "1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n"
-            . "2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n"
-            . "3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >> endobj\n"
-            . "4 0 obj << /Length 74 >> stream\n"
-            . "BT /F1 18 Tf 72 720 Td ({$safeTitle}) Tj 0 -30 Td (Solar analysis project report) Tj ET\n"
-            . "endstream endobj\n"
-            . "xref\n0 5\n0000000000 65535 f \n"
-            . "trailer << /Root 1 0 R /Size 5 >>\nstartxref\n0\n%%EOF";
+        $lines = [
+            '/F1 22 Tf 72 740 Td (pv.market) Tj',
+            '/F1 9 Tf 0 -16 Td (AI Digital Market Place) Tj',
+            '0 -18 Td (First Floor, Incubator Building) Tj',
+            '0 -14 Td (Masdar City, Abu Dhabi, UAE) Tj',
+            '0 -14 Td (info@pv.market | +971 523825549) Tj',
+            '/F1 18 Tf 0 -44 Td (' . $escape($title) . ') Tj',
+            '/F1 12 Tf 0 -24 Td (Solar analysis project report) Tj',
+        ];
+        $stream = "BT\n" . implode("\n", $lines) . "\nET\n";
+
+        $objects = [
+            "1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n",
+            "2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n",
+            "3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >> endobj\n",
+            "4 0 obj << /Length " . strlen($stream) . " >> stream\n" . $stream . "endstream endobj\n",
+            "5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj\n",
+        ];
+
+        $pdf = "%PDF-1.4\n";
+        $offsets = [];
+        foreach ($objects as $object) {
+            $offsets[] = strlen($pdf);
+            $pdf .= $object;
+        }
+
+        $xrefOffset = strlen($pdf);
+        $pdf .= "xref\n0 " . (count($objects) + 1) . "\n";
+        $pdf .= "0000000000 65535 f \n";
+        foreach ($offsets as $offset) {
+            $pdf .= sprintf("%010d 00000 n \n", $offset);
+        }
+
+        return $pdf
+            . "trailer << /Root 1 0 R /Size " . (count($objects) + 1) . " >>\n"
+            . "startxref\n{$xrefOffset}\n%%EOF";
     }
 
     private function base64UrlDecode(string $value): string

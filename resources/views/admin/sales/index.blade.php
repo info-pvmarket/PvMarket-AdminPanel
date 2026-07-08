@@ -470,16 +470,28 @@
 $total     = (!empty($order->payment_currency_total) && $order->payment_currency_total !== 'null')
              ? $order->payment_currency_total
              : (floatval($order->each_qty_price ?? 0) * intval($order->total_qty ?? 0));
-                $statusColor = match((int)$order->order_status) {
-                    0 => 'status-orange', 1 => 'status-blue', 2 => 'status-purple',
-                    3 => 'status-green',  4 => 'status-red',  default => 'status-orange'
+                $rawOrderStatus = method_exists($order, 'getRawOriginal')
+                    ? $order->getRawOriginal('order_status')
+                    : $order->order_status;
+                $orderStatusValue = match(strtolower(trim((string)$rawOrderStatus))) {
+                    'payment confirmed' => 5,
+                    'seller confirmed' => 6,
+                    default => (int)$order->order_status,
                 };
-                $statusLabel = match((int)$order->order_status) {
+                $statusColor = match($orderStatusValue) {
+                    0 => 'status-orange', 1 => 'status-blue', 2 => 'status-purple',
+                    3 => 'status-green',  4 => 'status-red', 5 => 'status-blue',
+                    6 => 'status-green',
+                    default => 'status-orange'
+                };
+                $statusLabel = match($orderStatusValue) {
                     0 => 'Pending under payment verification',
                     1 => 'Confirmed',
                     2 => 'Shipped',
                     3 => 'Delivered',
                     4 => 'Cancelled',
+                    5 => 'Payment Confirmed',
+                    6 => 'Seller Confirmed',
                     default => 'Pending'
                 };
             @endphp
@@ -627,11 +639,13 @@ $total     = (!empty($order->payment_currency_total) && $order->payment_currency
                     </span>
                     <br/>
                     <select class="status-select" onchange="updateStatus('{{ $order->id }}', this.value)">
-                        <option value="0" {{ $order->order_status == 0 ? 'selected' : '' }}>Pending</option>
-                        <option value="1" {{ $order->order_status == 1 ? 'selected' : '' }}>Confirmed</option>
-                        <option value="2" {{ $order->order_status == 2 ? 'selected' : '' }}>Shipped</option>
-                        <option value="3" {{ $order->order_status == 3 ? 'selected' : '' }}>Delivered</option>
-                        <option value="4" {{ $order->order_status == 4 ? 'selected' : '' }}>Cancelled</option>
+                        <option value="0" {{ $orderStatusValue === 0 ? 'selected' : '' }}>Pending</option>
+                        <option value="5" {{ $orderStatusValue === 5 ? 'selected' : '' }}>Payment Confirmed</option>
+                        <option value="6" {{ $orderStatusValue === 6 ? 'selected' : '' }}>Seller Confirmed</option>
+                        <option value="1" {{ $orderStatusValue === 1 ? 'selected' : '' }}>Confirmed</option>
+                        <option value="2" {{ $orderStatusValue === 2 ? 'selected' : '' }}>Shipped</option>
+                        <option value="3" {{ $orderStatusValue === 3 ? 'selected' : '' }}>Delivered</option>
+                        <option value="4" {{ $orderStatusValue === 4 ? 'selected' : '' }}>Cancelled</option>
                     </select>
                 </td>
 
@@ -800,14 +814,18 @@ async function updateStatus(orderId, status) {
         1: 'Confirmed',
         2: 'Shipped',
         3: 'Delivered',
-        4: 'Cancelled'
+        4: 'Cancelled',
+        5: 'Payment Confirmed',
+        6: 'Seller Confirmed'
     };
     const statusColors = {
         0: 'status-orange',
         1: 'status-blue',
         2: 'status-purple',
         3: 'status-green',
-        4: 'status-red'
+        4: 'status-red',
+        5: 'status-blue',
+        6: 'status-green'
     };
 
     try {
