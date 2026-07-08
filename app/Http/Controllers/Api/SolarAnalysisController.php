@@ -842,6 +842,8 @@ class SolarAnalysisController extends Controller
     private function minimalPdf(string $title): string
     {
         $escape = static fn (string $value): string => str_replace(['\\', '(', ')'], ['\\\\', '\(', '\)'], $value);
+        $disclaimerLineOne = 'Disclaimer: This analysis provides estimated values only. Final pricing and system performance may';
+        $disclaimerLineTwo = 'differ after a detailed site survey and technical assessment.';
 
         $lines = [
             '/F1 22 Tf 72 740 Td (pv.market) Tj',
@@ -851,6 +853,8 @@ class SolarAnalysisController extends Controller
             '0 -14 Td (info@pv.market | +971 523825549) Tj',
             '/F1 18 Tf 0 -44 Td (' . $escape($title) . ') Tj',
             '/F1 12 Tf 0 -24 Td (Solar analysis project report) Tj',
+            '/F1 9 Tf 0 -34 Td (' . $escape($disclaimerLineOne) . ') Tj',
+            '0 -12 Td (' . $escape($disclaimerLineTwo) . ') Tj',
         ];
         $stream = "BT\n" . implode("\n", $lines) . "\nET\n";
 
