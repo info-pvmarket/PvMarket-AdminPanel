@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Warehouse;
 use App\Models\Country;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Services\TranslationService;
@@ -30,9 +31,20 @@ class WarehouseController extends Controller
         $warehouses = $query->orderBy('created_at', 'desc')
                             ->paginate($request->get('entries', 10));
 
+        $userIds = $warehouses->getCollection()
+            ->flatMap(fn($warehouse) => [$warehouse->user_id ?? null, $warehouse->created_by ?? null])
+            ->filter()
+            ->map(fn($id) => (string) $id)
+            ->unique()
+            ->values();
+
+        $usersMap = User::whereIn('_id', $userIds)->get()
+            ->keyBy(fn($user) => (string) $user->_id);
+
         return view('admin.warehouses.warehouses', [
             'mode'       => 'index',
             'warehouses' => $warehouses,
+            'usersMap'   => $usersMap,
         ]);
     }
 

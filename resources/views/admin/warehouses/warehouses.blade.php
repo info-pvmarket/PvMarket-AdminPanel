@@ -164,6 +164,12 @@
     .badge { display:inline-flex; align-items:center; justify-content:center; padding:5px 16px; border-radius:6px; font-size:12.5px; font-weight:700; min-width:76px; }
     .badge-paid    { background:#10B981; color:white; }
     .badge-pending { background:#F59E0B; color:white; }
+    .created-user { display:flex; flex-direction:column; gap:4px; min-width:210px; }
+    .created-user-name { font-weight:700; color:var(--text); font-size:13.5px; line-height:1.2; }
+    .created-user-meta { display:flex; align-items:center; gap:6px; color:var(--muted); font-size:12px; line-height:1.2; }
+    .created-user-meta a { color:var(--primary-d); text-decoration:none; font-weight:600; }
+    .created-user-meta a:hover { color:var(--primary); text-decoration:underline; }
+    .created-user-empty { color:var(--muted); font-size:12.5px; font-weight:600; }
     .mark-paid-btn { display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:#10B981; background:none; border:none; cursor:pointer; font-family:inherit; padding:0; transition:color .15s; }
     .mark-paid-btn:hover { color:#059669; }
     .action-btns { display:flex; align-items:center; justify-content:center; gap:6px; }
@@ -250,17 +256,40 @@
             <tr>
                 <th class="center" style="width:80px;">S.No</th>
                 <th>Warehouse name</th>
+                <th style="width:260px;">Created user</th>
                 <th class="center" style="width:180px;">Payment Status</th>
                 <th class="center" style="width:180px;">Action</th>
             </tr>
         </thead>
         <tbody>
             @forelse($warehouses as $index => $warehouse)
+            @php
+                $createdUserId = (string) ($warehouse->user_id ?? $warehouse->created_by ?? '');
+                $createdUser = $createdUserId !== '' ? ($usersMap[$createdUserId] ?? null) : null;
+                $createdUserPhone = $createdUser?->mobile ?? $createdUser?->phone ?? null;
+            @endphp
             <tr>
                 <td class="center" style="font-weight:700; color:var(--muted); font-size:13px;">
                     {{ $warehouses->firstItem() + $index }}
                 </td>
                 <td style="font-weight:500;">{{ lang($warehouse, 'warehouse_name') }}</td>
+                <td>
+                    @if($createdUser)
+                        <div class="created-user">
+                            <div class="created-user-name">{{ lang($createdUser, 'name') ?: 'Unnamed user' }}</div>
+                            <div class="created-user-meta">
+                                <span>Email:</span>
+                                <a href="mailto:{{ $createdUser->email }}">{{ $createdUser->email }}</a>
+                            </div>
+                            <div class="created-user-meta">
+                                <span>Phone:</span>
+                                <span>{{ $createdUserPhone ?: '-' }}</span>
+                            </div>
+                        </div>
+                    @else
+                        <span class="created-user-empty">User not available</span>
+                    @endif
+                </td>
                 <td class="center">
                     <span class="badge badge-{{ $warehouse->payment_status ?? 'pending' }}">
                         {{ ucfirst($warehouse->payment_status ?? 'pending') }}
@@ -308,7 +337,7 @@
             </tr>
             @empty
             <tr>
-                <td colspan="4">
+                <td colspan="5">
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>

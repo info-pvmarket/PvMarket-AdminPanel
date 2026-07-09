@@ -229,7 +229,7 @@
     }
 
     /* ── Action buttons ── */
-    .listing-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    .listing-actions { display: flex; gap: 8px; flex-shrink: 0; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 
     .icon-btn {
         width: 34px;
@@ -246,6 +246,59 @@
     }
     .icon-btn:hover       { background: #f3f4f6; }
     .icon-btn.red:hover   { background: #fee2e2; border-color: #fca5a5; }
+
+    .action-text-btn {
+        min-height: 34px;
+        padding: 0 13px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        border: 1px solid var(--border);
+        background: #f9fafb;
+        color: var(--text);
+        cursor: pointer;
+        transition: background .15s, border-color .15s, color .15s;
+        text-decoration: none;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1;
+        white-space: nowrap;
+    }
+    .action-text-btn.payment {
+        background: #EFF6FF;
+        border-color: #BFDBFE;
+        color: #1D4ED8;
+    }
+    .action-text-btn.payment:hover {
+        background: #DBEAFE;
+        border-color: #93C5FD;
+    }
+    .action-text-btn.verify {
+        background: #F0FDF4;
+        border-color: #BBF7D0;
+        color: #15803D;
+    }
+    .action-text-btn.verify:hover {
+        background: #DCFCE7;
+        border-color: #86EFAC;
+    }
+    .verification-badge {
+        min-height: 34px;
+        padding: 0 13px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #D1FAE5;
+        border: 1px solid #6EE7B7;
+        color: #047857;
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1;
+        white-space: nowrap;
+    }
 
     /* ── Meta grid ── */
     .listing-meta {
@@ -746,6 +799,8 @@
         ];
     };
     $firstSlotPricing = count($slots) > 0 ? $slotPricing($slots[0]) : null;
+    $verificationStatus = strtolower((string)($listing->verification_status ?? 'pending'));
+    $isListingVerified = in_array($verificationStatus, ['verified', 'approved'], true);
 @endphp
 
         <div class="listing-card" id="card-{{ $listing->id }}">
@@ -821,41 +876,24 @@
     @if(!$listing->is_paid)
     <form method="POST" action="{{ route('product_listing.approvePayment', $listing->id) }}" style="margin:0;">
         @csrf
-        <button type="submit" class="icon-btn" title="Approve Payment"
-                style="background:#EFF6FF; border-color:#BFDBFE;"
+        <button type="submit" class="action-text-btn payment" title="Approve Payment"
                 onclick="return confirm('Approve payment for this listing?')">
-            <svg width="14" height="14" fill="none" stroke="#3B82F6" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1"/>
-                <circle cx="12" cy="12" r="9"/>
-            </svg>
+            Approve Payment
         </button>
     </form>
-    @else
-    <span class="icon-btn" title="Payment Approved" style="background:#D1FAE5; border-color:#6EE7B7; cursor:default;">
-        <svg width="14" height="14" fill="none" stroke="#059669" stroke-width="2.5" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-        </svg>
-    </span>
     @endif
 
     {{-- Verify Listing --}}
-    @if($listing->verification_status !== 'verified')
+    @if(!$isListingVerified)
     <form method="POST" action="{{ route('product_listing.approveListing', $listing->id) }}" style="margin:0;">
         @csrf
-        <button type="submit" class="icon-btn" title="Verify Listing"
-                style="background:#F0FDF4; border-color:#BBF7D0;"
+        <button type="submit" class="action-text-btn verify" title="Verify Listing"
                 onclick="return confirm('Verify this listing?')">
-            <svg width="14" height="14" fill="none" stroke="#16a34a" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
+            Verify Listing
         </button>
     </form>
     @else
-    <span class="icon-btn" title="Listing Verified" style="background:#D1FAE5; border-color:#6EE7B7; cursor:default;">
-        <svg width="14" height="14" fill="none" stroke="#059669" stroke-width="2.5" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-    </span>
+    <span class="verification-badge">Verified</span>
     @endif
 
     <a href="{{ route('product_listing.edit', $listing->id) }}"
