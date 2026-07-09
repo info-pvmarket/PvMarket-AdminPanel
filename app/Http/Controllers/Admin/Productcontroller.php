@@ -115,11 +115,25 @@ class ProductController extends Controller
                                       ->mapWithKeys(fn($u) => [(string) $u->_id => $u->name])
                                       ->toArray();
 
+        $createdByIds = $products->pluck('created_by')
+                                 ->filter()
+                                 ->map(fn($id) => (string) $id)
+                                 ->filter(fn($id) => preg_match('/^[a-f\d]{24}$/i', $id))
+                                 ->unique()
+                                 ->map(fn($id) => new \MongoDB\BSON\ObjectId($id))
+                                 ->values()
+                                 ->toArray();
+
+        $creatorUsers = \App\Models\User::whereIn('_id', $createdByIds)
+                                        ->get(['_id', 'name', 'email', 'mobile', 'phone'])
+                                        ->keyBy(fn($u) => (string) $u->_id);
+
 
         return view('admin.products.products', [
             'mode'               => 'index',
             'products'           => $products,
             'userNames'          => $userNames,
+            'creatorUsers'       => $creatorUsers,
             'verificationFilter' => $verificationFilter,
             'listingsFilter'     => $listingsFilter,
         ]);

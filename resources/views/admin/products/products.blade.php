@@ -630,6 +630,9 @@ document.addEventListener('DOMContentLoaded', function () {
     .badge-rejected { background:#EF4444; color:white; }
     .badge-pending  { background:#F59E0B; color:white; }
     .updater-badge { background:var(--primary); color:white; padding:4px 10px; border-radius:5px; font-size:11px; font-weight:700; white-space:nowrap; display:inline-block; max-width:100px; overflow:hidden; text-overflow:ellipsis; }
+    .creator-info { display:flex; flex-direction:column; gap:3px; min-width:180px; }
+    .creator-info .creator-name { font-size:13px; font-weight:700; color:var(--text); }
+    .creator-info .creator-detail { font-size:12px; color:var(--muted); line-height:1.25; word-break:break-word; }
     .action-btns { display:flex; align-items:center; justify-content:center; gap:6px; }
     .action-icon { width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; border:1.5px solid transparent; background:none; border-radius:7px; transition:all .15s; text-decoration:none; }
     .action-icon svg { width:15px; height:15px; }
@@ -762,6 +765,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 <th class="center" style="width:70px;">S.No</th>
                 <th>Product Name</th>
                 <th style="width:120px;">Brand</th>
+                <th style="width:220px;">Created User</th>
                 <th class="center" style="width:160px;">Verification Status</th>
                 <th class="center" style="width:140px;">Updated By</th>
                 <th class="center" style="width:130px;">Action</th>
@@ -775,6 +779,20 @@ document.addEventListener('DOMContentLoaded', function () {
                 </td>
                 <td style="font-weight:600; max-width:300px;">{{ lang($product, 'product_name') }}</td>
                 <td style="color:var(--muted);">{{ $product->brand_name ? lang($product, 'brand_name') : '—' }}</td>
+                <td>
+                    @php
+                        $createdById = (string) ($product->created_by ?? '');
+                        $creator = ($creatorUsers ?? collect())[$createdById] ?? null;
+                        $creatorName = $creator ? lang($creator, 'name') : ($createdById ?: 'N/A');
+                        $creatorEmail = $creator->email ?? 'N/A';
+                        $creatorPhone = $creator->mobile ?? $creator->phone ?? 'N/A';
+                    @endphp
+                    <div class="creator-info">
+                        <span class="creator-name">{{ $creatorName }}</span>
+                        <span class="creator-detail">{{ $creatorEmail }}</span>
+                        <span class="creator-detail">{{ $creatorPhone }}</span>
+                    </div>
+                </td>
                 <td class="center">
                     <span class="badge badge-{{ $product->verification_status ?? 'pending' }}">
                         {{ ucfirst($product->verification_status ?? 'pending') }}
@@ -845,7 +863,7 @@ document.addEventListener('DOMContentLoaded', function () {
             </tr>
             @empty
             <tr>
-                <td colspan="6">
+                <td colspan="7">
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
