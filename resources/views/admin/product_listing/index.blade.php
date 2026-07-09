@@ -284,6 +284,15 @@
         background: #DCFCE7;
         border-color: #86EFAC;
     }
+    .action-text-btn.preview {
+        background: #F8FAFC;
+        border-color: #CBD5E1;
+        color: #334155;
+    }
+    .action-text-btn.preview:hover {
+        background: #F1F5F9;
+        border-color: #94A3B8;
+    }
     .verification-badge {
         min-height: 34px;
         padding: 0 13px;
@@ -801,6 +810,7 @@
     $firstSlotPricing = count($slots) > 0 ? $slotPricing($slots[0]) : null;
     $verificationStatus = strtolower((string)($listing->verification_status ?? 'pending'));
     $isListingVerified = in_array($verificationStatus, ['verified', 'approved'], true);
+    $previewUrl = rtrim(config('services.frontend.url', 'http://localhost:3000'), '/') . '/user/listings/' . $listing->id . '/preview';
 @endphp
 
         <div class="listing-card" id="card-{{ $listing->id }}">
@@ -895,6 +905,14 @@
     @else
     <span class="verification-badge">Verified</span>
     @endif
+
+    <a href="{{ $previewUrl }}"
+       class="action-text-btn preview"
+       title="Preview Page"
+       target="_blank"
+       rel="noopener noreferrer">
+        Preview Page
+    </a>
 
     <a href="{{ route('product_listing.edit', $listing->id) }}"
        class="icon-btn" title="Edit">
