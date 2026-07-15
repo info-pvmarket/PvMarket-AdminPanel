@@ -478,6 +478,7 @@ Route::middleware('auth')->group(function () {
     // ══════════════════════════════════════════════════════════════════════
     Route::prefix('user/listings')->name('product_listing.')->middleware('admin.permission:listings')->group(function () {
         Route::get('/', [ProductListingController::class, 'index'])->name('index');
+        Route::get('/export/csv', [ProductListingController::class, 'export'])->name('export');
         Route::get('/create', [ProductListingController::class, 'create'])->name('create');
         Route::post('/', [ProductListingController::class, 'store'])->name('store');
         Route::get('/{id}', [ProductListingController::class, 'show'])->name('show');

@@ -652,6 +652,15 @@
         </div>
 
         {{-- Refresh --}}
+        <a href="{{ route('product_listing.export', request()->only(['warehouse_id', 'filter', 'status_filter', 'payment_filter', 'real_time_price', 'search'])) }}" class="btn-icon-outline">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Export CSV
+        </a>
+
         <a href="{{ route('product_listing.index') }}" class="btn-icon-outline">
             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <polyline points="23 4 23 10 17 10"/>

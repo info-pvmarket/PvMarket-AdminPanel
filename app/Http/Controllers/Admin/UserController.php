@@ -297,7 +297,17 @@ class UserController extends Controller
 
     public function export(Request $request)
 {
-    $query = User::query();
+    $roleIds = \App\Models\Role::whereIn('slug', ['super-admin', 'admin'])->pluck('id');
+    $roleObjectIds = $roleIds->map(fn($id) => new ObjectId((string) $id))->toArray();
+
+    $query = User::where(function ($q) use ($roleObjectIds) {
+        $q->whereNull('role_id')
+          ->orWhereNotIn('role_id', $roleObjectIds);
+    });
+
+    if (!Auth::user()->isSuperAdmin()) {
+        $query->where('assigned_admin_id', new ObjectId(Auth::id()));
+    }
  
     // ── Apply the same filters as index ──────────────────────
     if ($request->filled('search')) {
@@ -311,9 +321,19 @@ class UserController extends Controller
     
  
     $users = $query->orderBy('created_at', 'desc')->get();
+    $userIds = $users
+        ->map(fn($user) => new ObjectId((string) $user->_id))
+        ->values()
+        ->all();
+
+    $companies = empty($userIds)
+        ? collect()
+        : Company::whereIn('user_id', $userIds)
+            ->get()
+            ->keyBy(fn($company) => (string) $company->user_id);
  
     // ── Build CSV in memory ───────────────────────────────────
-    $filename = 'users_export_' . now()->format('Y-m-d_His') . '.csv';
+    $filename = 'users_companies_export_' . now()->format('Y-m-d_His') . '.csv';
  
     $headers = [
         'Content-Type'        => 'text/csv; charset=UTF-8',
@@ -323,29 +343,85 @@ class UserController extends Controller
         'Expires'             => '0',
     ];
  
-    $callback = function () use ($users) {
+    $callback = function () use ($users, $companies) {
         $handle = fopen('php://output', 'w');
  
         // UTF-8 BOM so Excel opens it correctly
         fputs($handle, "\xEF\xBB\xBF");
  
         // ── Column headers ────────────────────────────────────
-        fputcsv($handle, [
-    'S.No', 'Name', 'Email', 'Mobile', 'Active', 'On Hold', 'Email Verified', 'Registered At',
-]);
+        $yesNo = fn($value) => $value === null ? '' : ($value ? 'Yes' : 'No');
+        $formatDate = function ($value) {
+            if (!$value) {
+                return '';
+            }
 
-foreach ($users as $i => $user) {
-    fputcsv($handle, [
-        $i + 1,
-        $user->name,
-        $user->email,
-        $user->mobile ?? '',
-        ($user->is_active ?? false) ? 'Yes' : 'No',
-        ($user->is_hold ?? false)   ? 'Yes' : 'No',
-        ($user->email_verified ?? false) ? 'Yes' : 'No',
-        optional($user->created_at)->format('Y-m-d H:i'),
-    ]);
-}
+            if ($value instanceof \DateTimeInterface) {
+                return $value->format('Y-m-d H:i');
+            }
+
+            try {
+                return \Carbon\Carbon::parse($value)->format('Y-m-d H:i');
+            } catch (\Throwable) {
+                return (string) $value;
+            }
+        };
+
+        fputcsv($handle, [
+            'S.No',
+            'Name',
+            'Email',
+            'Mobile',
+            'Active',
+            'On Hold',
+            'Email Verified',
+            'Registered At',
+            'Company Name',
+            'Company Type',
+            'VAT/TAX ID',
+            'Registered Country',
+            'Country ID',
+            'Company Address',
+            'Company Active',
+            'VAT Verified',
+            'Seller Verified',
+            'Company Verified',
+            'Editable',
+            'Document Upload Allowed',
+            'Verified Badge',
+            'Company Created At',
+            'Company Updated At',
+        ]);
+
+        foreach ($users as $i => $user) {
+            $company = $companies->get((string) $user->_id);
+
+            fputcsv($handle, [
+                $i + 1,
+                $user->name ?? '',
+                $user->email ?? '',
+                $user->mobile ?? '',
+                $yesNo($user->is_active ?? false),
+                $yesNo($user->is_hold ?? false),
+                $yesNo($user->email_verified ?? false),
+                $formatDate($user->created_at ?? null),
+                $company->company_name ?? $company->name ?? $user->company_name ?? '',
+                $company->company_type ?? '',
+                $company->vat_no ?? $user->vat_id ?? '',
+                $company->registered_country ?? '',
+                $company?->country_id ? (string) $company->country_id : '',
+                $company->address ?? '',
+                $company ? $yesNo($company->is_active ?? false) : '',
+                $company ? $yesNo($company->vat_verified ?? false) : '',
+                $company ? $yesNo($company->seller_verified ?? false) : $yesNo($user->company_verified ?? null),
+                $company ? $yesNo($company->company_verified ?? false) : $yesNo($user->company_verified ?? null),
+                $company ? $yesNo($company->is_editable ?? false) : $yesNo($user->enable_editable ?? null),
+                $company ? $yesNo($company->allow_doc ?? false) : $yesNo($user->allow_document_upload ?? null),
+                $company ? $yesNo($company->show_verified_batch ?? false) : $yesNo($user->show_verified_batch ?? null),
+                $company ? $formatDate($company->created_at ?? null) : '',
+                $company ? $formatDate($company->updated_at ?? null) : '',
+            ]);
+        }
  
         fclose($handle);
     };

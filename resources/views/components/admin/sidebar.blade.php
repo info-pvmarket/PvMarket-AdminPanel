@@ -346,8 +346,8 @@
         @endif
 
         {{-- Manage Listings --}}
-        @if($user->hasAdminPermission('listings'))
-        <a href="{{ route('product_listing.index') }}"
+        <!-- @if($user->hasAdminPermission('listings')) -->
+        <!-- <a href="{{ route('product_listing.index') }}"
            class="nav-item {{ request()->routeIs('product_listing.*') ? 'active' : '' }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
                 <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
@@ -355,8 +355,8 @@
                 <path d="M9 12h6M9 16h4"/>
             </svg>
             Manage Listings
-        </a>
-        @endif
+        </a> -->
+        <!-- @endif -->
 
         {{-- Inventory --}}
         @if($user->hasAdminPermission('inventory'))
@@ -394,6 +394,12 @@
             <a href="{{ route('admin.products.detail-options.index') }}"
                class="nav-sub-item {{ request()->routeIs('admin.products.detail-options.*') ? 'active' : '' }}">
                 Specifications
+            </a>
+            @endif
+             @if($user->hasAdminPermission('listings'))
+            <a href="{{ route('product_listing.index') }}"
+               class="nav-sub-item {{ request()->routeIs('product_listing.index') ? 'active' : '' }}">
+                Manage Listings
             </a>
             @endif
         </div>

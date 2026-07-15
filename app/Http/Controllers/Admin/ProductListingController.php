@@ -168,6 +168,219 @@ class ProductListingController extends Controller
 
     // ── Create ──────────────────────────────────────────────────────
 
+    public function export(Request $request)
+    {
+        $query = ProductListing::query();
+        $this->filterByAssignedUsers($query, 'user_id');
+
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+
+            if ($search !== '') {
+                $brandIdCandidates = Brand::where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('slug', 'like', "%{$search}%");
+                })
+                    ->pluck('_id')
+                    ->flatMap(fn($id) => $this->mongoIdCandidates($id))
+                    ->unique(fn($id) => is_object($id) ? get_class($id) . ':' . (string) $id : 'string:' . $id)
+                    ->values()
+                    ->all();
+
+                $productQuery = Product::where(function ($q) use ($search, $brandIdCandidates) {
+                    $q->where('product_name', 'like', "%{$search}%")
+                        ->orWhere('sku_code', 'like', "%{$search}%")
+                        ->orWhere('brand_name', 'like', "%{$search}%");
+
+                    if (!empty($brandIdCandidates)) {
+                        $q->orWhereIn('brand_id', $brandIdCandidates);
+                    }
+                });
+
+                $productIdCandidates = $productQuery
+                    ->pluck('_id')
+                    ->flatMap(fn($id) => $this->mongoIdCandidates($id))
+                    ->unique(fn($id) => is_object($id) ? get_class($id) . ':' . (string) $id : 'string:' . $id)
+                    ->values()
+                    ->all();
+
+                $query->where(function ($q) use ($search, $productIdCandidates) {
+                    $q->where('sku_code', 'like', "%{$search}%");
+
+                    if (!empty($productIdCandidates)) {
+                        $q->orWhereIn('product_id', $productIdCandidates);
+                    }
+                });
+            }
+        }
+
+        $filter = $request->get('filter', 'all');
+        $statusFilter = $request->get('status_filter', 'all');
+        $paymentFilter = $request->get('payment_filter', 'all');
+        $warehouseFilter = $request->get('warehouse_id');
+        $realTimePriceFilter = $request->get('real_time_price', 'all');
+
+        if ($filter !== 'all') {
+            $query->where('verification_status', $filter);
+        }
+
+        if ($statusFilter === 'active') {
+            $query->where('is_active', true);
+        } elseif ($statusFilter === 'on_hold') {
+            $query->where('is_active', false);
+        }
+
+        if ($paymentFilter === 'paid') {
+            $query->where('is_paid', true);
+        } elseif ($paymentFilter === 'unpaid') {
+            $query->where('is_paid', false);
+        }
+
+        if ($realTimePriceFilter === 'yes') {
+            $query->where('real_time_price', true);
+        } elseif ($realTimePriceFilter === 'no') {
+            $query->where('real_time_price', false);
+        }
+
+        if ($warehouseFilter) {
+            $query->where('warehouse_id', $warehouseFilter);
+        }
+
+        $listings = $query->orderBy('created_at', 'desc')->get();
+
+        $productIds = $listings->pluck('product_id')->filter()->unique()
+            ->map(fn($id) => (string) $id)
+            ->values();
+        $warehouseIds = $listings->pluck('warehouse_id')->filter()->unique()
+            ->map(fn($id) => (string) $id)
+            ->values();
+        $userIds = $listings
+            ->flatMap(fn($listing) => [$listing->created_by ?? null, $listing->user_id ?? null])
+            ->filter()
+            ->unique(fn($id) => is_object($id) ? get_class($id) . ':' . (string) $id : 'string:' . (string) $id)
+            ->map(fn($id) => (string) $id)
+            ->values();
+
+        $productsMap = Product::whereIn('_id', $productIds)->get()
+            ->keyBy(fn($product) => (string) $product->_id);
+        $warehousesMap = Warehouse::whereIn('_id', $warehouseIds)->get()
+            ->keyBy(fn($warehouse) => (string) $warehouse->_id);
+        $usersMap = \App\Models\User::whereIn('_id', $userIds)->get()
+            ->keyBy(fn($user) => (string) $user->_id);
+
+        $filename = 'listings_export_' . now()->format('Y-m-d_His') . '.csv';
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
+
+        $callback = function () use ($listings, $productsMap, $warehousesMap, $usersMap) {
+            $handle = fopen('php://output', 'w');
+            fputs($handle, "\xEF\xBB\xBF");
+
+            $formatDate = function ($value) {
+                if (!$value) {
+                    return '';
+                }
+
+                if ($value instanceof \DateTimeInterface) {
+                    return $value->format('Y-m-d H:i');
+                }
+
+                try {
+                    return \Carbon\Carbon::parse($value)->format('Y-m-d H:i');
+                } catch (\Throwable) {
+                    return (string) $value;
+                }
+            };
+
+            $slotPrice = function ($slot) {
+                $totalPrice = data_get($slot, 'total_price');
+                if ($totalPrice !== null && $totalPrice !== '') {
+                    return $totalPrice;
+                }
+
+                return data_get($slot, 'price', '');
+            };
+
+            fputcsv($handle, [
+                'S.No',
+                'Listing SKU',
+                'Created User Name',
+                'Created User Email',
+                'Created User Phone',
+                'Product SKU',
+                'Product Name',
+                'Pieces Per Pallet',
+                'Pallets Per Container',
+                'Warehouse Name',
+                'Warehouse Country',
+                'Sell Type',
+                'Currency',
+                'Total Quantity',
+                'Verification Status',
+                'Payment Status',
+                'Listing Status',
+                'Tier 1',
+                'Tier 2',
+                'Tier 3',
+                'Created At',
+            ]);
+
+            foreach ($listings as $index => $listing) {
+                $productId = is_object($listing->product_id) ? (string) $listing->product_id : (string) ($listing->product_id ?? '');
+                $warehouseId = is_object($listing->warehouse_id) ? (string) $listing->warehouse_id : (string) ($listing->warehouse_id ?? '');
+                $createdUserId = is_object($listing->created_by ?? null)
+                    ? (string) $listing->created_by
+                    : (string) ($listing->created_by ?? '');
+                if ($createdUserId === '') {
+                    $createdUserId = is_object($listing->user_id ?? null)
+                        ? (string) $listing->user_id
+                        : (string) ($listing->user_id ?? '');
+                }
+                $product = $productsMap->get($productId);
+                $warehouse = $warehousesMap->get($warehouseId);
+                $createdUser = $usersMap->get($createdUserId);
+                $slots = $listing->slots ?? [];
+                $warehouseCountry = $warehouse->country_name ?? $warehouse->country ?? '';
+                if (is_object($warehouseCountry) && method_exists($warehouseCountry, '__toString')) {
+                    $warehouseCountry = (string) $warehouseCountry;
+                }
+
+                fputcsv($handle, [
+                    $index + 1,
+                    $listing->sku_code ?? '',
+                    $createdUser->name ?? '',
+                    $createdUser->email ?? '',
+                    $createdUser->mobile ?? $createdUser->phone ?? '',
+                    $product->sku_code ?? '',
+                    $product->product_name ?? '',
+                    $product->pieces_per_pallet ?? '',
+                    $product->pallets_per_container ?? '',
+                    $warehouse->warehouse_name ?? $warehouse->name ?? '',
+                    $warehouseCountry,
+                    $listing->sell_type ?? '',
+                    $listing->currency_id ?? '',
+                    $listing->total_quantity ?? '',
+                    $listing->verification_status ?? '',
+                    ($listing->is_paid ?? false) ? 'Paid' : 'Unpaid',
+                    ($listing->is_active ?? false) ? 'Active' : 'On Hold',
+                    $slotPrice($slots[0] ?? null),
+                    $slotPrice($slots[1] ?? null),
+                    $slotPrice($slots[2] ?? null),
+                    $formatDate($listing->created_at ?? null),
+                ]);
+            }
+
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
     public function create()
     {
         $mainCategories = MainMenu::all();
