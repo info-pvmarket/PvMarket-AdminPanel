@@ -92,12 +92,12 @@
                Units
             </a>
             @endif
-            @if($user->hasAdminPermission('settings.locations'))
+            <!-- @if($user->hasAdminPermission('settings.locations'))
             <a href="{{ route('admin.setup.locations.index') }}"
                class="nav-sub-item {{ request()->routeIs('admin.setup.locations.*') ? 'active' : '' }}">
                Locations
             </a>
-            @endif
+            @endif -->
             @if($user->hasAdminPermission('settings.sliders'))
             <a href="{{ route('admin.setup.sliders.index') }}"
                class="nav-sub-item {{ request()->routeIs('admin.setup.sliders.*') ? 'active' : '' }}">
