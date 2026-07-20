@@ -430,7 +430,7 @@ class ProductListingController extends Controller
             'slug'                             => 'nullable|string|max:255',
             'total_quantity'                   => 'required|integer|min:1',
             'lead_time'                        => 'required|integer|min:0',
-            'is_active'                        => 'nullable|boolean',
+            'is_on_hold'                       => 'nullable|boolean',
             'is_solar_listing'                 => 'nullable|boolean',
             'solar_tier'                       => 'nullable|required_if:is_solar_listing,1|in:premium,recommended,value',
             'solar_grid_types'                 => 'nullable|required_if:is_solar_listing,1|array|min:1',
@@ -458,7 +458,8 @@ class ProductListingController extends Controller
             ? \Illuminate\Support\Str::slug($request->slug)
             : \Illuminate\Support\Str::slug($request->product_id . '-' . time());
         $validated['real_time_price'] = $request->boolean('real_time_price', false);
-        $validated['is_active']           = $request->boolean('is_active', true);
+        $validated['is_active']           = ! $request->boolean('is_on_hold', false);
+        unset($validated['is_on_hold']);
         $validated['is_paid']             = false;
         $validated['is_sold_off']         = $request->boolean('is_sold_off', false);
         $validated['is_popular']          = $request->boolean('is_popular', false);
@@ -580,6 +581,10 @@ class ProductListingController extends Controller
             ->orderBy('sort_order')
             ->get();
 
+        $selectedSolarGridTypes = $this->normalizeStringArray(old('solar_grid_types', $listing->solar_grid_types ?? []));
+        $selectedSolarPhaseTypes = $this->normalizeStringArray(old('solar_phase_types', $listing->solar_phase_types ?? []));
+        $isOfferOnHold = ! filter_var($listing->is_active ?? true, FILTER_VALIDATE_BOOLEAN);
+
         return view('admin.product_listing.edit', compact(
             'listing',
             'sellTypes',
@@ -599,6 +604,9 @@ class ProductListingController extends Controller
             'inventoryHistory',
             'currentStock',
             'listingImages',
+            'selectedSolarGridTypes',
+            'selectedSolarPhaseTypes',
+            'isOfferOnHold',
         ));
     }
     // ── Update ──────────────────────────────────────────────────────
@@ -615,7 +623,7 @@ class ProductListingController extends Controller
             'slug'        => 'nullable|string|max:255',
             'total_quantity'                   => 'required|integer|min:1',
             'lead_time'                        => 'required|integer|min:0',
-            'is_active'                        => 'nullable|boolean',
+            'is_on_hold'                       => 'nullable|boolean',
             'is_solar_listing'                 => 'nullable|boolean',
             'solar_tier'                       => 'nullable|required_if:is_solar_listing,1|in:premium,recommended,value',
             'solar_grid_types'                 => 'nullable|required_if:is_solar_listing,1|array|min:1',
@@ -635,7 +643,8 @@ class ProductListingController extends Controller
             'images.*'                         => 'nullable|image|mimes:jpeg,png,webp|max:5120',
         ]);
         $validated['warehouse_id'] = new \MongoDB\BSON\ObjectId($listing->warehouse_id);
-        $validated['is_active']   = $request->boolean('is_active');
+        $validated['is_active']   = ! $request->boolean('is_on_hold', false);
+        unset($validated['is_on_hold']);
         $validated['is_sold_off'] = $request->boolean('is_sold_off', false);
         $validated['is_popular']  = $request->boolean('is_popular', false);
         $validated['is_solar_listing'] = $request->boolean('is_solar_listing', false);
@@ -828,5 +837,23 @@ class ProductListingController extends Controller
         }
 
         return $candidates;
+    }
+
+    private function normalizeStringArray(mixed $value): array
+    {
+        if ($value instanceof \Illuminate\Support\Collection) {
+            $value = $value->all();
+        } elseif ($value instanceof \Traversable) {
+            $value = iterator_to_array($value);
+        }
+
+        if (! is_array($value)) {
+            $value = filled($value) ? [$value] : [];
+        }
+
+        return array_values(array_filter(
+            array_map(static fn($item) => (string) $item, $value),
+            static fn($item) => $item !== ''
+        ));
     }
 }

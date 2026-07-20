@@ -894,11 +894,11 @@
                             </div>
                             <div>
                                 <div class="toggle-info-title">Hold this offer</div>
-                                <div class="toggle-info-sub">Offer is active and visible to buyers</div>
+                                <div class="toggle-info-sub" id="holdSubLabel">Offer is active and visible to buyers</div>
                             </div>
                         </div>
                         <label class="toggle-switch">
-                            <input type="checkbox" name="is_active" value="1" id="toggleIsActive" checked>
+                            <input type="checkbox" name="is_on_hold" value="1" id="toggleIsActive">
                             <span class="toggle-track"></span>
                             <span class="toggle-thumb"></span>
                         </label>
@@ -1452,12 +1452,15 @@ document.getElementById('totalQtyInput').addEventListener('input', function () {
 // ── Toggle: Hold this offer → update Status in summary ───────
 document.getElementById('toggleIsActive').addEventListener('change', function () {
     const el = document.getElementById('summStatus');
+    const holdSub = document.getElementById('holdSubLabel');
     if (this.checked) {
-        el.textContent = 'Active';
-        el.style.color = 'var(--green)';
-    } else {
         el.textContent = 'On Hold';
         el.style.color = 'var(--muted)';
+        holdSub.textContent = 'Offer is on hold and hidden from buyers';
+    } else {
+        el.textContent = 'Active';
+        el.style.color = 'var(--green)';
+        holdSub.textContent = 'Offer is active and visible to buyers';
     }
 });
 
@@ -1468,12 +1471,14 @@ document.getElementById('toggleSoldOff').addEventListener('change', function () 
     const summStatus    = document.getElementById('summStatus');
 
     if (this.checked) {
-        holdToggle.checked    = false;
+        holdToggle.checked    = true;
         popularToggle.checked = false;
+        document.getElementById('holdSubLabel').textContent = 'Offer is on hold and hidden from buyers';
         summStatus.textContent = 'Sold Off';
         summStatus.style.color = 'var(--red)';
     } else {
-        holdToggle.checked = true;
+        holdToggle.checked = false;
+        document.getElementById('holdSubLabel').textContent = 'Offer is active and visible to buyers';
         summStatus.textContent = 'Active';
         summStatus.style.color = 'var(--green)';
     }
@@ -1483,6 +1488,8 @@ document.getElementById('toggleSoldOff').addEventListener('change', function () 
 document.getElementById('togglePopular').addEventListener('change', function () {
     if (this.checked) {
         document.getElementById('toggleSoldOff').checked = false;
+        document.getElementById('toggleIsActive').checked = false;
+        document.getElementById('holdSubLabel').textContent = 'Offer is active and visible to buyers';
         const summStatus = document.getElementById('summStatus');
         summStatus.textContent = 'Active';
         summStatus.style.color = 'var(--green)';

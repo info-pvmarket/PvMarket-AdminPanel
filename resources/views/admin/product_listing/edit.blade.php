@@ -857,6 +857,10 @@
                     </div>
                 </div>
 
+                @php
+                    $isOfferOnHold = $isOfferOnHold ?? !filter_var($listing->is_active ?? true, FILTER_VALIDATE_BOOLEAN);
+                @endphp
+
                 {{-- ══ Three Toggle Rows ══ --}}
                 <div class="toggle-section">
 
@@ -871,13 +875,13 @@
                             <div>
                                 <div class="toggle-info-title">Hold this offer</div>
                                 <div class="toggle-info-sub" id="holdSubLabel">
-                                    {{ $listing->is_active ? 'Offer is active and visible to buyers' : 'Offer is on hold and hidden from buyers' }}
+                                    {{ $isOfferOnHold ? 'Offer is on hold and hidden from buyers' : 'Offer is active and visible to buyers' }}
                                 </div>
                             </div>
                         </div>
                         <label class="toggle-switch">
-                            <input type="checkbox" name="is_active" value="1"
-                                   id="toggleIsActive" {{ $listing->is_active ? 'checked' : '' }}>
+                            <input type="checkbox" name="is_on_hold" value="1"
+                                   id="toggleIsActive" {{ $isOfferOnHold ? 'checked' : '' }}>
                             <span class="toggle-track"></span>
                             <span class="toggle-thumb"></span>
                         </label>
@@ -964,8 +968,8 @@
         {{-- Tier dropdown --}}
         <div id="solarTierWrapper" style="display:none;">
             @php
-                $selectedSolarGridTypes = old('solar_grid_types', $listing->solar_grid_types ?? []);
-                $selectedSolarPhaseTypes = old('solar_phase_types', $listing->solar_phase_types ?? []);
+                $selectedSolarGridTypes = $selectedSolarGridTypes ?? old('solar_grid_types', $listing->solar_grid_types ?? []);
+                $selectedSolarPhaseTypes = $selectedSolarPhaseTypes ?? old('solar_phase_types', $listing->solar_phase_types ?? []);
                 $selectedSolarGridTypes = is_array($selectedSolarGridTypes) ? $selectedSolarGridTypes : [$selectedSolarGridTypes];
                 $selectedSolarPhaseTypes = is_array($selectedSolarPhaseTypes) ? $selectedSolarPhaseTypes : [$selectedSolarPhaseTypes];
             @endphp
@@ -1381,8 +1385,8 @@
                     <div class="summary-row">
                         <span class="summary-key">Status</span>
                         <span class="summary-val" id="summStatus"
-                              style="color:{{ $listing->is_active ? 'var(--green)' : 'var(--muted)' }};">
-                            {{ $listing->is_active ? 'Active' : 'On Hold' }}
+                              style="color:{{ $isOfferOnHold ? 'var(--muted)' : 'var(--green)' }};">
+                            {{ $isOfferOnHold ? 'On Hold' : 'Active' }}
                         </span>
                     </div>
 
@@ -1548,13 +1552,13 @@ document.getElementById('toggleIsActive').addEventListener('change', function ()
     const summStatus = document.getElementById('summStatus');
     const holdSub    = document.getElementById('holdSubLabel');
     if (this.checked) {
-        summStatus.textContent = 'Active';
-        summStatus.style.color = 'var(--green)';
-        holdSub.textContent    = 'Offer is active and visible to buyers';
-    } else {
         summStatus.textContent = 'On Hold';
         summStatus.style.color = 'var(--muted)';
         holdSub.textContent    = 'Offer is on hold and hidden from buyers';
+    } else {
+        summStatus.textContent = 'Active';
+        summStatus.style.color = 'var(--green)';
+        holdSub.textContent    = 'Offer is active and visible to buyers';
     }
 });
 
@@ -1562,13 +1566,13 @@ document.getElementById('toggleIsActive').addEventListener('change', function ()
 document.getElementById('toggleSoldOff').addEventListener('change', function () {
     const summStatus = document.getElementById('summStatus');
     if (this.checked) {
-        document.getElementById('toggleIsActive').checked = false;
+        document.getElementById('toggleIsActive').checked = true;
         document.getElementById('togglePopular').checked  = false;
         document.getElementById('holdSubLabel').textContent = 'Offer is on hold and hidden from buyers';
         summStatus.textContent = 'Sold Off';
         summStatus.style.color = 'var(--red)';
     } else {
-        document.getElementById('toggleIsActive').checked = true;
+        document.getElementById('toggleIsActive').checked = false;
         document.getElementById('holdSubLabel').textContent = 'Offer is active and visible to buyers';
         summStatus.textContent = 'Active';
         summStatus.style.color = 'var(--green)';
@@ -1579,6 +1583,8 @@ document.getElementById('toggleSoldOff').addEventListener('change', function () 
 document.getElementById('togglePopular').addEventListener('change', function () {
     if (this.checked) {
         document.getElementById('toggleSoldOff').checked = false;
+        document.getElementById('toggleIsActive').checked = false;
+        document.getElementById('holdSubLabel').textContent = 'Offer is active and visible to buyers';
         const summStatus = document.getElementById('summStatus');
         summStatus.textContent = 'Active';
         summStatus.style.color = 'var(--green)';
