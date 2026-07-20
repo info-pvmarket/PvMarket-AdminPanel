@@ -11,6 +11,7 @@ use App\Models\SubMenu;
 use App\Models\Product;
 use App\Models\Brand;
 use App\Models\Warehouse;
+use App\Models\Country;
 use App\Models\Commission;
 use App\Services\TranslationService;
 use App\Models\ProductListingImage;
@@ -254,6 +255,12 @@ class ProductListingController extends Controller
         $warehouseIds = $listings->pluck('warehouse_id')->filter()->unique()
             ->map(fn($id) => (string) $id)
             ->values();
+        $categoryIds = $listings->pluck('main_category_id')->filter()->unique()
+            ->map(fn($id) => (string) $id)
+            ->values();
+        $subCategoryIds = $listings->pluck('sub_category_id')->filter()->unique()
+            ->map(fn($id) => (string) $id)
+            ->values();
         $userIds = $listings
             ->flatMap(fn($listing) => [$listing->created_by ?? null, $listing->user_id ?? null])
             ->filter()
@@ -265,6 +272,19 @@ class ProductListingController extends Controller
             ->keyBy(fn($product) => (string) $product->_id);
         $warehousesMap = Warehouse::whereIn('_id', $warehouseIds)->get()
             ->keyBy(fn($warehouse) => (string) $warehouse->_id);
+        $countryIds = $warehousesMap
+            ->pluck('country')
+            ->filter()
+            ->flatMap(fn($id) => $this->mongoIdCandidates($id))
+            ->unique(fn($id) => is_object($id) ? get_class($id) . ':' . (string) $id : 'string:' . $id)
+            ->values()
+            ->all();
+        $countriesMap = Country::whereIn('_id', $countryIds)->get()
+            ->keyBy(fn($country) => (string) $country->_id);
+        $categoriesMap = MainMenu::whereIn('_id', $categoryIds)->get()
+            ->keyBy(fn($category) => (string) $category->_id);
+        $subCategoriesMap = SubMenu::whereIn('_id', $subCategoryIds)->get()
+            ->keyBy(fn($subCategory) => (string) $subCategory->_id);
         $usersMap = \App\Models\User::whereIn('_id', $userIds)->get()
             ->keyBy(fn($user) => (string) $user->_id);
 
@@ -277,7 +297,7 @@ class ProductListingController extends Controller
             'Expires' => '0',
         ];
 
-        $callback = function () use ($listings, $productsMap, $warehousesMap, $usersMap) {
+        $callback = function () use ($listings, $productsMap, $warehousesMap, $countriesMap, $categoriesMap, $subCategoriesMap, $usersMap) {
             $handle = fopen('php://output', 'w');
             fputs($handle, "\xEF\xBB\xBF");
 
@@ -306,6 +326,8 @@ class ProductListingController extends Controller
                 return data_get($slot, 'price', '');
             };
 
+            $isMongoId = static fn($value) => is_string($value) && preg_match('/^[a-f\d]{24}$/i', $value);
+
             fputcsv($handle, [
                 'S.No',
                 'Listing SKU',
@@ -314,10 +336,13 @@ class ProductListingController extends Controller
                 'Created User Phone',
                 'Product SKU',
                 'Product Name',
+                'Category',
+                'Sub Category',
                 'Pieces Per Pallet',
                 'Pallets Per Container',
                 'Warehouse Name',
                 'Warehouse Country',
+                'is_realtime_price',
                 'Sell Type',
                 'Currency',
                 'Total Quantity',
@@ -333,6 +358,8 @@ class ProductListingController extends Controller
             foreach ($listings as $index => $listing) {
                 $productId = is_object($listing->product_id) ? (string) $listing->product_id : (string) ($listing->product_id ?? '');
                 $warehouseId = is_object($listing->warehouse_id) ? (string) $listing->warehouse_id : (string) ($listing->warehouse_id ?? '');
+                $categoryId = is_object($listing->main_category_id) ? (string) $listing->main_category_id : (string) ($listing->main_category_id ?? '');
+                $subCategoryId = is_object($listing->sub_category_id) ? (string) $listing->sub_category_id : (string) ($listing->sub_category_id ?? '');
                 $createdUserId = is_object($listing->created_by ?? null)
                     ? (string) $listing->created_by
                     : (string) ($listing->created_by ?? '');
@@ -343,11 +370,17 @@ class ProductListingController extends Controller
                 }
                 $product = $productsMap->get($productId);
                 $warehouse = $warehousesMap->get($warehouseId);
+                $category = $categoriesMap->get($categoryId);
+                $subCategory = $subCategoriesMap->get($subCategoryId);
                 $createdUser = $usersMap->get($createdUserId);
                 $slots = $listing->slots ?? [];
-                $warehouseCountry = $warehouse->country_name ?? $warehouse->country ?? '';
-                if (is_object($warehouseCountry) && method_exists($warehouseCountry, '__toString')) {
-                    $warehouseCountry = (string) $warehouseCountry;
+                $warehouseCountryId = is_object($warehouse->country ?? null) && method_exists($warehouse->country, '__toString')
+                    ? (string) $warehouse->country
+                    : (string) ($warehouse->country ?? '');
+                $country = $countriesMap->get($warehouseCountryId);
+                $warehouseCountryName = (string) ($warehouse->country_name ?? '');
+                if ($warehouseCountryName === '' || $isMongoId($warehouseCountryName)) {
+                    $warehouseCountryName = $country->name ?? ($isMongoId($warehouseCountryId) ? '' : $warehouseCountryId);
                 }
 
                 fputcsv($handle, [
@@ -358,10 +391,13 @@ class ProductListingController extends Controller
                     $createdUser->mobile ?? $createdUser->phone ?? '',
                     $product->sku_code ?? '',
                     $product->product_name ?? '',
+                    $category->category_name ?? '',
+                    $subCategory->sub_category_name ?? '',
                     $product->pieces_per_pallet ?? '',
                     $product->pallets_per_container ?? '',
                     $warehouse->warehouse_name ?? $warehouse->name ?? '',
-                    $warehouseCountry,
+                    $warehouseCountryName,
+                    ($listing->real_time_price ?? false) ? 'Yes' : 'No',
                     $listing->sell_type ?? '',
                     $listing->currency_id ?? '',
                     $listing->total_quantity ?? '',
