@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\LeadGeneration;
 use App\Models\ProductVisit;
 use App\Models\Product;
+use App\Models\ProductListing;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -20,7 +21,7 @@ class LeadController extends Controller
     // ── Leads Management Page ─────────────────────────────────────
     public function index(Request $request)
     {
-        $query = LeadGeneration::where('is_active', '!=', '0');
+        $query = LeadGeneration::with('assignedAdmin')->where('is_active', '!=', '0');
 
         // Filter by assigned admin
         $this->filterByAssignedAdmin($query);
@@ -30,12 +31,16 @@ class LeadController extends Controller
             $query->where('lead_type', (int)$request->lead_type);
         }
 
-        // Search by email or name
+        // Search by visible lead fields
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('email', 'like', '%' . $search . '%')
-                  ->orWhere('name',  'like', '%' . $search . '%');
+                  ->orWhere('name',  'like', '%' . $search . '%')
+                  ->orWhere('phone',  'like', '%' . $search . '%')
+                  ->orWhere('country_code',  'like', '%' . $search . '%')
+                  ->orWhere('lead_from',  'like', '%' . $search . '%')
+                  ->orWhere('lead_data',  'like', '%' . $search . '%');
             });
         }
 
@@ -43,8 +48,9 @@ class LeadController extends Controller
         $leads   = $query->orderBy('created_at', 'desc')->paginate($perPage)->withQueryString();
 
         $admins = $this->getAdminsForAssignment();
+        $leadListingInfoMap = $this->buildLeadListingInfoMap($leads->getCollection());
 
-        return view('admin.leads.index', compact('leads', 'admins'));
+        return view('admin.leads.index', compact('leads', 'admins', 'leadListingInfoMap'));
     }
 
     // ── Update lead status ────────────────────────────────────────
@@ -255,6 +261,179 @@ class LeadController extends Controller
     // PRODUCT VISITS PAGE
     // ══════════════════════════════════════════════════════════════
 
+    private function buildLeadListingInfoMap($leads): array
+    {
+        $parsedByLead = [];
+        $listingSkus = collect();
+        $productSkus = collect();
+        $productNames = collect();
+
+        foreach ($leads as $lead) {
+            $details = $this->parseLeadDetails((string)($lead->lead_data ?? ''));
+
+            $listingSku = $details['listing sku']
+                ?? $details['offer sku']
+                ?? $details['listing sku code']
+                ?? null;
+            $productSku = $details['product sku']
+                ?? $details['sku code']
+                ?? $details['sku']
+                ?? null;
+            $productName = $details['product']
+                ?? $details['product name']
+                ?? null;
+
+            $parsedByLead[(string)$lead->id] = [
+                'listing_sku' => $listingSku,
+                'product_sku' => $productSku,
+                'product_name' => $productName,
+            ];
+
+            if ($listingSku) {
+                $listingSkus->push($listingSku);
+            }
+            if ($productSku) {
+                $productSkus->push($productSku);
+            }
+            if ($productName) {
+                $productNames->push($productName);
+            }
+        }
+
+        $listingSkus = $listingSkus->filter()->unique()->values();
+        $productSkus = $productSkus->filter()->unique()->values();
+        $productNames = $productNames->filter()->unique()->values();
+
+        $products = collect();
+        if ($productSkus->isNotEmpty() || $productNames->isNotEmpty()) {
+            $products = Product::where(function ($query) use ($productSkus, $productNames) {
+                if ($productSkus->isNotEmpty()) {
+                    $query->whereIn('sku_code', $productSkus->all());
+                }
+
+                if ($productNames->isNotEmpty()) {
+                    $method = $productSkus->isNotEmpty() ? 'orWhereIn' : 'whereIn';
+                    $query->{$method}('product_name', $productNames->all());
+                }
+            })->get();
+        }
+
+        $productsBySku = $products->filter(fn($product) => filled($product->sku_code))
+            ->keyBy(fn($product) => (string)$product->sku_code);
+        $productsByName = $products->filter(fn($product) => filled($product->product_name))
+            ->keyBy(fn($product) => (string)$product->product_name);
+
+        $productIds = $products->pluck('_id')
+            ->filter()
+            ->unique(fn($id) => (string)$id)
+            ->values();
+        $productIdCandidates = $productIds
+            ->flatMap(fn($id) => $this->mongoIdCandidates($id))
+            ->unique(fn($id) => is_object($id) ? get_class($id) . ':' . (string)$id : 'string:' . (string)$id)
+            ->values();
+
+        $listings = collect();
+        if ($listingSkus->isNotEmpty() || $productIdCandidates->isNotEmpty()) {
+            $listings = ProductListing::where(function ($query) use ($listingSkus, $productIdCandidates) {
+                if ($listingSkus->isNotEmpty()) {
+                    $query->whereIn('sku_code', $listingSkus->all());
+                }
+
+                if ($productIdCandidates->isNotEmpty()) {
+                    $method = $listingSkus->isNotEmpty() ? 'orWhereIn' : 'whereIn';
+                    $query->{$method}('product_id', $productIdCandidates->all());
+                }
+            })
+                ->orderBy('created_at', 'desc')
+                ->get();
+        }
+
+        $listingsBySku = $listings->filter(fn($listing) => filled($listing->sku_code))
+            ->keyBy(fn($listing) => (string)$listing->sku_code);
+        $listingsByProductId = $listings
+            ->filter(fn($listing) => filled($listing->product_id))
+            ->groupBy(fn($listing) => (string)$listing->product_id)
+            ->map(fn($items) => $items->first());
+
+        $sellerIds = $listings
+            ->flatMap(fn($listing) => [$listing->user_id ?? null, $listing->created_by ?? null])
+            ->filter()
+            ->unique(fn($id) => (string)$id)
+            ->values();
+        $sellerIdCandidates = $sellerIds
+            ->flatMap(fn($id) => $this->mongoIdCandidates($id))
+            ->unique(fn($id) => is_object($id) ? get_class($id) . ':' . (string)$id : 'string:' . (string)$id)
+            ->values()
+            ->all();
+        $users = User::whereIn('_id', $sellerIdCandidates)->get()
+            ->keyBy(fn($user) => (string)$user->_id);
+
+        $map = [];
+        foreach ($parsedByLead as $leadId => $parsed) {
+            $product = null;
+            if (!empty($parsed['product_sku'])) {
+                $product = $productsBySku->get($parsed['product_sku']);
+            }
+            if (!$product && !empty($parsed['product_name'])) {
+                $product = $productsByName->get($parsed['product_name']);
+            }
+
+            $listing = null;
+            if (!empty($parsed['listing_sku'])) {
+                $listing = $listingsBySku->get($parsed['listing_sku']);
+            }
+            if (!$listing && $product) {
+                $listing = $listingsByProductId->get((string)$product->_id);
+            }
+
+            if (!$listing && !$product) {
+                continue;
+            }
+
+            $sellerId = $listing
+                ? (string)($listing->user_id ?? $listing->created_by ?? '')
+                : '';
+            $seller = $sellerId !== '' ? $users->get($sellerId) : null;
+
+            $map[$leadId] = [
+                'listing_sku' => $listing->sku_code ?? $parsed['listing_sku'] ?? '-',
+                'product_sku' => $product->sku_code ?? $parsed['product_sku'] ?? '-',
+                'product_name' => $product->product_name ?? $parsed['product_name'] ?? '-',
+                'seller_name' => $seller->name ?? '-',
+                'seller_email' => $seller->email ?? '-',
+                'seller_phone' => $seller->mobile ?? $seller->phone ?? '-',
+            ];
+        }
+
+        return $map;
+    }
+
+    private function parseLeadDetails(string $leadData): array
+    {
+        $leadData = trim($leadData);
+        if ($leadData === '') {
+            return [];
+        }
+
+        $details = [];
+        foreach (preg_split('/\s*\|\s*/', $leadData) as $part) {
+            $part = trim((string)$part);
+            if ($part === '') {
+                continue;
+            }
+
+            $segments = explode(':', $part, 2);
+            if (count($segments) === 2 && trim($segments[0]) !== '') {
+                $details[Str::lower(trim($segments[0]))] = trim($segments[1]);
+                continue;
+            }
+
+            $details['product'] ??= $part;
+        }
+
+        return $details;
+    }
+
     public function productVisits(Request $request)
     {
         $query = ProductVisit::where('is_active', 1);
@@ -328,6 +507,25 @@ return view('admin.leads.product-visits', compact('visits', 'visitTimerSeconds')
             ->values()
             ->map(fn($id) => new \MongoDB\BSON\ObjectId($id))
             ->toArray();
+    }
+
+    private function mongoIdCandidates($id): array
+    {
+        $stringId = is_object($id) && method_exists($id, '__toString')
+            ? (string)$id
+            : (string)$id;
+
+        if ($stringId === '') {
+            return [];
+        }
+
+        $candidates = [$stringId];
+
+        if (preg_match('/^[a-f0-9]{24}$/i', $stringId)) {
+            $candidates[] = new \MongoDB\BSON\ObjectId($stringId);
+        }
+
+        return $candidates;
     }
 
     private function collectVisitProductIds($visits)

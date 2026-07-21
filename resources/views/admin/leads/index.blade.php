@@ -61,10 +61,10 @@
 /* Table */
 .leads-table-wrap {
     background: white; border: 1px solid var(--border);
-    border-radius: 12px; overflow: hidden;
+    border-radius: 12px; overflow-x: auto;
     box-shadow: 0 1px 4px rgba(0,0,0,.04);
 }
-.leads-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.leads-table { width: 100%; min-width: 1420px; border-collapse: collapse; font-size: 13px; }
 .leads-table thead tr { background: #F8FAFC; border-bottom: 2px solid var(--border); }
 .leads-table thead th {
     padding: 14px 12px; text-align: center;
@@ -77,7 +77,7 @@
 .leads-table tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
 .leads-table tbody tr:hover { background: #F8FAFC; }
 .leads-table tbody tr:last-child { border-bottom: none; }
-.leads-table td { padding: 14px 12px; text-align: center; vertical-align: middle; color: var(--text); }
+.leads-table td { padding: 14px 12px; text-align: center; vertical-align: top; color: var(--text); }
 
 /* Lead type badges */
 .badge-lead-type {
@@ -106,9 +106,11 @@
 .badge-processed { background: #E3F2FD; color: #1565C0; border: 1px solid #BBDEFB; }
 .badge-rejected  { background: #FFEBEE; color: #C62828; border: 1px solid #FFCDD2; }
 
-/* Name cell */
-.name-cell { font-weight: 500; color: var(--text); }
-.email-cell { font-weight: 700; color: var(--text); }
+/* Contact cells */
+.contact-cell { text-align: left !important; min-width: 190px; }
+.name-cell { font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.email-cell { font-weight: 600; color: var(--primary-d); word-break: break-word; }
+.muted-line { color: var(--muted); font-size: 12px; margin-top: 4px; }
 
 /* Action buttons */
 .btn-action {
@@ -122,12 +124,49 @@
 .btn-edit:hover { background: #FEF3C7; }
 
 /* Lead data */
-.lead-data-text {
-    font-size: 11px; color: var(--muted);
-    max-width: 120px; white-space: nowrap;
-    overflow: hidden; text-overflow: ellipsis;
-    display: block;
+.lead-details-cell { min-width: 280px; max-width: 380px; text-align: left !important; }
+.lead-detail-list { display: grid; gap: 8px; }
+.lead-detail-item {
+    padding: 8px 10px;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    background: #F8FAFC;
 }
+.lead-detail-label {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .35px;
+    margin-bottom: 3px;
+}
+.lead-detail-value {
+    color: var(--text);
+    line-height: 1.45;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+.listing-info-cell { min-width: 230px; text-align: left !important; }
+.listing-info-card {
+    display: grid;
+    gap: 5px;
+    padding: 10px;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    background: #FFFBF7;
+}
+.listing-info-line {
+    font-size: 12px;
+    color: var(--text);
+    overflow-wrap: anywhere;
+}
+.listing-info-line strong {
+    color: var(--muted);
+    font-weight: 800;
+}
+.lead-source-cell { min-width: 120px; }
+.lead-date-cell { white-space: nowrap; color: var(--muted); font-size: 12px; }
 
 /* S.No */
 .sno { font-size: 13px; font-weight: 600; color: var(--muted); }
@@ -169,6 +208,7 @@
             <option value="1"   {{ request('lead_type')=='1' ? 'selected':'' }}>Book Free</option>
             <option value="2"   {{ request('lead_type')=='2' ? 'selected':'' }}>Spot Price</option>
             <option value="3"   {{ request('lead_type')=='3' ? 'selected':'' }}>Generic</option>
+            <option value="4"   {{ request('lead_type')=='4' ? 'selected':'' }}>Newsletter</option>
         </select>
     </div>
     <a href="{{ url()->previous()  }}" class="btn-back">← Back</a>
@@ -185,7 +225,7 @@
     <div class="search-wrap">
         <span class="search-label">Search:</span>
         <input type="text" class="search-input" id="searchInput"
-               placeholder="Search By Email or Name"
+               placeholder="Search name, email, phone or lead details"
                value="{{ request('search') }}"
                oninput="filterTable(this.value)"/>
     </div>
@@ -195,7 +235,7 @@
             <option value="10"  {{ request('per_page',10)==10  ? 'selected':'' }}>10</option>
             <option value="25"  {{ request('per_page',10)==25  ? 'selected':'' }}>25</option>
             <option value="50"  {{ request('per_page',10)==50  ? 'selected':'' }}>50</option>
-            <option value="100">100</option>
+            <option value="100" {{ request('per_page',10)==100 ? 'selected':'' }}>100</option>
         </select>
         entries
     </div>
@@ -207,29 +247,71 @@
         <thead>
             <tr>
                 <th onclick="sortTable(0)">S.No ⇅</th>
-                <th onclick="sortTable(1)">Name ⇅</th>
-                <th onclick="sortTable(2)">Email ⇅</th>
-                <th onclick="sortTable(3)">Mobile ⇅</th>
+                <th onclick="sortTable(1)">Contact Details ⇅</th>
+                <th onclick="sortTable(2)">Mobile ⇅</th>
                 <th>Lead Type</th>
-                <th>Lead Data</th>
+                <th>Lead Details</th>
+                <th>Product / Lister</th>
                 <th>Lead From</th>
-                <th onclick="sortTable(7)">Status ⇅</th>
+                <th>Device</th>
+                <th onclick="sortTable(8)">Status ⇅</th>
                 <th>Assigned Admin</th>
+                <th onclick="sortTable(10)">Created At ⇅</th>
                 <th>Action</th>
             </tr>
         </thead>
         <tbody id="leadsTableBody">
             @forelse($leads as $lead)
+            @php
+                $rawLeadData = trim((string) ($lead->lead_data ?? ''));
+                $leadDetails = [];
+
+                if ($rawLeadData !== '') {
+                    foreach (preg_split('/\s*\|\s*/', $rawLeadData) as $part) {
+                        $part = trim($part);
+                        if ($part === '') {
+                            continue;
+                        }
+
+                        $segments = explode(':', $part, 2);
+                        if (count($segments) === 2 && trim($segments[0]) !== '') {
+                            $leadDetails[] = [
+                                'label' => trim($segments[0]),
+                                'value' => trim($segments[1]),
+                            ];
+                        } else {
+                            $leadDetails[] = [
+                                'label' => (int) $lead->lead_type === 1 ? 'Product' : 'Details',
+                                'value' => $part,
+                            ];
+                        }
+                    }
+                }
+
+                $deviceLabel = match((int) ($lead->lead_device ?? 0)) {
+                    1 => 'Desktop',
+                    2 => 'Mobile',
+                    default => 'Unknown',
+                };
+
+                $createdAt = $lead->created_at
+                    ? \Carbon\Carbon::parse($lead->created_at)->format('d M Y, h:i A')
+                    : '-';
+                $listingInfo = $leadListingInfoMap[(string)$lead->id] ?? null;
+            @endphp
             <tr data-id="{{ $lead->id }}">
 
                 {{-- S.No --}}
                 <td><span class="sno">{{ $leads->firstItem() + $loop->index }}</span></td>
 
-                {{-- Name --}}
-                <td class="name-cell">{{ $lead->name ?? '-' }}</td>
-
-                {{-- Email --}}
-                <td class="email-cell">{{ $lead->email ?? '-' }}</td>
+                {{-- Contact Details --}}
+                <td class="contact-cell">
+                    <div class="name-cell">{{ $lead->name ?? '-' }}</div>
+                    <div class="email-cell">{{ $lead->email ?? '-' }}</div>
+                    @if($lead->country_code)
+                        <div class="muted-line">Country Code: {{ $lead->country_code }}</div>
+                    @endif
+                </td>
 
                 {{-- Mobile --}}
                 <td>
@@ -253,21 +335,45 @@
                     <span class="badge-lead-type {{ $ltClass }}">{{ $ltLabel }}</span>
                 </td>
 
-                {{-- Lead Data --}}
-                <td>
-                    @if($lead->lead_data)
-                        <span class="lead-data-text" title="{{ $lead->lead_data }}">
-                            {{ Str::limit($lead->lead_data, 30) }}
-                        </span>
+                {{-- Lead Details --}}
+                <td class="lead-details-cell">
+                    @if(count($leadDetails))
+                        <div class="lead-detail-list">
+                            @foreach($leadDetails as $detail)
+                                <div class="lead-detail-item">
+                                    <span class="lead-detail-label">{{ $detail['label'] }}</span>
+                                    <div class="lead-detail-value">{{ $detail['value'] !== '' ? $detail['value'] : '-' }}</div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <span style="color:var(--muted);">-</span>
+                    @endif
+                </td>
+
+                {{-- Product / Lister --}}
+                <td class="listing-info-cell">
+                    @if($listingInfo)
+                        <div class="listing-info-card">
+                            <div class="listing-info-line"><strong>Listing SKU:</strong> {{ $listingInfo['listing_sku'] ?? '-' }}</div>
+                            <div class="listing-info-line"><strong>Product SKU:</strong> {{ $listingInfo['product_sku'] ?? '-' }}</div>
+                            <div class="listing-info-line"><strong>Product:</strong> {{ $listingInfo['product_name'] ?? '-' }}</div>
+                            <div class="listing-info-line"><strong>Lister:</strong> {{ $listingInfo['seller_name'] ?? '-' }}</div>
+                            <div class="listing-info-line"><strong>Email:</strong> {{ $listingInfo['seller_email'] ?? '-' }}</div>
+                            <div class="listing-info-line"><strong>Phone:</strong> {{ $listingInfo['seller_phone'] ?? '-' }}</div>
+                        </div>
                     @else
                         <span style="color:var(--muted);">-</span>
                     @endif
                 </td>
 
                 {{-- Lead From --}}
-                <td>
-                    <span class="badge-lead-from">{{ $lead->lead_from ?? 'Website' }}</span>
+                <td class="lead-source-cell">
+                    <span class="badge-lead-from">{{ ucfirst((string) ($lead->lead_from ?? 'website')) }}</span>
                 </td>
+
+                {{-- Device --}}
+                <td>{{ $deviceLabel }}</td>
 
                 {{-- Status --}}
                 <td>
@@ -303,6 +409,9 @@
                     @endif
                 </td>
 
+                {{-- Created At --}}
+                <td class="lead-date-cell">{{ $createdAt }}</td>
+
                 {{-- Action --}}
                 <td>
                     <a href="{{ route('admin.leads.edit', $lead->id) }}" class="btn-action btn-edit" title="Edit">
@@ -313,7 +422,7 @@
             </tr>
             @empty
             <tr>
-                <td colspan="10">
+                <td colspan="12">
                     <div class="empty-state">
                         <div class="empty-state-icon">📋</div>
                         <div class="empty-state-text">No leads found.</div>
@@ -325,7 +434,7 @@
     </table>
 
     <div class="table-footer">
-    <span>{{ $leads->firstItem() ?? 0 }}–{{ $leads->lastItem() ?? 0 }} of {{ $leads->total() }} entries</span>
+    <span id="countLabel">{{ $leads->firstItem() ?? 0 }}–{{ $leads->lastItem() ?? 0 }} of {{ $leads->total() }} entries</span>
 
     @if ($leads->hasPages())
     <nav style="display:flex; align-items:center; gap:4px;">
@@ -374,7 +483,10 @@ function filterTable(q) {
         r.style.display = show ? '' : 'none';
         if (show) v++;
     });
-    document.getElementById('countLabel').textContent = `1–${v} of ${rows.length} entries`;
+    const countLabel = document.getElementById('countLabel');
+    if (countLabel) {
+        countLabel.textContent = v ? `1-${v} of ${rows.length} entries` : `0-0 of ${rows.length} entries`;
+    }
 }
 
 function changePageSize(size) {

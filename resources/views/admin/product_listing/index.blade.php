@@ -42,7 +42,13 @@
     .wh-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
     .wh-label { font-size: 12px; font-weight: 600; color: var(--muted); }
 
-    .warehouse-select {
+    .wh-combobox {
+        position: relative;
+        min-width: 260px;
+    }
+
+    .warehouse-search {
+        width: 100%;
         padding: 9px 36px 9px 14px;
         border: 1.5px solid var(--border);
         border-radius: 9px;
@@ -50,13 +56,56 @@
         font-size: 13px;
         color: var(--text);
         background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 12px center;
-        appearance: none;
-        min-width: 210px;
-        cursor: pointer;
         outline: none;
         transition: border-color .2s;
     }
-    .warehouse-select:focus { border-color: var(--primary); }
+    .warehouse-search:focus { border-color: var(--primary); }
+
+    .wh-options {
+        display: none;
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 0;
+        z-index: 80;
+        max-height: 260px;
+        overflow-y: auto;
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 9px;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, .14);
+        padding: 6px;
+    }
+
+    .wh-options.open { display: block; }
+
+    .wh-option,
+    .wh-empty {
+        width: 100%;
+        border: 0;
+        background: transparent;
+        text-align: left;
+        font-family: inherit;
+        font-size: 13px;
+        color: var(--text);
+        border-radius: 7px;
+        padding: 9px 10px;
+    }
+
+    .wh-option {
+        cursor: pointer;
+    }
+
+    .wh-option:hover,
+    .wh-option.active {
+        background: #FFF7ED;
+        color: var(--primary);
+    }
+
+    .wh-empty {
+        color: var(--muted);
+        cursor: default;
+    }
 
     /* ── Warehouse clear button ── */
     .wh-clear-btn {
@@ -445,7 +494,7 @@
         .slot-row { grid-template-columns: 1fr; }
         .slot-pricing { text-align: left; }
         .header-right { width: 100%; }
-        .warehouse-select { width: 100%; min-width: unset; }
+        .wh-combobox { width: 100%; min-width: unset; }
     }
 
     /* ── Search bar ── */
@@ -620,6 +669,11 @@
     <div class="header-right">
         {{-- Warehouse filter dropdown --}}
         <div class="wh-wrap">
+            @php
+                $selectedWh = $warehouseFilter
+                    ? $warehouses->first(fn($wh) => (string) $wh->id === (string) $warehouseFilter || (string) $wh->_id === (string) $warehouseFilter)
+                    : null;
+            @endphp
             <span class="wh-label">
                 Filter by Warehouse
                 @if($warehouseFilter)
@@ -631,18 +685,40 @@
             </span>
             <form method="GET" action="{{ route('product_listing.index') }}" id="warehouseForm">
                 <input type="hidden" name="filter" value="{{ $filter }}" id="warehouseFormFilter">
-                <select name="warehouse_id" class="warehouse-select" id="warehouseSelect"
-                        onchange="applyWarehouseFilter(this)">
-                    <option value="">All Warehouses</option>
-                    @foreach($warehouses as $wh)
-                        <option value="{{ $wh->id }}" {{ $warehouseFilter == $wh->id ? 'selected' : '' }}>
-                            {{ $wh->name }}
-                        </option>
-                    @endforeach
-                </select>
+                <input type="hidden" name="status_filter" value="{{ $statusFilter }}">
+                <input type="hidden" name="payment_filter" value="{{ $paymentFilter }}">
+                <input type="hidden" name="real_time_price" value="{{ $realTimePriceFilter }}">
+                @if(request()->filled('search'))
+                    <input type="hidden" name="search" value="{{ request('search') }}">
+                @endif
+                <input type="hidden" name="warehouse_id" id="warehouseIdInput" value="{{ $warehouseFilter }}">
+                <div class="wh-combobox" id="warehouseCombobox">
+                    <input type="text"
+                           class="warehouse-search"
+                           id="warehouseSearch"
+                           value="{{ $selectedWh?->name ?? '' }}"
+                           placeholder="Search paid warehouses"
+                           autocomplete="off"
+                           role="combobox"
+                           aria-expanded="false"
+                           aria-controls="warehouseOptions">
+                    <div class="wh-options" id="warehouseOptions" role="listbox">
+                        <button type="button" class="wh-option" data-warehouse-id="" data-label="All Paid Warehouses">
+                            All Paid Warehouses
+                        </button>
+                        @foreach($warehouses as $wh)
+                            <button type="button"
+                                    class="wh-option {{ (string) $warehouseFilter === (string) $wh->id ? 'active' : '' }}"
+                                    data-warehouse-id="{{ $wh->id }}"
+                                    data-label="{{ $wh->name }}">
+                                {{ $wh->name }}
+                            </button>
+                        @endforeach
+                        <div class="wh-empty" id="warehouseEmpty" style="display:none;">No paid warehouses found</div>
+                    </div>
+                </div>
             </form>
             @if($warehouseFilter)
-                @php $selectedWh = $warehouses->firstWhere('id', $warehouseFilter); @endphp
                 @if($selectedWh)
                     <span style="font-size:11px; color:var(--primary); font-weight:600;">
                         📦 Showing: {{ $selectedWh->name }}
@@ -1120,8 +1196,12 @@ function toggleSlots(id) {
 }
 
 // ── Warehouse filter ──────────────────────────────────────────
-function applyWarehouseFilter(select) {
-    // Sync the hidden filter input before submit
+function applyWarehouseFilter(warehouseId = '') {
+    const warehouseInput = document.getElementById('warehouseIdInput');
+    if (warehouseInput) {
+        warehouseInput.value = warehouseId;
+    }
+
     const filterInput = document.getElementById('warehouseFormFilter');
     if (filterInput) {
         filterInput.value = '{{ $filter }}';
@@ -1130,12 +1210,87 @@ function applyWarehouseFilter(select) {
 }
 
 function clearWarehouseFilter() {
-    const select = document.getElementById('warehouseSelect');
-    if (select) select.value = '';
-    // Build URL without warehouse_id
     const url = new URL(window.location.href);
     url.searchParams.delete('warehouse_id');
     window.location.href = url.toString();
 }
+
+function initWarehouseSearch() {
+    const searchInput = document.getElementById('warehouseSearch');
+    const optionsBox = document.getElementById('warehouseOptions');
+    const emptyState = document.getElementById('warehouseEmpty');
+    const options = Array.from(document.querySelectorAll('#warehouseOptions .wh-option'));
+
+    if (!searchInput || !optionsBox || !options.length) {
+        return;
+    }
+
+    const openOptions = () => {
+        optionsBox.classList.add('open');
+        searchInput.setAttribute('aria-expanded', 'true');
+    };
+
+    const closeOptions = () => {
+        optionsBox.classList.remove('open');
+        searchInput.setAttribute('aria-expanded', 'false');
+    };
+
+    const filterOptions = () => {
+        const term = searchInput.value.trim().toLowerCase();
+        let visibleCount = 0;
+
+        options.forEach((option) => {
+            const label = (option.dataset.label || option.textContent || '').toLowerCase();
+            const visible = label.includes(term);
+            option.style.display = visible ? 'block' : 'none';
+            if (visible) visibleCount += 1;
+        });
+
+        if (emptyState) {
+            emptyState.style.display = visibleCount ? 'none' : 'block';
+        }
+    };
+
+    options.forEach((option) => {
+        option.addEventListener('click', () => {
+            searchInput.value = option.dataset.warehouseId ? (option.dataset.label || '') : '';
+            applyWarehouseFilter(option.dataset.warehouseId || '');
+        });
+    });
+
+    searchInput.addEventListener('focus', () => {
+        filterOptions();
+        openOptions();
+    });
+
+    searchInput.addEventListener('input', () => {
+        filterOptions();
+        openOptions();
+    });
+
+    searchInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            closeOptions();
+            return;
+        }
+
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            const firstVisible = options.find((option) => option.style.display !== 'none');
+            if (firstVisible) {
+                searchInput.value = firstVisible.dataset.warehouseId ? (firstVisible.dataset.label || '') : '';
+                applyWarehouseFilter(firstVisible.dataset.warehouseId || '');
+            }
+        }
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!event.target.closest('#warehouseCombobox')) {
+            closeOptions();
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', initWarehouseSearch);
 </script>
 @endsection

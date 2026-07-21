@@ -112,7 +112,7 @@ class ProductListingController extends Controller
 
         // Warehouse
         if ($warehouseFilter) {
-            $query->where('warehouse_id', $warehouseFilter);
+            $query->whereIn('warehouse_id', $this->mongoIdCandidates($warehouseFilter));
         }
 
         //$listings = $query->latest()->paginate(10)->withQueryString();
@@ -124,7 +124,12 @@ class ProductListingController extends Controller
             ->where('is_paid', false)
             ->count();
 
-        $warehouses = Warehouse::where('is_active', true)->get();
+        $warehouses = Warehouse::where(function ($q) {
+            $q->where('is_paid', true)
+                ->orWhere('payment_status', 'paid');
+        })
+            ->orderBy('warehouse_name')
+            ->get();
 
         $productIds   = $listings->pluck('product_id')->filter()->unique()
             ->map(fn($id) => (string)$id)->values();
@@ -244,7 +249,7 @@ class ProductListingController extends Controller
         }
 
         if ($warehouseFilter) {
-            $query->where('warehouse_id', $warehouseFilter);
+            $query->whereIn('warehouse_id', $this->mongoIdCandidates($warehouseFilter));
         }
 
         $listings = $query->orderBy('created_at', 'desc')->get();
