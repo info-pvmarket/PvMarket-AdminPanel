@@ -7,6 +7,43 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+## Container image
+
+The GitHub Actions workflow builds this application and publishes it to the GitHub Container Registry:
+
+```text
+ghcr.io/info-pvmarket/pvmarket-adminpanel
+```
+
+Every published image is stamped with the source commit and an application version. Branch builds receive the branch tag and an immutable `sha-<commit>` tag. A `main` build also receives `latest`. Pushing a semantic version tag such as `v1.2.3` publishes `1.2.3`, `1.2`, `1`, and `latest` tags.
+
+Pull and run an image with runtime configuration supplied through an environment file:
+
+```bash
+docker pull ghcr.io/info-pvmarket/pvmarket-adminpanel:staging
+docker run --rm --name pvmarket-admin \
+  --env-file .env \
+  --publish 8080:80 \
+  --volume pvmarket-admin-storage:/var/www/html/storage \
+  ghcr.io/info-pvmarket/pvmarket-adminpanel:staging
+```
+
+`APP_KEY` and database credentials must be supplied at runtime; they are never embedded in the image. Database migrations are intentionally kept as an explicit deployment step:
+
+```bash
+docker exec pvmarket-admin php artisan migrate --force
+```
+
+To build locally:
+
+```bash
+docker build \
+  --build-arg APP_VERSION=local \
+  --build-arg VCS_REF="$(git rev-parse HEAD)" \
+  --tag pvmarket-admin:local \
+  .
+```
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
