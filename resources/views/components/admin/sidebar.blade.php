@@ -373,7 +373,7 @@
 
         {{-- Products --}}
         @if($hasAnyProductsPermission)
-        <div class="nav-item has-children {{ request()->routeIs('admin.products.*') ? 'active open' : '' }}"
+        <div class="nav-item has-children {{ request()->routeIs('admin.products.*') || request()->routeIs('product_listing.*') ? 'active open' : '' }}"
              onclick="toggleNav(this)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect x="2" y="3" width="20" height="14" rx="2"/>
