@@ -96,5 +96,7 @@ jobs:
             ssh -i "$HOME/.ssh/id_ed25519" \
               -o BatchMode=yes \
               -o IdentitiesOnly=yes \
+              -o ServerAliveInterval=30 \
+              -o ServerAliveCountMax=12 \
               "$DEPLOY_USER@$DEPLOY_HOST" \
               "sudo /usr/local/sbin/pv-market-deploy admin '$IMAGE_NAME@$IMAGE_DIGEST' '$GHCR_USER'"
