@@ -1132,7 +1132,7 @@
         </label>
     </div>
     <div id="specificMaxWrapper" style="display:none; margin-top:6px;">
-        <input type="number" id="slotMaxQty" class="form-control" placeholder="e.g. 500" min="1">
+        <input type="number" id="slotMaxQty" class="form-control" placeholder="e.g. 500" min="1" disabled>
     </div>
 </div>
                                 <div class="form-group" style="justify-content: flex-start;">
@@ -1499,8 +1499,13 @@ document.getElementById('togglePopular').addEventListener('change', function () 
 // ── Max qty radio ─────────────────────────────────────────────
 document.querySelectorAll('input[name="maxQtyType"]').forEach(r => {
     r.addEventListener('change', function () {
+        const usesSpecificMaximum = this.value === 'specific';
+        const maxQuantityInput = document.getElementById('slotMaxQty');
+
         document.getElementById('specificMaxWrapper').style.display =
-            this.value === 'specific' ? 'block' : 'none';
+            usesSpecificMaximum ? 'block' : 'none';
+        maxQuantityInput.disabled = !usesSpecificMaximum;
+        if (!usesSpecificMaximum) maxQuantityInput.value = '';
     });
 });
 
@@ -1571,6 +1576,7 @@ function showSlotForm() {
     document.getElementById('slotPrice').value  = '';
     document.getElementById('radioMore').checked = true;
     document.getElementById('specificMaxWrapper').style.display = 'none';
+    document.getElementById('slotMaxQty').disabled = true;
     document.getElementById('slotError').style.display = 'none';
     editingIndex = null;
     loadCommissionForCategory();
@@ -1644,6 +1650,7 @@ function editSlot(idx) {
     if (s.max_quantity !== null) {
         document.getElementById('radioSpecific').checked = true;
         document.getElementById('specificMaxWrapper').style.display = 'block';
+        document.getElementById('slotMaxQty').disabled = false;
         document.getElementById('slotMaxQty').value = s.max_quantity;
     } else {
         document.getElementById('radioMore').checked = true;

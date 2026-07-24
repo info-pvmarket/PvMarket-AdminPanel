@@ -16,4 +16,23 @@ class ProductListingTest extends TestCase
         $this->assertArrayHasKey('incoterms_id', $listing->getCasts());
         $this->assertNotContains('incoterm_id', $listing->getFillable());
     }
+
+    public function test_hidden_maximum_quantity_controls_do_not_participate_in_form_validation(): void
+    {
+        foreach (['create', 'edit'] as $view) {
+            $contents = file_get_contents(
+                dirname(__DIR__, 2)."/resources/views/admin/product_listing/{$view}.blade.php"
+            );
+
+            $this->assertIsString($contents);
+            $this->assertMatchesRegularExpression(
+                '/id="slotMaxQty"[^>]*\sdisabled>/',
+                $contents
+            );
+            $this->assertStringContainsString(
+                'maxQuantityInput.disabled = !usesSpecificMaximum;',
+                $contents
+            );
+        }
+    }
 }
