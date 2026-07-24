@@ -10,7 +10,7 @@ class ProductListing extends Model
 {
     use HasTranslations;
     protected $connection = 'mongodb';
-    protected $collection = 'product_listing';
+    protected $collection = 'product_listings';
 
     protected $fillable = [
         'product_id',
@@ -31,7 +31,7 @@ class ProductListing extends Model
         'lead_time',
         'is_paid',
         'created_by',
-        'incoterm_id',
+        'incoterms_id',
         'slug',
         'real_time_price',
         'is_solar_listing',
@@ -49,7 +49,7 @@ class ProductListing extends Model
     'is_popular'     => 'boolean',
     'lead_time'      => 'integer',
     'total_quantity' => 'integer',
-    'incoterm_id'      => AsObjectId::class,
+    'incoterms_id'       => AsObjectId::class,
     'real_time_price'  => 'boolean',
     'is_solar_listing' => 'boolean',
     'solar_tier' => 'string',

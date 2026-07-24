@@ -494,7 +494,8 @@ class ProductListingController extends Controller
         $validated['user_id']             = new \MongoDB\BSON\ObjectId(Auth::id());
         $validated['created_by']          = new \MongoDB\BSON\ObjectId(Auth::id());
         $validated['verification_status'] = 'pending';
-        $validated['incoterm_id']     = new \MongoDB\BSON\ObjectId($validated['incoterm_id']);
+        $validated['incoterms_id'] = new \MongoDB\BSON\ObjectId($validated['incoterm_id']);
+        unset($validated['incoterm_id']);
         $validated['slug']            = $request->filled('slug')
             ? \Illuminate\Support\Str::slug($request->slug)
             : \Illuminate\Support\Str::slug($request->product_id . '-' . time());
@@ -692,7 +693,8 @@ class ProductListingController extends Controller
         $validated['solar_tier'] = $validated['is_solar_listing'] ? $request->input('solar_tier') : null;
         $validated['solar_grid_types'] = $validated['is_solar_listing'] ? array_values($request->input('solar_grid_types', [])) : [];
         $validated['solar_phase_types'] = $validated['is_solar_listing'] ? array_values($request->input('solar_phase_types', [])) : [];
-        $validated['incoterm_id']     = new \MongoDB\BSON\ObjectId($request->incoterm_id);
+        $validated['incoterms_id'] = new \MongoDB\BSON\ObjectId($request->incoterm_id);
+        unset($validated['incoterm_id']);
         $validated['slug']            = $request->filled('slug')
             ? \Illuminate\Support\Str::slug($request->slug)
             : $listing->slug;

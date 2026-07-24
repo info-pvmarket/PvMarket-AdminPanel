@@ -1090,7 +1090,7 @@
     <option value="">Select incoterm</option>
     @foreach($incoterms as $incoterm)
         <option value="{{ $incoterm->id }}"
-            {{ (string)$listing->incoterm_id === (string)$incoterm->id ? 'selected' : '' }}>
+            {{ (string)$listing->incoterms_id === (string)$incoterm->id ? 'selected' : '' }}>
             {{ $incoterm->name }}
         </option>
     @endforeach

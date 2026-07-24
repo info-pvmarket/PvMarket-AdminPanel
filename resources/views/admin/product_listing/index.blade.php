@@ -1078,7 +1078,7 @@
                     <div class="slots-footer">
                         <span class="slots-hint">
                             📦 {{ count($slots) }} price {{ count($slots) === 1 ? 'tier' : 'tiers' }}
-                            &nbsp;·&nbsp; Incoterm: {{ $listing->incoterm_id ?? '—' }}
+                            &nbsp;·&nbsp; Incoterm: {{ $listing->incoterms_id ?? '—' }}
                         </span>
                         <button class="view-slots-btn" onclick="toggleSlots('{{ $listing->id }}')">
                             View Slots ({{ count($slots) }})
