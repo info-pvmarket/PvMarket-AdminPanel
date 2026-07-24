@@ -1119,16 +1119,16 @@
                             <div class="slot-form-row" style="grid-template-columns: 1fr 1fr 1fr 1fr; gap:12px; align-items: flex-start">
                                 <div class="form-group">
                                     <label class="form-label">Min Qty <span class="req">*</span></label>
-                                    <input type="number" id="slotMinQty" class="form-control" placeholder="e.g. 1" min="0">
+                                    <input type="number" id="slotMinQty" class="form-control" placeholder="e.g. 1" min="0" disabled>
                                 </div>
                                 <div class="form-group">
     <label class="form-label">Max Qty</label>
     <div style="display:flex; gap:8px; align-items:center; height:38px; padding:0 13px; border:1px solid var(--border); border-radius:9px; background:#fff;">
         <label style="font-size:.8rem; cursor:pointer; display:flex; align-items:center; gap:4px; white-space:nowrap;">
-            <input type="radio" name="maxQtyType" value="specific" id="radioSpecific"> Specific
+            <input type="radio" name="maxQtyType" value="specific" id="radioSpecific" disabled> Specific
         </label>
         <label style="font-size:.8rem; cursor:pointer; display:flex; align-items:center; gap:4px; white-space:nowrap;">
-            <input type="radio" name="maxQtyType" value="more" id="radioMore" checked> And More
+            <input type="radio" name="maxQtyType" value="more" id="radioMore" checked disabled> And More
         </label>
     </div>
     <div id="specificMaxWrapper" style="display:none; margin-top:6px;">
@@ -1140,6 +1140,7 @@
     <div class="input-suffix">
         <input type="number" id="slotCommission" class="form-control"
                placeholder="Auto" step="0.01" min="0"
+               disabled
                style="border-radius:9px 0 0 9px; border-right:none;"
                oninput="recalcTotalPrice()">
         <span class="suffix-label">%</span>
@@ -1150,6 +1151,7 @@
                                     <label class="form-label">Price / Unit <span class="req">*</span></label>
                                     <input type="number" id="slotPrice" class="form-control"
                                            placeholder="0.00" step="0.01" min="0"
+                                           disabled
                                            oninput="recalcTotalPrice()">
                                 </div>
                                 <div class="form-group" style="grid-column: span 2;">
@@ -1157,6 +1159,7 @@
                                     <div class="input-suffix">
                                         <input type="number" id="slotTotalPrice" class="form-control"
                                                placeholder="Auto-calculated" step="0.01" min="0" readonly
+                                               disabled
                                                style="background:#F9FAFB; color:var(--muted); border-radius:9px 0 0 9px; border-right:none;">
                                         <span class="suffix-label" style="background:#EFF6FF; color:var(--blue); font-weight:700;">= Price + Commission</span>
                                     </div>
@@ -1569,8 +1572,14 @@ document.getElementById('listingForm').addEventListener('submit', function () {
 function handleSubmit(btn) {}
 
 // ── Slot form ─────────────────────────────────────────────────
+function setSlotEditorInputsEnabled(enabled) {
+    document.querySelectorAll('#slotFormBox input, #slotFormBox select, #slotFormBox textarea')
+        .forEach(control => control.disabled = !enabled);
+}
+
 function showSlotForm() {
     document.getElementById('slotFormBox').style.display = 'block';
+    setSlotEditorInputsEnabled(true);
     document.getElementById('slotMinQty').value = '';
     document.getElementById('slotMaxQty').value = '';
     document.getElementById('slotPrice').value  = '';
@@ -1583,6 +1592,7 @@ function showSlotForm() {
 }
 
 function cancelSlot() {
+    setSlotEditorInputsEnabled(false);
     document.getElementById('slotFormBox').style.display = 'none';
     editingIndex = null;
 }

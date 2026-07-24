@@ -17,7 +17,7 @@ class ProductListingTest extends TestCase
         $this->assertNotContains('incoterm_id', $listing->getFillable());
     }
 
-    public function test_hidden_maximum_quantity_controls_do_not_participate_in_form_validation(): void
+    public function test_hidden_tier_editor_controls_do_not_participate_in_form_validation(): void
     {
         foreach (['create', 'edit'] as $view) {
             $contents = file_get_contents(
@@ -25,12 +25,18 @@ class ProductListingTest extends TestCase
             );
 
             $this->assertIsString($contents);
-            $this->assertMatchesRegularExpression(
-                '/id="slotMaxQty"[^>]*\sdisabled>/',
+            foreach (['slotMinQty', 'slotMaxQty', 'slotCommission', 'slotPrice', 'slotTotalPrice'] as $control) {
+                $this->assertMatchesRegularExpression(
+                    '/id="'.$control.'"[^>]*\sdisabled(?:\s|>)/',
+                    $contents
+                );
+            }
+            $this->assertStringContainsString(
+                'maxQuantityInput.disabled = !usesSpecificMaximum;',
                 $contents
             );
             $this->assertStringContainsString(
-                'maxQuantityInput.disabled = !usesSpecificMaximum;',
+                'setSlotEditorInputsEnabled(false);',
                 $contents
             );
         }
