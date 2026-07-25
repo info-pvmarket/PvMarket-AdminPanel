@@ -17,6 +17,45 @@ class TranslatePageJob implements ShouldQueue
     public int $timeout = 1800; // 30 minutes
     public int $tries   = 3;
 
+    /**
+     * Page identifiers exposed by the language setup screen.
+     *
+     * Keeping this map in one place prevents the UI from queueing jobs that can
+     * never translate anything (for example, the former sales/leads entries).
+     *
+     * @var array<string, class-string>
+     */
+    public const PAGE_MODELS = [
+        'categories'       => \App\Models\MainMenu::class,
+        'sub-categories'   => \App\Models\SubMenu::class,
+        'brands'           => \App\Models\Brand::class,
+        'units'            => \App\Models\Unit::class,
+        'locations'        => \App\Models\Location::class,
+        'sliders'          => \App\Models\Slider::class,
+        'advertisements'   => \App\Models\Advertisement::class,
+        'charges'          => \App\Models\Charge::class,
+        'commissions'      => \App\Models\Commission::class,
+        'countries'        => \App\Models\Country::class,
+        'coupons'          => \App\Models\Coupon::class,
+        'incoterms'        => \App\Models\Incoterm::class,
+        'roles'            => \App\Models\Role::class,
+        'news'             => \App\Models\News::class,
+        'events'           => \App\Models\Event::class,
+        'blogs'            => \App\Models\Blog::class,
+        'price-promotions' => \App\Models\PricePromotion::class,
+        'pv-spot-price'    => \App\Models\PvSpotPrice::class,
+        'products'         => \App\Models\Product::class,
+        'specifications'   => \App\Models\ProductDetailOption::class,
+        'static-pages'     => \App\Models\PageSection::class,
+        'offers'           => \App\Models\Offer::class,
+        'warehouses'       => \App\Models\Warehouse::class,
+        'manage-listings'  => \App\Models\ProductListing::class,
+        'inventory'        => \App\Models\InventoryTransaction::class,
+        'bids'             => \App\Models\BidRequest::class,
+        'schedules'        => \App\Models\Schedule::class,
+        'users'            => \App\Models\User::class,
+    ];
+
     public function __construct(
         public string $language,
         public string $page
@@ -199,36 +238,14 @@ class TranslatePageJob implements ShouldQueue
      */
     protected function resolveModel(string $page): ?string
     {
-        return match ($page) {
-            'categories'       => \App\Models\MainMenu::class,
-            'sub-categories'   => \App\Models\SubMenu::class,
-            'brands'           => \App\Models\Brand::class,
-            'units'            => \App\Models\Unit::class,
-            'locations'        => \App\Models\Location::class,
-            'sliders'          => \App\Models\Slider::class,
-            'advertisements'   => \App\Models\Advertisement::class,
-            'charges'          => \App\Models\Charge::class,
-            'commissions'      => \App\Models\Commission::class,
-            'countries'        => \App\Models\Country::class,
-            'coupons'          => \App\Models\Coupon::class,
-            'incoterms'        => \App\Models\Incoterm::class,
-            'sub-admins'       => \App\Models\SubAdmin::class,
-            'news'             => \App\Models\News::class,
-            'events'           => \App\Models\Event::class,
-            'blogs'            => \App\Models\Blog::class,
-            'price-promotions' => \App\Models\PricePromotion::class,
-            'pv-spot-price'    => \App\Models\PvSpotPrice::class,
-            'products'         => \App\Models\Product::class,
-            'specifications'  => \App\Models\ProductDetailOption::class,
-            'static-pages'     => \App\Models\PageSection::class,
-            'offers'           => \App\Models\Offer::class,
-            'warehouses'       => \App\Models\Warehouse::class,
-            'manage-listings'  => \App\Models\ProductListing::class,
-            'product-listings'  => \App\Models\ProductListing::class,
-            'product'              => \App\Models\Product::class,
-            'roles'                => \App\Models\Role::class,
-            'inventory-transactions' => \App\Models\InventoryTransaction::class,
-            default            => null,
-        };
+        return self::PAGE_MODELS[$page] ?? null;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function supportedPages(): array
+    {
+        return array_keys(self::PAGE_MODELS);
     }
 }

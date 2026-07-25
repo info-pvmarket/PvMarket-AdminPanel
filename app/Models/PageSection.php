@@ -2,9 +2,12 @@
 namespace App\Models;
 use MongoDB\Laravel\Eloquent\Model;
 use App\Casts\AsObjectId;
+use App\Traits\HasTranslations;
 
 class PageSection extends Model
 {
+    use HasTranslations;
+
     protected $connection = 'mongodb';
     protected $collection = 'page_sections';
 
@@ -30,5 +33,13 @@ class PageSection extends Model
         'order'       => 'integer',
         'location_id' => AsObjectId::class,
         //'extra'     => 'array',
+    ];
+
+    public array $translatable = [
+        'title',
+        'subtitle',
+        'description',
+        'button_text',
+        'alt_tag',
     ];
 }

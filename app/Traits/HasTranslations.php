@@ -15,7 +15,13 @@ trait HasTranslations
         }
 
         // STEP 1: Check DB first
-        $translations = $this->{$locale};
+        $translations = $this->{$locale} ?? null;
+        if (is_object($translations) && method_exists($translations, 'getArrayCopy')) {
+            $translations = $translations->getArrayCopy();
+        } elseif (is_object($translations)) {
+            $translations = (array) $translations;
+        }
+
         if (is_array($translations) && isset($translations[$field]) && $translations[$field] !== '') {
             return (string) $translations[$field];
         }
@@ -38,7 +44,16 @@ trait HasTranslations
         // STEP 3: Save to DB so next request skips API entirely
         if ($translated && $translated !== $original) {
             try {
-                $existing = is_array($this->{$locale}) ? $this->{$locale} : [];
+                $localeData = $this->{$locale} ?? null;
+                if (is_object($localeData) && method_exists($localeData, 'getArrayCopy')) {
+                    $existing = $localeData->getArrayCopy();
+                } elseif (is_object($localeData)) {
+                    $existing = (array) $localeData;
+                } elseif (is_array($localeData)) {
+                    $existing = $localeData;
+                } else {
+                    $existing = [];
+                }
                 $existing[$field] = $translated;
 
                 // Raw query — no timestamps touched

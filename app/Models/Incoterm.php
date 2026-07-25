@@ -1,8 +1,11 @@
 <?php
 namespace App\Models;
 use MongoDB\Laravel\Eloquent\Model;
+use App\Traits\HasTranslations;
 
 class Incoterm extends Model {
+    use HasTranslations;
+
     protected $connection = 'mongodb';
     protected $collection = 'incoterms';
     protected $fillable = [
@@ -15,4 +18,6 @@ class Incoterm extends Model {
 protected $casts = [
     'is_active' => 'boolean',
 ];
+
+public array $translatable = ['name'];
 }

@@ -5,10 +5,11 @@ namespace App\Models;
 use MongoDB\Laravel\Eloquent\Model;
 use MongoDB\Laravel\Eloquent\SoftDeletes;
 use App\Casts\AsObjectId;
+use App\Traits\HasTranslations;
 
 class Location extends Model
 {
-    use SoftDeletes;
+    use HasTranslations, SoftDeletes;
 
     protected $connection = 'mongodb';
     protected $collection = 'locations';
@@ -22,4 +23,6 @@ class Location extends Model
     protected $casts = [
         'country_id' => AsObjectId::class,
     ];
+
+    public array $translatable = ['country_name'];
 }

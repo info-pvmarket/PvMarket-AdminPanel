@@ -75,6 +75,24 @@ class TranslatePageJobTest extends TestCase
 
         $this->assertSame(['tags' => ['PV Market']], $record->fr);
     }
+
+    public function test_every_supported_page_maps_to_an_existing_translatable_model(): void
+    {
+        foreach (TranslatePageJob::PAGE_MODELS as $page => $modelClass) {
+            $this->assertTrue(class_exists($modelClass), "Missing model for {$page}");
+            $this->assertNotEmpty(
+                (new $modelClass)->translatable ?? [],
+                "Page {$page} must expose at least one translatable field"
+            );
+        }
+    }
+
+    public function test_non_translatable_workflow_pages_are_not_queued(): void
+    {
+        $this->assertNotContains('sales', TranslatePageJob::supportedPages());
+        $this->assertNotContains('leads', TranslatePageJob::supportedPages());
+        $this->assertNotContains('sub-admins', TranslatePageJob::supportedPages());
+    }
 }
 
 class TestableTranslatePageJob extends TranslatePageJob

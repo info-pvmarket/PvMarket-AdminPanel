@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\TranslatePageJob;
 use App\Models\Language;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class LanguageController extends Controller
 {
@@ -129,14 +131,14 @@ class LanguageController extends Controller
     {
         $request->validate([
             'pages'   => ['required', 'array', 'min:1'],
-            'pages.*' => ['string'],
+            'pages.*' => ['string', Rule::in(TranslatePageJob::supportedPages())],
         ]);
 
         $language = Language::where('code', $code)->firstOrFail();
         $pages    = $request->input('pages', []);
 
         foreach ($pages as $page) {
-            \App\Jobs\TranslatePageJob::dispatch($code, $page);
+            TranslatePageJob::dispatch($code, $page);
         }
 
         return back()->with('success',

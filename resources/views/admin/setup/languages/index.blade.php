@@ -584,7 +584,6 @@ const TM_PAGES = [
         { id: 'countries',       label: 'Countries' },
         { id: 'coupons',         label: 'Coupons Management' },
         { id: 'incoterms',       label: 'Incoterms' },
-        { id: 'sub-admins',      label: 'Sub Admins' },
         { id: 'roles',           label: 'User Roles' },
     ]},
     { group: 'Knowledge Hub', items: [
@@ -604,8 +603,6 @@ const TM_PAGES = [
         { id: 'warehouses',       label: 'Warehouses' },
         { id: 'manage-listings',  label: 'Manage Listings' },
         { id: 'inventory',        label: 'Inventory' },
-        { id: 'sales',            label: 'Sales' },
-        { id: 'leads',            label: 'Leads' },
         { id: 'bids',             label: 'Bid/Fair Requests' },
         { id: 'schedules',        label: 'Schedules' },
         { id: 'users',            label: 'User Management' },

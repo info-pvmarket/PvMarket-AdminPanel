@@ -4,9 +4,12 @@ namespace App\Models;
 
 use MongoDB\Laravel\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
+use App\Traits\HasTranslations;
 
 class Country extends Model
 {
+    use HasTranslations;
+
     protected $connection = 'mongodb';
     protected $collection = 'countries';
 
@@ -27,6 +30,8 @@ class Country extends Model
         'is_default'    => 'boolean',
         'country_files' => 'array',
     ];
+
+    public array $translatable = ['name', 'capital', 'alt_tag'];
 
     public function getTable(): string
     {

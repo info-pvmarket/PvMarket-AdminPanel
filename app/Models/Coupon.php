@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use MongoDB\Laravel\Eloquent\Model;
+use App\Traits\HasTranslations;
 
 class Coupon extends Model
 {
+    use HasTranslations;
+
     protected $connection = 'mongodb';
     protected $collection = 'coupons';
 
@@ -33,4 +36,6 @@ class Coupon extends Model
         'valid_from'    => 'datetime',
         'valid_until'   => 'datetime',
     ];
+
+    public array $translatable = ['plan_name'];
 }
