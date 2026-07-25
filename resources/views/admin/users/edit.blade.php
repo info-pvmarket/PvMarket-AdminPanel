@@ -74,18 +74,26 @@
     }
 
     .verified-toggle-btn {
-        background: none;
-        border: none;
+        background: #ECFDF5;
+        border: 1px solid #A7F3D0;
+        color: #047857;
         cursor: pointer;
-        font-size: 22px;
-        padding: 4px;
+        font-size: 13px;
+        font-weight: 700;
+        padding: 7px 12px;
         border-radius: 6px;
         transition: transform .15s, background .15s;
         display: block;
         margin: 0 auto;
     }
 
-    .verified-toggle-btn:hover { transform: scale(1.15); background: var(--light); }
+    .verified-toggle-btn.is-not-verified {
+        background: #FFF7ED;
+        border-color: #FED7AA;
+        color: #C2410C;
+    }
+
+    .verified-toggle-btn:hover { transform: translateY(-1px); }
 
     /* Avatar center */
     .avatar-center {
@@ -818,7 +826,7 @@
 
 {{-- ── Outer header ── --}}
 <div class="page-outer-header">
-    <h1>Update {{ ucfirst($user->user_type ?? 'User') }} Details</h1>
+    <h1>Update {{ $user->role_display_name }} Details</h1>
     <a href="{{ route('admin.users.index') }}" class="btn-back">← Back</a>
 </div>
 
@@ -841,19 +849,15 @@
     {{-- Top: avatar + company verified --}}
     <div class="card-top">
 
-        {{-- Company Verified toggle (left) --}}
+        {{-- Company verification toggle (left) --}}
         <div class="company-verified-wrap">
-            <div class="company-verified-label">Company Verified</div>
             <form method="POST" action="{{ route('admin.users.toggle-verified', $user->id) }}">
                 @csrf @method('PATCH')
                 <input type="hidden" name="active_tab" value="{{ $activeTab }}">
-                <button type="submit" class="verified-toggle-btn"
+                <button type="submit"
+                        class="verified-toggle-btn {{ $companyVerifiedChecked ? '' : 'is-not-verified' }}"
                         title="{{ $companyVerifiedChecked ? 'Click to unverify' : 'Click to verify' }}">
-                    @if($companyVerifiedChecked)
-                        <span style="color:#10B981; font-size:26px;">✓</span>
-                    @else
-                        <span style="color:#F97316; font-size:26px;">✗</span>
-                    @endif
+                    {{ $companyVerifiedChecked ? 'Company Verified' : 'Company Not Verified' }}
                 </button>
             </form>
         </div>

@@ -275,6 +275,7 @@
     .badge-buyer   { background: #10B981; color: white; }
     .badge-seller  { background: #1E293B; color: white; }
     .badge-admin   { background: var(--accent); color: white; }
+    .badge-role    { background: #1E293B; color: white; }
 
     .badge-verified {
         display: inline-block; background: #3B82F6; color: white;
@@ -355,15 +356,24 @@
 
         {{-- Filter dropdown --}}
         <form method="GET" action="{{ route('admin.users.index') }}" id="filterForm">
-            <select name="user_type" class="filter-select" onchange="document.getElementById('filterForm').submit()">
-                <option value="">Buyer/Seller</option>
-                <option value="seller" {{ request('user_type') == 'seller' ? 'selected' : '' }}>Students</option>
-                <option value="admin"  {{ request('user_type') == 'admin'  ? 'selected' : '' }}>Market Place User</option>
+            <select name="role_id" class="filter-select" onchange="document.getElementById('filterForm').submit()">
+                <option value="">All Roles</option>
+                @foreach($roles as $role)
+                    <option value="{{ $role->_id }}" {{ (string) request('role_id') === (string) $role->_id ? 'selected' : '' }}>
+                        {{ $role->role }}
+                    </option>
+                @endforeach
             </select>
+            @if(request('search'))
+                <input type="hidden" name="search" value="{{ request('search') }}">
+            @endif
+            @if(request('entries'))
+                <input type="hidden" name="entries" value="{{ request('entries') }}">
+            @endif
         </form>
 
         {{-- Export button — passes current filters so export matches what's on screen --}}
-        <a href="{{ route('admin.users.export', array_filter(['user_type' => request('user_type'), 'search' => request('search')])) }}"
+        <a href="{{ route('admin.users.export', array_filter(['role_id' => request('role_id'), 'search' => request('search')])) }}"
            class="btn-export">
             {{-- Download / spreadsheet icon --}}
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
@@ -412,8 +422,8 @@
                     class="search-input"
                 />
             </div>
-            @if(request('user_type'))
-                <input type="hidden" name="user_type" value="{{ request('user_type') }}">
+            @if(request('role_id'))
+                <input type="hidden" name="role_id" value="{{ request('role_id') }}">
             @endif
         </form>
 
@@ -429,8 +439,8 @@
             @if(request('search'))
                 <input type="hidden" name="search" value="{{ request('search') }}">
             @endif
-            @if(request('user_type'))
-                <input type="hidden" name="user_type" value="{{ request('user_type') }}">
+            @if(request('role_id'))
+                <input type="hidden" name="role_id" value="{{ request('role_id') }}">
             @endif
         </form>
     </div>
@@ -442,7 +452,7 @@
                 <th class="center" style="width:70px;">S.No</th>
                 <th>Name</th>
                 <th>Email</th>
-                <th class="center">User Type</th>
+                <th class="center">Role</th>
                 <th class="center">Assigned Admin</th>
                 <th class="center" style="width:160px;">Action</th>
             </tr>
@@ -463,11 +473,11 @@
                     <a href="mailto:{{ $user->email }}" class="user-email">{{ $user->email }}</a>
                 </td>
                 <td class="center">
-                    <span class="badge badge-{{ strtolower($user->user_type ?? 'buyer') }}">
-                        {{ ucfirst($user->user_type ?? 'Buyer') }}
+                    <span class="badge badge-role">
+                        {{ $user->role_display_name }}
                     </span>
                     <br>
-                    @if($user->company_verified ?? false)
+                    @if($user->isCompanyVerified())
                         <span class="badge-verified">Company Verified</span>
                     @else
                         <span class="badge-not-verified">Company Not Verified</span>

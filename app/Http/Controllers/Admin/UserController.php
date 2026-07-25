@@ -11,6 +11,7 @@ use App\Models\ProductListing;
 use App\Models\Product;
 use App\Models\Warehouse;
 use App\Models\ProductListingImage;
+use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Services\TranslationService;
@@ -25,15 +26,18 @@ class UserController extends Controller
 
     public function index(Request $request)
     {
-        // Get admin role IDs to exclude admin users from this list
-        $roleIds = \App\Models\Role::whereIn('slug', ['super-admin', 'admin'])->pluck('id');
-        $roleObjectIds = $roleIds->map(fn($id) => new \MongoDB\BSON\ObjectId((string) $id))->toArray();
+        $roleIds = Role::whereIn('slug', Role::ADMIN_SLUGS)->pluck('id');
+        $roleObjectIds = $roleIds->map(fn($id) => new ObjectId((string) $id))->toArray();
+        $roles = Role::whereNotIn('slug', Role::ADMIN_SLUGS)
+            ->orderBy('role')
+            ->get();
 
         // Start with users who are not admins (no role_id or role_id not in admin roles)
-        $query = User::where(function ($q) use ($roleObjectIds) {
-            $q->whereNull('role_id')
-              ->orWhereNotIn('role_id', $roleObjectIds);
-        });
+        $query = User::with(['role', 'assignedAdmin'])
+            ->where(function ($q) use ($roleObjectIds) {
+                $q->whereNull('role_id')
+                  ->orWhereNotIn('role_id', $roleObjectIds);
+            });
 
         // Super Admin sees all users, regular admin sees only assigned users
         if (!Auth::user()->isSuperAdmin()) {
@@ -47,18 +51,35 @@ class UserController extends Controller
             });
         }
 
-        // dd($query->toMql()); // Debugging: Output the SQL query for inspection
+        $selectedRoleId = (string) $request->input('role_id', '');
+        if ($roles->contains(fn(Role $role) => (string) $role->_id === $selectedRoleId)) {
+            $query->where('role_id', new ObjectId($selectedRoleId));
+        }
+
         $users = $query->orderBy('created_at', 'desc')
                        ->paginate($request->get('entries', 10));
 
+        $userIds = $users->getCollection()
+            ->map(fn(User $user) => new ObjectId((string) $user->_id))
+            ->all();
+        $companies = empty($userIds)
+            ? collect()
+            : Company::whereIn('user_id', $userIds)
+                ->get()
+                ->keyBy(fn(Company $company) => (string) $company->user_id);
+
+        $users->getCollection()->each(
+            fn(User $user) => $user->setRelation('company', $companies->get((string) $user->_id))
+        );
+
         $admins = $this->getAdminsForAssignment();
 
-        return view('admin.users.index', compact('users', 'admins'));
+        return view('admin.users.index', compact('users', 'admins', 'roles'));
     }
 
     public function edit(Request $request, $id)
     {
-        $user = User::findOrFail($id);
+        $user = User::with('role')->findOrFail($id);
         $userId = new ObjectId($id);
         $company = Company::where('user_id', $userId)->first();
 
@@ -297,13 +318,15 @@ class UserController extends Controller
 
     public function export(Request $request)
 {
-    $roleIds = \App\Models\Role::whereIn('slug', ['super-admin', 'admin'])->pluck('id');
+    $roleIds = Role::whereIn('slug', Role::ADMIN_SLUGS)->pluck('id');
     $roleObjectIds = $roleIds->map(fn($id) => new ObjectId((string) $id))->toArray();
+    $roles = Role::whereNotIn('slug', Role::ADMIN_SLUGS)->get();
 
-    $query = User::where(function ($q) use ($roleObjectIds) {
-        $q->whereNull('role_id')
-          ->orWhereNotIn('role_id', $roleObjectIds);
-    });
+    $query = User::with('role')
+        ->where(function ($q) use ($roleObjectIds) {
+            $q->whereNull('role_id')
+              ->orWhereNotIn('role_id', $roleObjectIds);
+        });
 
     if (!Auth::user()->isSuperAdmin()) {
         $query->where('assigned_admin_id', new ObjectId(Auth::id()));
@@ -317,9 +340,12 @@ class UserController extends Controller
               ->orWhere('email', 'like', "%{$search}%");
         });
     }
- 
-    
- 
+
+    $selectedRoleId = (string) $request->input('role_id', '');
+    if ($roles->contains(fn(Role $role) => (string) $role->_id === $selectedRoleId)) {
+        $query->where('role_id', new ObjectId($selectedRoleId));
+    }
+
     $users = $query->orderBy('created_at', 'desc')->get();
     $userIds = $users
         ->map(fn($user) => new ObjectId((string) $user->_id))
@@ -371,6 +397,7 @@ class UserController extends Controller
             'S.No',
             'Name',
             'Email',
+            'Role',
             'Mobile',
             'Active',
             'On Hold',
@@ -400,6 +427,7 @@ class UserController extends Controller
                 $i + 1,
                 $user->name ?? '',
                 $user->email ?? '',
+                $user->role_display_name,
                 $user->mobile ?? '',
                 $yesNo($user->is_active ?? false),
                 $yesNo($user->is_hold ?? false),

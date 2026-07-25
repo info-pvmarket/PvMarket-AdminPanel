@@ -11,6 +11,8 @@ class Role extends Model
     use HasTranslations;
     use SoftDeletes;
 
+    public const ADMIN_SLUGS = ['super-admin', 'admin'];
+
     protected $connection = 'mongodb';
     protected $collection = 'roles';
 

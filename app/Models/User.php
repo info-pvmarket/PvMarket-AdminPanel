@@ -60,6 +60,25 @@ public array $translatable = [
         return $this->belongsTo(Role::class, 'role_id', '_id');
     }
 
+    public function getRoleDisplayNameAttribute(): string
+    {
+        $roleName = $this->role?->role;
+
+        return is_string($roleName) && trim($roleName) !== ''
+            ? $roleName
+            : 'No Role';
+    }
+
+    public function isCompanyVerified(): bool
+    {
+        return (bool) (
+            $this->company?->seller_verified
+            ?? $this->company?->company_verified
+            ?? $this->company_verified
+            ?? false
+        );
+    }
+
     public function isAdmin(): bool
     {
         if (empty($this->role_id)) {
