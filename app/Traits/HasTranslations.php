@@ -9,9 +9,10 @@ trait HasTranslations
     public function trans(string $field, ?string $locale = null): string
     {
         $locale = $locale ?? session('admin_lang', 'en');
+        $original = $this->translationScalarToString($this->{$field} ?? null) ?? '';
 
         if ($locale === 'en') {
-            return (string) ($this->{$field} ?? '');
+            return $original;
         }
 
         // STEP 1: Check DB first
@@ -22,12 +23,21 @@ trait HasTranslations
             $translations = (array) $translations;
         }
 
-        if (is_array($translations) && isset($translations[$field]) && $translations[$field] !== '') {
-            return (string) $translations[$field];
+        if (is_array($translations) && array_key_exists($field, $translations)) {
+            $storedTranslation = $this->translationScalarToString($translations[$field]);
+
+            if ($storedTranslation !== null && $storedTranslation !== '') {
+                return $storedTranslation;
+            }
+
+            // This helper renders strings. Preserve structured data in MongoDB,
+            // but safely fall back to the source value when displaying it.
+            if (is_array($translations[$field]) || is_object($translations[$field])) {
+                return $original;
+            }
         }
 
         // STEP 2: Not in DB → call AWS
-        $original = (string) ($this->{$field} ?? '');
         if (empty($original)) return '';
 
         $cacheKey = 'trans_' . class_basename($this) . '_' . $this->_id . '_' . $field . '_' . $locale;
@@ -40,6 +50,7 @@ trait HasTranslations
                 return null;
             }
         });
+        $translated = $this->translationScalarToString($translated);
 
         // STEP 3: Save to DB so next request skips API entirely
         if ($translated && $translated !== $original) {
@@ -68,5 +79,22 @@ trait HasTranslations
         }
 
         return (string) ($translated ?? $original);
+    }
+
+    private function translationScalarToString(mixed $value): ?string
+    {
+        if (is_string($value)) {
+            return $value;
+        }
+
+        if (is_int($value) || is_float($value) || is_bool($value)) {
+            return (string) $value;
+        }
+
+        if ($value instanceof \Stringable) {
+            return (string) $value;
+        }
+
+        return null;
     }
 }
