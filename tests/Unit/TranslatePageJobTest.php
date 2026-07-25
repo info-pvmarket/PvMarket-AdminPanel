@@ -76,6 +76,68 @@ class TranslatePageJobTest extends TestCase
         $this->assertSame(['tags' => ['PV Market']], $record->fr);
     }
 
+    public function test_static_page_extra_translates_nested_copy_and_preserves_structure(): void
+    {
+        FakeTranslatableRecord::$translatableFields = ['extra'];
+
+        $record = new FakeTranslatableRecord;
+        $record->extra = [
+            'description' => 'Solar distribution',
+            'items' => [
+                [
+                    'title' => 'Smart supply chain',
+                    'desc' => 'Efficient operations',
+                    'icon' => 'Boxes',
+                ],
+                [
+                    'name' => 'Orange Group',
+                    'logo' => 'https://cdn.example.com/orange.svg',
+                ],
+            ],
+            'columns' => ['Dubai', 'Sharjah'],
+            'rows' => [
+                ['vehicle' => '3 TON', 'prices' => [250, 300]],
+            ],
+            'email' => 'support@example.com',
+            'social_linkedin' => 'https://linkedin.com/company/example',
+        ];
+        $record->fr = ['extra' => ['description' => 'Ancien contenu']];
+        FakeTranslatableRecord::$records = [$record];
+
+        $translations = [
+            'Solar distribution' => 'Distribution solaire',
+            'Smart supply chain' => 'Chaîne logistique intelligente',
+            'Efficient operations' => 'Opérations efficaces',
+            'Dubai' => 'Dubaï',
+            'Sharjah' => 'Charjah',
+            '3 TON' => '3 TONNES',
+        ];
+
+        $translator = Mockery::mock(TranslationService::class);
+        $translator->shouldReceive('translateText')
+            ->times(count($translations))
+            ->andReturnUsing(
+                fn (string $text, string $target, string $source, bool $refresh): string => $translations[$text]
+            );
+
+        (new TestableTranslatePageJob('fr', 'fake'))->handle($translator);
+
+        $this->assertSame('Distribution solaire', $record->fr['extra']['description']);
+        $this->assertSame('Chaîne logistique intelligente', $record->fr['extra']['items'][0]['title']);
+        $this->assertSame('Opérations efficaces', $record->fr['extra']['items'][0]['desc']);
+        $this->assertSame('Boxes', $record->fr['extra']['items'][0]['icon']);
+        $this->assertSame('Orange Group', $record->fr['extra']['items'][1]['name']);
+        $this->assertSame('https://cdn.example.com/orange.svg', $record->fr['extra']['items'][1]['logo']);
+        $this->assertSame(['Dubaï', 'Charjah'], $record->fr['extra']['columns']);
+        $this->assertSame('3 TONNES', $record->fr['extra']['rows'][0]['vehicle']);
+        $this->assertSame([250, 300], $record->fr['extra']['rows'][0]['prices']);
+        $this->assertSame('support@example.com', $record->fr['extra']['email']);
+        $this->assertSame(
+            'https://linkedin.com/company/example',
+            $record->fr['extra']['social_linkedin']
+        );
+    }
+
     public function test_every_supported_page_maps_to_an_existing_translatable_model(): void
     {
         foreach (TranslatePageJob::PAGE_MODELS as $page => $modelClass) {
@@ -112,6 +174,7 @@ class FakeTranslatableRecord
     public array $translatable;
     public string $name = '';
     public array $tags = [];
+    public array $extra = [];
     public array $fr = [];
 
     public function __construct()

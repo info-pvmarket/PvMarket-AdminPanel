@@ -41,5 +41,6 @@ class PageSection extends Model
         'description',
         'button_text',
         'alt_tag',
+        'extra',
     ];
 }

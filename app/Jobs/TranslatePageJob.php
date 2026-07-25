@@ -18,6 +18,34 @@ class TranslatePageJob implements ShouldQueue
     public int $tries   = 3;
 
     /**
+     * Human-readable keys used inside PageSection.extra.
+     *
+     * The allow-list deliberately excludes URLs, icons, images, email
+     * addresses, phone numbers, prices, and company names.
+     *
+     * @var list<string>
+     */
+    private const STRUCTURED_TEXT_KEYS = [
+        'content',
+        'title',
+        'subtitle',
+        'description',
+        'desc',
+        'button_text',
+        'alt_tag',
+        'label',
+        'value',
+        'question',
+        'answer',
+        'address',
+        'phone_label',
+        'email_label',
+        'currency_note',
+        'vehicle',
+        'columns',
+    ];
+
+    /**
      * Page identifiers exposed by the language setup screen.
      *
      * Keeping this map in one place prevents the UI from queueing jobs that can
@@ -109,6 +137,22 @@ class TranslatePageJob implements ShouldQueue
         $raw = $raw->getArrayCopy();
     } elseif (is_object($raw)) {
         $raw = (array) $raw;
+    }
+
+    // Page sections keep most visible copy in a nested `extra` document.
+    // Translate only known human-readable keys and preserve its exact shape.
+    if ($field === 'extra' && is_array($raw)) {
+        [$translatedExtra, $extraChanged] = $this->translateStructuredExtra(
+            $raw,
+            $translator,
+            $locale,
+        );
+
+        if ($extraChanged) {
+            $existing[$field] = $translatedExtra;
+            $needsSave = true;
+        }
+        continue;
     }
 
     // ── Array of objects (e.g. product_details: [{label, value, unit}, ...]) ──
@@ -230,6 +274,66 @@ class TranslatePageJob implements ShouldQueue
         });
 
         Log::info("TranslatePageJob: finished page='{$this->page}' lang='{$locale}'");
+    }
+
+    /**
+     * Recursively translate static-page content without modifying structural
+     * data such as icons, links, prices, IDs, email addresses, or phone
+     * numbers.
+     *
+     * @return array{0: mixed, 1: bool}
+     */
+    private function translateStructuredExtra(
+        mixed $value,
+        TranslationService $translator,
+        string $locale,
+        ?string $key = null,
+    ): array {
+        if (is_object($value) && method_exists($value, 'getArrayCopy')) {
+            $value = $value->getArrayCopy();
+        } elseif (is_object($value)) {
+            $value = (array) $value;
+        }
+
+        if (is_string($value)) {
+            if (!in_array($key, self::STRUCTURED_TEXT_KEYS, true) || trim(strip_tags($value)) === '') {
+                return [$value, false];
+            }
+
+            try {
+                $translated = $translator->translateText($value, $locale, 'en', true);
+                usleep(50000);
+
+                return $translated !== null
+                    ? [$translated, $translated !== $value]
+                    : [$value, false];
+            } catch (\Exception $e) {
+                Log::error("TranslatePageJob: structured field '{$key}': {$e->getMessage()}");
+                return [$value, false];
+            }
+        }
+
+        if (!is_array($value)) {
+            return [$value, false];
+        }
+
+        $translated = [];
+        $changed = false;
+
+        foreach ($value as $childKey => $childValue) {
+            $effectiveKey = is_string($childKey) ? $childKey : $key;
+            [$translatedChild, $childChanged] = $this->translateStructuredExtra(
+                $childValue,
+                $translator,
+                $locale,
+                $effectiveKey,
+            );
+
+            $translated[$childKey] = $translatedChild;
+            $changed = $changed || $childChanged;
+        }
+
+        return [$translated, $changed];
     }
 
     /**
