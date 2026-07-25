@@ -50,7 +50,9 @@ class TranslatePageJob implements ShouldQueue
                 Log::info("TranslatePageJob: processing record {$processed}/{$totalCount} for {$modelClass}");
                 // Handle both array and object (MongoDB returns objects)
                 $localeData = $record->{$locale} ?? null;
-                if (is_object($localeData)) {
+                if (is_object($localeData) && method_exists($localeData, 'getArrayCopy')) {
+                    $existing = $localeData->getArrayCopy();
+                } elseif (is_object($localeData)) {
                     $existing = (array) $localeData;
                 } elseif (is_array($localeData)) {
                     $existing = $localeData;
@@ -90,8 +92,8 @@ class TranslatePageJob implements ShouldQueue
             // Translate 'label' field if present
             if (!empty($itemArray['label']) && is_string($itemArray['label'])) {
                 try {
-                    $result = $translator->translateText($itemArray['label'], $locale, 'en');
-                    if ($result && $result !== $itemArray['label']) {
+                    $result = $translator->translateText($itemArray['label'], $locale, 'en', true);
+                    if ($result !== null) {
                         $translatedItem['label'] = $result;
                         $arrayChanged = true;
                     }
@@ -104,8 +106,8 @@ class TranslatePageJob implements ShouldQueue
             // Translate 'value' field if present and is a string (not numeric)
             if (!empty($itemArray['value']) && is_string($itemArray['value']) && !is_numeric($itemArray['value'])) {
                 try {
-                    $result = $translator->translateText($itemArray['value'], $locale, 'en');
-                    if ($result && $result !== $itemArray['value']) {
+                    $result = $translator->translateText($itemArray['value'], $locale, 'en', true);
+                    if ($result !== null) {
                         $translatedItem['value'] = $result;
                         $arrayChanged = true;
                     }
@@ -136,9 +138,9 @@ class TranslatePageJob implements ShouldQueue
                 continue;
             }
             try {
-                $result = $translator->translateText($item, $locale, 'en');
-                $translatedArray[] = ($result && $result !== $item) ? $result : $item;
-                if ($result && $result !== $item) $arrayChanged = true;
+                $result = $translator->translateText($item, $locale, 'en', true);
+                $translatedArray[] = $result ?? $item;
+                if ($result !== null) $arrayChanged = true;
                 usleep(50000);
             } catch (\Exception $e) {
                 Log::error("TranslatePageJob: array field '{$field}' on {$modelClass}#{$record->_id}: {$e->getMessage()}");
@@ -160,9 +162,9 @@ class TranslatePageJob implements ShouldQueue
     Log::debug("TranslatePageJob: translating string field '{$field}' on {$modelClass}#{$record->_id}");
 
     try {
-        $translated = $translator->translateText($original, $locale, 'en');
+        $translated = $translator->translateText($original, $locale, 'en', true);
 
-        if ($translated && $translated !== $original) {
+        if ($translated !== null) {
             $existing[$field] = $translated;
             $needsSave = true;
         }
@@ -195,7 +197,7 @@ class TranslatePageJob implements ShouldQueue
      * Map page IDs (matching TM_PAGES in JS) to their Eloquent model class.
      * Add every model your app has here.
      */
-    private function resolveModel(string $page): ?string
+    protected function resolveModel(string $page): ?string
     {
         return match ($page) {
             'categories'       => \App\Models\MainMenu::class,

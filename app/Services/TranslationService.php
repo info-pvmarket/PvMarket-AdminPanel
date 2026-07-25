@@ -177,7 +177,12 @@ class TranslationService
     // ─────────────────────────────────────────────────────────────
     // PUBLIC: translate a single string (plain or HTML)
     // ─────────────────────────────────────────────────────────────
-    public function translateText(string $text, string $targetLang, string $sourceLang = 'en'): ?string
+    public function translateText(
+        string $text,
+        string $targetLang,
+        string $sourceLang = 'en',
+        bool $refreshCache = false,
+    ): ?string
     {
         $plainText = trim(strip_tags($text));
         if (empty($plainText))           return $text;
@@ -186,8 +191,10 @@ class TranslationService
         $isHtml   = ($text !== strip_tags($text));
         $cacheKey = 'trans_' . md5($text . '|' . $targetLang . '|' . $sourceLang . ($isHtml ? 'h' : 't'));
 
-        $cached = Cache::get($cacheKey);
-        if ($cached !== null) return $cached;
+        if (!$refreshCache) {
+            $cached = Cache::get($cacheKey);
+            if ($cached !== null) return $cached;
+        }
 
         try {
             $translated = $isHtml

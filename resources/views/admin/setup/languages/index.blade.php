@@ -504,7 +504,9 @@ return [
                     <div style="font-size:.9rem;font-weight:600;color:var(--text-primary,#111);">
                         Translate to <span id="tm-lang-name">—</span>
                     </div>
-                    <div style="font-size:.75rem;color:var(--text-muted,#6b7280);">Select pages to translate</div>
+                    <div style="font-size:.75rem;color:var(--text-muted,#6b7280);">
+                        Select pages to translate. Existing translations will be replaced.
+                    </div>
                 </div>
             </div>
             <button onclick="closeTranslateModal()" style="width:28px;height:28px;border-radius:8px;border:none;background:transparent;cursor:pointer;display:grid;place-items:center;color:var(--text-muted,#6b7280);">

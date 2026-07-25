@@ -140,7 +140,8 @@ class LanguageController extends Controller
         }
 
         return back()->with('success',
-            count($pages) . ' page(s) queued for translation to ' . $language->name . '. Processing in background.'
+            count($pages) . ' page(s) queued for translation to ' . $language->name
+            . '. Existing translations will be replaced in the background.'
         );
     }
 }
