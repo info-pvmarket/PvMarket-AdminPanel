@@ -23,7 +23,7 @@ class InventoryController extends Controller
     public function index(Request $request)
     {
         $userId = Auth::id();
-        $filter = in_array($request->get('filter'), ['low_stock', 'out_of_stock'], true)
+        $filter = in_array($request->get('filter'), ['low_stock', 'out_of_stock', 'recent_movements'], true)
             ? $request->get('filter')
             : 'all';
         $sort = in_array($request->get('sort'), ['latest', 'oldest'], true)
@@ -81,12 +81,17 @@ $listing->alert_record_id     = $alert ? (string) $alert->_id : null;
         $listingIds = $allListings
             ->map(fn($listing) => new ObjectId((string) $listing->_id))
             ->all();
-        $recentMovements = empty($listingIds)
-            ? 0
+        $recentMovementListingIds = empty($listingIds)
+            ? collect()
             : InventoryTransaction::whereIn('listing_id', $listingIds)
                 ->recent()
                 ->stockMovements()
-                ->count();
+                ->pluck('listing_id')
+                ->map(fn($listingId) => (string) $listingId)
+                ->filter()
+                ->unique()
+                ->values();
+        $recentMovements = $recentMovementListingIds->count();
 
         // Apply stock filters
         if ($filter === 'low_stock') {
@@ -97,6 +102,10 @@ $listing->alert_record_id     = $alert ? (string) $alert->_id : null;
             );
         } elseif ($filter === 'out_of_stock') {
             $listings = $allListings->filter(fn($l) => $l->current_stock === 0);
+        } elseif ($filter === 'recent_movements') {
+            $listings = $allListings->filter(
+                fn($l) => $recentMovementListingIds->contains((string) $l->_id)
+            );
         } else {
             $listings = $allListings;
         }

@@ -546,8 +546,8 @@
                 <div class="stat-value">{{ $outOfStockCount }}</div>
             </div>
         </a>
-        <a href="{{ route('admin.inventory.index', array_filter(['filter' => 'all', 'sort' => 'latest', 'search' => $search])) }}"
-           class="stat-card card-green">
+        <a href="{{ route('admin.inventory.index', array_filter(['filter' => 'recent_movements', 'sort' => $sort, 'search' => $search])) }}"
+           class="stat-card card-green {{ $filter === 'recent_movements' ? 'active-filter' : '' }}">
             <div class="stat-icon green">
                 <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <polyline points="17 1 21 5 17 9"/>

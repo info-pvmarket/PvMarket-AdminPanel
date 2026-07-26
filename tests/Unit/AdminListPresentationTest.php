@@ -25,13 +25,24 @@ class AdminListPresentationTest extends TestCase
 
     public function test_inventory_uses_cards_for_filters_and_exposes_requested_columns(): void
     {
+        $controller = file_get_contents($this->projectFile('app/Http/Controllers/Admin/InventoryController.php'));
         $view = file_get_contents($this->projectFile('resources/views/admin/inventory/index.blade.php'));
 
         $this->assertStringContainsString('class="stat-card card-blue', $view);
+        $this->assertStringContainsString("'filter' => 'recent_movements'", $view);
+        $this->assertStringContainsString("\$filter === 'recent_movements'", $view);
         $this->assertStringContainsString('name="sort"', $view);
         $this->assertStringContainsString('<th>Product Name</th>', $view);
         $this->assertStringContainsString("route('product_listing.index'", $view);
         $this->assertStringNotContainsString('class="filter-pills"', $view);
+        $this->assertStringContainsString("'recent_movements']", $controller);
+        $this->assertStringContainsString("->pluck('listing_id')", $controller);
+        $this->assertStringContainsString('->unique()', $controller);
+        $this->assertStringContainsString("\$filter === 'recent_movements'", $controller);
+        $this->assertStringContainsString(
+            '$recentMovements = $recentMovementListingIds->count();',
+            $controller
+        );
     }
 
     public function test_product_and_listing_lists_show_created_dates(): void
