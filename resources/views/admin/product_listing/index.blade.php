@@ -759,7 +759,7 @@
 
 {{-- ── Search bar + view toggle ── --}}
 <form method="GET" action="{{ route('product_listing.index') }}" id="searchForm">
-    @foreach(request()->except('search') as $key => $val)
+    @foreach(request()->except(['search', 'listing_id']) as $key => $val)
         <input type="hidden" name="{{ $key }}" value="{{ $val }}">
     @endforeach
     <div class="search-wrap">
@@ -1056,6 +1056,14 @@
                     <div class="meta-item">
                         <label>Currency</label>
                         <span>{{ $listing->currency_id }}</span>
+                    </div>
+                    <div class="meta-item">
+                        <label>Created Date</label>
+                        <span>
+                            {{ $listing->created_at
+                                ? \Illuminate\Support\Carbon::parse($listing->created_at)->format('d M Y, H:i')
+                                : '—' }}
+                        </span>
                     </div>
                     @if($firstSlotPricing)
                         <div class="meta-item">

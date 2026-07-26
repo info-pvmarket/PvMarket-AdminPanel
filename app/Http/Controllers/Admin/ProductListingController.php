@@ -16,6 +16,7 @@ use App\Models\Commission;
 use App\Services\TranslationService;
 use App\Models\ProductListingImage;
 use App\Models\Incoterm;
+use App\Models\Currency;
 use App\Traits\FiltersAssignedUsers;
 
 class ProductListingController extends Controller
@@ -35,6 +36,10 @@ class ProductListingController extends Controller
 
         // Filter by assigned users
         $this->filterByAssignedUsers($query, 'user_id');
+
+        if ($request->filled('listing_id')) {
+            $query->whereIn('_id', $this->mongoIdCandidates((string) $request->input('listing_id')));
+        }
 
         if ($request->filled('search')) {
             $search = trim($request->search);
@@ -431,7 +436,7 @@ class ProductListingController extends Controller
         $commissions    = Commission::all(['category_id', 'category_name', 'commission_percentage']);
 
         $sellTypes     = ['sell by pieces', 'sell by containers', 'sell by weight'];
-        $currencies    = ['AED', 'USD', 'GBP', 'EUR'];
+        $currencies    = $this->availableCurrencies();
         $discountTypes = ['No Promotion', 'fixed', 'percentage'];
         $incoterms = Incoterm::orderBy('name')->get();
 
@@ -604,7 +609,12 @@ class ProductListingController extends Controller
         $product      = Product::where('_id', new \MongoDB\BSON\ObjectId($productId))->first();
         $warehouse    = Warehouse::where('_id', new \MongoDB\BSON\ObjectId($warehouseId))->first();
         $sellTypes     = ['sell by pieces', 'sell by pallets', 'sell by containers', 'sell by weight'];
-        $currencies    = ['AED', 'USD', 'GBP', 'EUR'];
+        $currencies    = $this->availableCurrencies();
+        $listingCurrency = strtoupper(trim((string) $listing->currency_id));
+        if ($listingCurrency !== '' && ! in_array($listingCurrency, $currencies, true)) {
+            $currencies[] = $listingCurrency;
+            sort($currencies);
+        }
         $discountTypes = ['No Promotion', 'fixed', 'percentage'];
         $incoterms = Incoterm::orderBy('name')->get();
 
@@ -880,6 +890,21 @@ class ProductListingController extends Controller
         }
 
         return $candidates;
+    }
+
+    /**
+     * Return the common currency list for admin listing forms.
+     *
+     * @return array<int, string>
+     */
+    private function availableCurrencies(): array
+    {
+        return Currency::orderBy('code')
+            ->pluck('code')
+            ->map(static fn ($code) => strtoupper(trim((string) $code)))
+            ->filter()
+            ->values()
+            ->all();
     }
 
     private function normalizeStringArray(mixed $value): array

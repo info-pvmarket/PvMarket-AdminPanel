@@ -45,4 +45,22 @@ class UserManagementPresentationTest extends TestCase
     {
         $this->assertSame(['super-admin', 'admin'], Role::ADMIN_SLUGS);
     }
+
+    public function test_management_status_updates_both_user_status_fields(): void
+    {
+        $user = new User(['is_active' => true, 'c_active' => true]);
+
+        $user->syncActiveStatus(false);
+
+        $this->assertFalse($user->is_active);
+        $this->assertFalse($user->c_active);
+        $this->assertFalse($user->isActiveForManagement());
+    }
+
+    public function test_management_status_uses_the_legacy_status_as_a_fallback(): void
+    {
+        $user = new User(['c_active' => false]);
+
+        $this->assertFalse($user->isActiveForManagement());
+    }
 }

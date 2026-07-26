@@ -18,7 +18,13 @@ class BrandController extends Controller
         if ($request->filled('search')) {
             $query->where('name', 'like', '%' . $request->search . '%');
         }
-        $brands = $query->orderBy('menu_order', 'asc')
+
+        $sort = in_array($request->get('sort'), ['newest', 'oldest'], true)
+            ? $request->get('sort')
+            : 'newest';
+
+        $brands = $query->orderBy('created_at', $sort === 'oldest' ? 'asc' : 'desc')
+                        ->orderBy('menu_order', 'asc')
                         ->paginate($request->get('entries', 10))
                         ->withQueryString();
 
@@ -60,7 +66,6 @@ class BrandController extends Controller
     'menu_order'    => isset($data['menu_order']) ? (int)$data['menu_order'] : 0,
     'image'         => $imageData,
     'is_active'     => true,
-    'can_show_menu' => isset($data['can_show_menu']),
     'is_hold'       => false,
 ];
 $rowData = $this->attachTranslations($rowData, new Brand());
@@ -108,7 +113,6 @@ Brand::create($rowData);
     'alt_tag'       => $request->alt_tag ?? Str::slug($request->name),
     'menu_order'    => (int)($request->menu_order ?? 0),
     'image'         => $imageData,
-    'can_show_menu' => $request->boolean('can_show_menu'),
 ];
 $updateData = $this->attachTranslations($updateData, $brand);
 $brand->update($updateData);
@@ -120,8 +124,14 @@ $brand->update($updateData);
     public function toggle($id)
     {
         $brand = Brand::findOrFail($id);
-        $brand->update(['is_active' => !$brand->is_active]);
-        return redirect()->route('admin.setup.brands.index');
+        $isActive = !$brand->is_active;
+        $brand->update([
+            'is_active' => $isActive,
+            'is_hold'   => !$isActive,
+        ]);
+
+        return redirect()->route('admin.setup.brands.index')
+                         ->with('success', 'Active status updated.');
     }
 
     public function destroy($id)

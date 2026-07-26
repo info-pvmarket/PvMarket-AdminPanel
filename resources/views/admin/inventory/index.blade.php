@@ -66,6 +66,14 @@
     transition: transform .2s, box-shadow .2s;
 }
 .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.08); }
+.stat-card {
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+}
+.stat-card.active-filter {
+    box-shadow: 0 0 0 2px var(--primary), 0 8px 24px rgba(0,0,0,.08);
+}
 
 .stat-card::after {
     content: '';
@@ -143,18 +151,19 @@
     }
     .inv-search:focus { border-color: var(--primary); background: #fff; }
 
-    .filter-pills { display: flex; gap: 8px; flex-wrap: wrap; }
-    .filter-pill {
-        padding: 7px 18px;
-        border-radius: 20px;
-        font-size: 13px; font-weight: 600;
-        cursor: pointer; border: none;
-        transition: background .15s, color .15s;
+    .sort-form { margin-left: auto; }
+    .sort-select {
+        min-width: 150px;
+        padding: 8px 34px 8px 12px;
+        border: 1.5px solid var(--border);
+        border-radius: 8px;
+        background: #fff;
+        color: var(--text);
         font-family: inherit;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
     }
-    .filter-pill.active { background: var(--primary); color: #fff; }
-    .filter-pill:not(.active) { background: var(--bg); color: var(--muted); }
-    .filter-pill:not(.active):hover { background: #e5e7eb; color: var(--text); }
 
     /* ── Table card ─────────────────────────────────────────────── */
     .inv-table-wrap {
@@ -201,6 +210,8 @@
         color: var(--blue); flex-shrink: 0;
     }
     .sku-code   { font-weight: 700; color: var(--text); font-size: 13px; }
+    .sku-code:hover { color: var(--primary); text-decoration: underline; }
+    .product-name { color: var(--text); font-weight: 600; font-size: 13px; }
     .sku-status { font-size: 11px; color: var(--muted); margin-top: 1px; }
 
     /* Warehouse */
@@ -497,8 +508,8 @@
 
     {{-- ── Stat Cards ── --}}
     <div class="inv-stats" id="statCards">
-         @php $recentMovements = 0; @endphp
-        <div class="stat-card card-blue">
+        <a href="{{ route('admin.inventory.index', array_filter(['filter' => 'all', 'sort' => $sort, 'search' => $search])) }}"
+           class="stat-card card-blue {{ $filter === 'all' ? 'active-filter' : '' }}">
             <div class="stat-icon blue">
                 <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path d="M21 16V8a2 2 0 0 0-1-1.73L13 2.27a2 2 0 0 0-2 0L4 6.27A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
@@ -508,8 +519,9 @@
                 <div class="stat-label">Total Listings</div>
                 <div class="stat-value">{{ $totalListings }}</div>
             </div>
-        </div>
-        <div class="stat-card card-yellow">
+        </a>
+        <a href="{{ route('admin.inventory.index', array_filter(['filter' => 'low_stock', 'sort' => $sort, 'search' => $search])) }}"
+           class="stat-card card-yellow {{ $filter === 'low_stock' ? 'active-filter' : '' }}">
             <div class="stat-icon yellow">
                 <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
@@ -520,8 +532,9 @@
                 <div class="stat-label">Low Stock</div>
                 <div class="stat-value">{{ $lowStockCount }}</div>
             </div>
-        </div>
-        <div class="stat-card card-red">
+        </a>
+        <a href="{{ route('admin.inventory.index', array_filter(['filter' => 'out_of_stock', 'sort' => $sort, 'search' => $search])) }}"
+           class="stat-card card-red {{ $filter === 'out_of_stock' ? 'active-filter' : '' }}">
             <div class="stat-icon red">
                 <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <circle cx="12" cy="12" r="10"/>
@@ -532,8 +545,9 @@
                 <div class="stat-label">Out of Stock</div>
                 <div class="stat-value">{{ $outOfStockCount }}</div>
             </div>
-        </div>
-        <div class="stat-card card-green">
+        </a>
+        <a href="{{ route('admin.inventory.index', array_filter(['filter' => 'all', 'sort' => 'latest', 'search' => $search])) }}"
+           class="stat-card card-green">
             <div class="stat-icon green">
                 <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <polyline points="17 1 21 5 17 9"/>
@@ -547,7 +561,7 @@
                 <div class="stat-value">{{ $recentMovements }}</div>
                 <div class="stat-sub">(24h)</div>
             </div>
-        </div>
+        </a>
     </div>
 
     {{-- ── Toolbar ── --}}
@@ -561,11 +575,16 @@
                    value="{{ $search }}"
                    oninput="debounceSearch()">
         </div>
-        <div class="filter-pills">
-            <button class="filter-pill {{ $filter === 'all'          ? 'active' : '' }}" onclick="setFilter('all', this)">All</button>
-            <button class="filter-pill {{ $filter === 'low_stock'    ? 'active' : '' }}" onclick="setFilter('low_stock', this)">Low Stock</button>
-            <button class="filter-pill {{ $filter === 'out_of_stock' ? 'active' : '' }}" onclick="setFilter('out_of_stock', this)">Out of Stock</button>
-        </div>
+        <form method="GET" action="{{ route('admin.inventory.index') }}" class="sort-form">
+            <input type="hidden" name="filter" value="{{ $filter }}">
+            @if($search !== '')
+                <input type="hidden" name="search" value="{{ $search }}">
+            @endif
+            <select name="sort" class="sort-select" aria-label="Sort inventory" onchange="this.form.submit()">
+                <option value="latest" {{ $sort === 'latest' ? 'selected' : '' }}>Latest first</option>
+                <option value="oldest" {{ $sort === 'oldest' ? 'selected' : '' }}>Oldest first</option>
+            </select>
+        </form>
     </div>
 
     {{-- ── Table ── --}}
@@ -574,6 +593,7 @@
             <thead>
                 <tr>
                     <th>SKU Code</th>
+                    <th>Product Name</th>
                     <th>Stock</th>
                     <th>Warehouse</th>
                     <th>Alert</th>
@@ -601,10 +621,21 @@
                                     </svg>
                                 </div>
                                 <div>
-                                    <div class="sku-code">{{ $listing->sku_code }}</div>
+                                    <a class="sku-code"
+                                       href="{{ route('product_listing.index', [
+                                           'listing_id' => (string) $listing->_id,
+                                           'search' => $listing->sku_code,
+                                       ]) }}">
+                                        {{ $listing->sku_code }}
+                                    </a>
                                     <div class="sku-status">{{ $listing->is_active ? 'Active' : 'Inactive' }}</div>
                                 </div>
                             </div>
+                        </td>
+
+                        {{-- Product --}}
+                        <td>
+                            <span class="product-name">{{ $listing->product_name }}</span>
                         </td>
 
                         {{-- Stock --}}
@@ -679,7 +710,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5">
+                        <td colspan="6">
                             <div class="inv-empty">
                                 <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="display:block;margin:0 auto 12px;">
                                     <path d="M21 16V8a2 2 0 0 0-1-1.73L13 2.27a2 2 0 0 0-2 0L4 6.27A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
@@ -928,6 +959,7 @@ let currentAdjustListingId = null;
 let currentAdjustType      = 'add';
 let currentHistoryId       = null;
 let currentFilter          = '{{ $filter }}';
+let currentSort            = '{{ $sort }}';
 let searchTimer            = null;
 
 
@@ -943,14 +975,6 @@ function showToast(msg, type = '') {
 function closeModal(id)       { document.getElementById(id).classList.remove('open'); }
 function backdropClose(id, e) { if (e.target === document.getElementById(id)) closeModal(id); }
 
-// ── Filter + Search ────────────────────────────────────────────────────────
-function setFilter(f, el) {
-    currentFilter = f;
-    document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
-    el.classList.add('active');
-    fetchListings();
-}
-
 function debounceSearch() {
     clearTimeout(searchTimer);
     searchTimer = setTimeout(fetchListings, 350);
@@ -960,7 +984,7 @@ function refreshListings() { fetchListings(); }
 
 function fetchListings() {
     const search = document.getElementById('invSearch').value;
-    fetch(`{{ route('admin.inventory.index') }}?filter=${currentFilter}&search=${encodeURIComponent(search)}`, {
+    fetch(`{{ route('admin.inventory.index') }}?filter=${currentFilter}&sort=${currentSort}&search=${encodeURIComponent(search)}`, {
         headers: { 'X-Requested-With': 'XMLHttpRequest' }
     })
     .then(r => r.json())
@@ -971,9 +995,17 @@ function fetchListings() {
 function renderTable(listings) {
     const tbody = document.getElementById('invTableBody');
     if (!listings || listings.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5"><div class="inv-empty">No inventory records found.</div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6"><div class="inv-empty">No inventory records found.</div></td></tr>`;
         return;
     }
+
+    const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;',
+    })[character]);
 
     const boxIcon = `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73L13 2.27a2 2 0 0 0-2 0L4 6.27A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`;
     const whIcon  = `<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`;
@@ -987,15 +1019,19 @@ function renderTable(listings) {
         const wh       = l.warehouse_display_name ?? 'N/A';
         const at       = l.alert_threshold;
         const alertSet = at !== null && at !== undefined;
+        const sku      = escapeHtml(l.sku_code);
+        const product  = escapeHtml(l.product_name || 'N/A');
+        const listUrl  = escapeHtml(l.listing_url || '#');
 
         return `<tr>
             <td><div class="sku-wrap">
                 <div class="sku-icon">${boxIcon}</div>
                 <div>
-                    <div class="sku-code">${l.sku_code ?? ''}</div>
+                    <a class="sku-code" href="${listUrl}">${sku}</a>
                     <div class="sku-status">${l.is_active ? 'Active' : 'Inactive'}</div>
                 </div>
             </div></td>
+            <td><span class="product-name">${product}</span></td>
             <td><span class="stock-strong">${stock.toLocaleString()}</span> <span class="stock-unit">${unit}</span></td>
             <td><div class="wh-wrap">${whIcon} ${wh}</div></td>
             <td>${alertSet

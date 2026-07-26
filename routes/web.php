@@ -39,6 +39,7 @@ use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\LocationController;
 use App\Http\Controllers\Admin\RfqRequestController;
 use App\Http\Controllers\Admin\MarketController;
+use App\Http\Controllers\Admin\CurrencyController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\SeoMetaController;
 use App\Http\Controllers\Admin\ProjectApprovalController;
@@ -287,6 +288,14 @@ Route::middleware('auth')->group(function () {
         Route::patch('/{id}/domains/{domainId}/primary', [MarketController::class, 'setPrimaryDomain'])->name('domains.primary');
     });
 
+    // SETTINGS - Currencies (uses the market currency configuration consumed by the API)
+    Route::prefix('admin/setup/currencies')->name('admin.setup.currencies.')->middleware('admin.permission:settings.markets')->group(function () {
+        Route::get('/', [CurrencyController::class, 'index'])->name('index');
+        Route::post('/', [CurrencyController::class, 'store'])->name('store');
+        Route::patch('/{code}/symbol', [CurrencyController::class, 'updateSymbol'])->name('symbol');
+        Route::delete('/{code}', [CurrencyController::class, 'destroy'])->name('destroy');
+    });
+
     // ══════════════════════════════════════════════════════════════════════
     // STATIC PAGES
     // ══════════════════════════════════════════════════════════════════════
@@ -383,6 +392,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/admin/users/{id}/edit', [UserController::class, 'edit'])->name('admin.users.edit');
         Route::put('/admin/users/{id}/update-basic', [UserController::class, 'updateBasic'])->name('admin.users.update-basic');
         Route::put('/admin/users/{id}/update-company', [UserController::class, 'updateCompany'])->name('admin.users.update-company');
+        Route::patch('/admin/users/{id}/toggle-status', [UserController::class, 'toggleStatus'])->name('admin.users.toggle-status');
+        Route::delete('/admin/users/{id}', [UserController::class, 'destroy'])->name('admin.users.destroy');
         Route::patch('/admin/users/{id}/toggle-verified', [UserController::class, 'toggleCompanyVerified'])->name('admin.users.toggle-verified');
         Route::get('users/export', [UserController::class, 'export'])->name('admin.users.export');
         Route::post('/admin/users/{userId}/assign-admin', [UserController::class, 'assignAdmin'])->name('admin.users.assign-admin');
@@ -396,7 +407,6 @@ Route::middleware('auth')->group(function () {
         Route::post('/admin/users/{userId}/listings/{listingId}/approve', [UserController::class, 'approveListing'])->name('admin.users.listing-approve');
         Route::post('/admin/users/{userId}/listings/{listingId}/reject', [UserController::class, 'rejectListing'])->name('admin.users.listing-reject');
 
-        Route::resource('users', UserController::class)->names('admin.users');
     });
 
     // ══════════════════════════════════════════════════════════════════════

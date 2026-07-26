@@ -23,10 +23,15 @@ class InventoryController extends Controller
     public function index(Request $request)
     {
         $userId = Auth::id();
-        $filter = $request->get('filter', 'all'); // all | low_stock | out_of_stock
+        $filter = in_array($request->get('filter'), ['low_stock', 'out_of_stock'], true)
+            ? $request->get('filter')
+            : 'all';
+        $sort = in_array($request->get('sort'), ['latest', 'oldest'], true)
+            ? $request->get('sort')
+            : 'latest';
         $search = $request->get('search', '');
 
-        $query = ProductListing::query()->with(['warehouse']);
+        $query = ProductListing::query()->with(['warehouse', 'product']);
 
         // Filter by assigned users
         $this->filterByAssignedUsers($query, 'user_id');
@@ -35,7 +40,9 @@ class InventoryController extends Controller
             $query->where('sku_code', 'like', "%{$search}%");
         }
 
-        $listings = $query->get();
+        $listings = $query
+            ->orderBy('created_at', $sort === 'oldest' ? 'asc' : 'desc')
+            ->get();
 
         // Enrich each listing with live stock + alert data
         $listings = $listings->map(function ($listing) use ($userId) {
@@ -43,6 +50,7 @@ class InventoryController extends Controller
 
     $listing->current_stock = InventoryTransaction::currentStock($id);
     $listing->stock_unit    = $listing->stock_unit ?? 'pieces';
+    $listing->product_name  = $listing->product?->product_name ?? 'N/A';
 
     if ($listing->warehouse) {
         $listing->warehouse_display_name =
@@ -61,21 +69,47 @@ $listing->alert_record_id     = $alert ? (string) $alert->_id : null;
             return $listing;
         });
 
+        $allListings = $listings->values();
+        $totalListings = $allListings->count();
+        $lowStockCount = $allListings->filter(fn($l) =>
+            $l->alert_threshold !== null &&
+            $l->current_stock > 0 &&
+            $l->current_stock <= $l->alert_threshold
+        )->count();
+        $outOfStockCount = $allListings->filter(fn($l) => $l->current_stock === 0)->count();
+
+        $listingIds = $allListings
+            ->map(fn($listing) => new ObjectId((string) $listing->_id))
+            ->all();
+        $recentMovements = empty($listingIds)
+            ? 0
+            : InventoryTransaction::whereIn('listing_id', $listingIds)
+                ->recent()
+                ->stockMovements()
+                ->count();
+
         // Apply stock filters
         if ($filter === 'low_stock') {
-            $listings = $listings->filter(fn($l) =>
+            $listings = $allListings->filter(fn($l) =>
                 $l->alert_threshold !== null &&
                 $l->current_stock > 0 &&
                 $l->current_stock <= $l->alert_threshold
             );
         } elseif ($filter === 'out_of_stock') {
-            $listings = $listings->filter(fn($l) => $l->current_stock === 0);
+            $listings = $allListings->filter(fn($l) => $l->current_stock === 0);
+        } else {
+            $listings = $allListings;
         }
 
         if ($request->ajax()) {
     $payload = $listings->values()->map(fn($l) => [
         '_id'                    => (string) $l->_id,
         'sku_code'               => $l->sku_code,
+        'product_name'           => $l->product_name,
+        'listing_url'            => route('product_listing.index', [
+            'listing_id' => (string) $l->_id,
+            'search' => $l->sku_code,
+        ]),
         'is_active'              => (bool) $l->is_active,
         'current_stock'          => $l->current_stock,
         'stock_unit'             => $l->stock_unit,
@@ -87,21 +121,26 @@ $listing->alert_record_id     = $alert ? (string) $alert->_id : null;
     return response()->json(['listings' => $payload]);
 }
 
-        $allListings = $listings->values();
-        $totalListings   = $allListings->count();
-        $lowStockCount   = $allListings->filter(fn($l) => $l->alert_threshold !== null && $l->current_stock > 0 && $l->current_stock <= $l->alert_threshold)->count();
-        $outOfStockCount = $allListings->filter(fn($l) => $l->current_stock === 0)->count();
+        $filteredListings = $listings->values();
         $perPage  = 15;
         $page     = request()->get('page', 1);
         $paginated = new \Illuminate\Pagination\LengthAwarePaginator(
-            $allListings->forPage($page, $perPage),
-            $allListings->count(),
+            $filteredListings->forPage($page, $perPage),
+            $filteredListings->count(),
             $perPage,
             $page,
             ['path' => request()->url(), 'query' => request()->query()]
         );
 
-        return view('admin.inventory.index', compact('filter', 'search', 'totalListings', 'lowStockCount', 'outOfStockCount') + ['listings' => $paginated]);
+        return view('admin.inventory.index', compact(
+            'filter',
+            'sort',
+            'search',
+            'totalListings',
+            'lowStockCount',
+            'outOfStockCount',
+            'recentMovements'
+        ) + ['listings' => $paginated]);
     }
 
     // ── Adjust Stock ──────────────────────────────────────────────────────────

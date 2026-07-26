@@ -162,7 +162,6 @@ public function reorder(Request $request)
             'slug'                => $request->slug ?: Str::slug($request->category_name),
             'category_icon_image' => $iconData,
             'icon_alt_tag'        => $request->alt_tag ?? Str::slug($request->category_name),
-            'is_active'           => $request->boolean('is_active', true),
         ];
 
         $data = $this->attachTranslations($data, $menu);
@@ -175,17 +174,14 @@ public function reorder(Request $request)
     public function toggleStatus($id)
     {
         $menu = MainMenu::findOrFail($id);
-        $menu->update(['is_hold' => !$menu->is_hold]);
+        $isActive = !$menu->is_active;
+        $menu->update([
+            'is_active' => $isActive,
+            'is_hold'   => !$isActive,
+        ]);
 
-        return back()->with('success', 'Status updated.');
+        return back()->with('success', 'Active status updated.');
     }
-    public function toggleActive($id)
-{
-    $menu = MainMenu::findOrFail($id);
-    $menu->update(['is_active' => !$menu->is_active]);
-
-    return back()->with('success', 'Active status updated.');
-}
 
     public function toggleStock($id)
     {

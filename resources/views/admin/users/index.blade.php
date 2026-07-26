@@ -508,19 +508,33 @@
                                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                             </svg>
                         </a>
-                        <a href="#" class="action-icon toggle" title="Toggle status">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="1" y="5" width="22" height="14" rx="7" ry="7"/>
-                                <circle cx="16" cy="12" r="3" fill="currentColor"/>
-                            </svg>
-                        </a>
-                        <a href="#" class="action-icon delete" title="Delete user">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="3 6 5 6 21 6"/>
-                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                                <path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                            </svg>
-                        </a>
+                        <form action="{{ route('admin.users.toggle-status', $user->id) }}" method="POST" style="display:inline-flex;">
+                            @csrf
+                            @method('PATCH')
+                            <button type="submit"
+                                    class="action-icon toggle"
+                                    title="{{ $user->isActiveForManagement() ? 'Set user inactive' : 'Set user active' }}"
+                                    aria-label="{{ $user->isActiveForManagement() ? 'Set user inactive' : 'Set user active' }}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="1" y="5" width="22" height="14" rx="7" ry="7"/>
+                                    <circle cx="{{ $user->isActiveForManagement() ? '16' : '8' }}" cy="12" r="3" fill="currentColor"/>
+                                </svg>
+                            </button>
+                        </form>
+                        <form action="{{ route('admin.users.destroy', $user->id) }}"
+                              method="POST"
+                              style="display:inline-flex;"
+                              onsubmit="return confirm('Delete {{ addslashes($user->name) }}? This action cannot be undone.');">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="action-icon delete" title="Delete user" aria-label="Delete user">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="3 6 5 6 21 6"/>
+                                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                                    <path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                                </svg>
+                            </button>
+                        </form>
                         <a href="mailto:{{ $user->email }}" class="action-icon email" title="Send email">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>

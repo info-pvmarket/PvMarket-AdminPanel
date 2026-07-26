@@ -57,6 +57,9 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         $query = Product::query();
+        $sort = in_array($request->get('sort'), ['latest', 'oldest'], true)
+            ? $request->get('sort')
+            : 'latest';
          
 
         // Verification status filter
@@ -97,8 +100,10 @@ class ProductController extends Controller
         }
        
 
-        $products = $query->orderBy('created_at', 'desc')
-                  ->paginate($request->get('entries', 10));
+        $products = $query
+                  ->orderBy('created_at', $sort === 'oldest' ? 'asc' : 'desc')
+                  ->paginate($request->get('entries', 10))
+                  ->withQueryString();
 
         // Collect all updated_by ObjectIds and resolve to names in one query
         $updatedByIds = $products->pluck('updated_by')
@@ -136,6 +141,7 @@ class ProductController extends Controller
             'creatorUsers'       => $creatorUsers,
             'verificationFilter' => $verificationFilter,
             'listingsFilter'     => $listingsFilter,
+            'sort'               => $sort,
         ]);
     }
 

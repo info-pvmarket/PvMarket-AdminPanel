@@ -283,7 +283,7 @@ function renumberRows() {
 @else
 {{-- ═══ INDEX MODE ═══ --}}
 
-@section('title', 'Main Menus')
+@section('title', 'Categories/main menu')
 
 @section('styles')
 <style>
@@ -318,9 +318,6 @@ function renumberRows() {
     .action-icon.delete { color:#DC2626; border-color:#FECACA; background:#FEF2F2; }
     .action-icon:hover  { transform:translateY(-2px) scale(1.08); box-shadow:0 3px 8px rgba(0,0,0,.12); }
 
-    /* Checkbox styling */
-    .stock-checkbox { width:17px; height:17px; cursor:pointer; accent-color:var(--primary); }
-
     .table-footer { padding:12px 20px; font-size:13px; color:var(--muted); border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; background:#FAFBFD; }
     .pagination { display:flex; gap:3px; list-style:none; }
     .pagination li a,.pagination li span { display:flex; align-items:center; justify-content:center; min-width:32px; height:32px; padding:0 8px; border-radius:6px; border:1.5px solid var(--border); font-size:13px; font-weight:500; text-decoration:none; color:var(--text); background:white; transition:all .15s; }
@@ -336,7 +333,7 @@ function renumberRows() {
 @section('content')
 
 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
-    <h1 style="font-size:22px; font-weight:800; color:var(--text);">Categories</h1>
+    <h1 style="font-size:22px; font-weight:800; color:var(--text);">Categories/main menu</h1>
     <a href="{{ route('admin.setup.main-menus.create') }}"
        style="display:inline-flex; align-items:center; gap:7px; padding:10px 20px;
               background:var(--primary); color:white; border-radius:8px; font-size:14px;
@@ -393,7 +390,6 @@ function renumberRows() {
         <th class="center" style="width:70px;">S.No</th>
         <th class="center" style="width:120px;">Category Icon</th>
         <th>Category Name</th>
-        <th class="center" style="width:140px;">Value of Stocks</th>
         <th class="center" style="width:100px;">Action</th>
     </tr>
 </thead>
@@ -420,24 +416,6 @@ function renumberRows() {
                     @endif
                 </td>
                 <td style="font-weight:600;">{{ lang($menu, 'category_name') }}</td>
-
-                {{-- ── Value of Stocks ── --}}
-                <td class="center">
-                    <form method="POST"
-                          action="{{ route('admin.setup.main-menus.stock-toggle', $menu->id) }}"
-                          style="display:contents;">
-                        @csrf
-                        @method('PATCH')
-                        <input
-                            type="checkbox"
-                            class="stock-checkbox"
-                            name="stock_value"
-                            onchange="this.form.submit()"
-                            {{ $menu->stock_value ? 'checked' : '' }}
-                            title="{{ $menu->stock_value ? 'Enabled — click to disable' : 'Disabled — click to enable' }}"
-                        />
-                    </form>
-                </td>
 
                 <td>
                     <div class="action-btns">
@@ -485,7 +463,7 @@ function renumberRows() {
             </tr>
             @empty
             <tr>
-                <td colspan="6">
+                <td colspan="5">
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                             <path d="M4 6h16M4 12h16M4 18h7"/>

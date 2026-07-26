@@ -79,6 +79,19 @@ public array $translatable = [
         );
     }
 
+    public function isActiveForManagement(): bool
+    {
+        return (bool) ($this->is_active ?? $this->c_active ?? true);
+    }
+
+    public function syncActiveStatus(bool $active): self
+    {
+        $this->is_active = $active;
+        $this->c_active = $active;
+
+        return $this;
+    }
+
     public function isAdmin(): bool
     {
         if (empty($this->role_id)) {

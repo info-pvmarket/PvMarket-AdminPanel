@@ -15,7 +15,6 @@ class Brand extends Model
         'name',
         'slug',
         'image',
-        'can_show_menu',
         'is_hold',
         'alt_tag',
         'is_active',

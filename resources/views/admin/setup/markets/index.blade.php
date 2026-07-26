@@ -37,11 +37,9 @@
     .action-icon svg { width:15px; height:15px; }
     .action-icon.edit   { color:#D97706; border-color:#FDE68A; background:#FFFBEB; }
     .action-icon.delete { color:#DC2626; border-color:#FECACA; background:#FEF2F2; }
-    .action-icon.toggle { color:#059669; border-color:#A7F3D0; background:#ECFDF5; }
     .action-icon:hover { transform:translateY(-2px) scale(1.08); box-shadow:0 3px 8px rgba(0,0,0,.12); }
     .action-icon.edit:hover   { background:#FEF3C7; border-color:#F59E0B; }
     .action-icon.delete:hover { background:#FEE2E2; border-color:#EF4444; }
-    .action-icon.toggle:hover { background:#D1FAE5; border-color:#10B981; }
     .table-footer { padding:12px 20px; font-size:13px; color:var(--muted); border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; background:#FAFBFD; }
     .empty-state { text-align:center; padding:52px 20px; color:var(--muted); }
     .empty-state svg { width:42px; height:42px; margin:0 auto 12px; opacity:.2; display:block; }
@@ -162,18 +160,6 @@
                                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                             </svg>
                         </a>
-                        <button class="action-icon toggle" title="Toggle Status"
-                            onclick="document.getElementById('toggle-{{ $market->id }}').submit();">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
-                                <line x1="12" y1="2" x2="12" y2="12"/>
-                            </svg>
-                        </button>
-                        <form id="toggle-{{ $market->id }}" method="POST"
-                              action="{{ route('admin.setup.markets.toggle', $market->id) }}"
-                              style="display:none;">
-                            @csrf @method('PATCH')
-                        </form>
                         <button class="action-icon delete" title="Delete"
                             onclick="if(confirm('Delete market {{ addslashes($market->name) }}? This will also delete all domains and settings.')) document.getElementById('del-{{ $market->id }}').submit();">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

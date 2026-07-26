@@ -8,6 +8,7 @@
 @section('title', 'Add SEO Meta')
 
 @section('styles')
+<link rel="stylesheet" href="{{ asset('assets/css/vendor-quill.css') }}">
 <style>
     .content-panel { background:white; border:1px solid var(--border); border-radius:12px; padding:28px; box-shadow:0 1px 4px rgba(0,0,0,.04); }
     .section-divider { border:none; border-top:2px solid #E2E8F0; margin:28px 0; }
@@ -34,6 +35,11 @@
     .checkbox-group label { font-size:13px; color:var(--text); cursor:pointer; }
     .help-text { font-size:11px; color:var(--muted); margin-top:4px; }
     .entity-badge { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:20px; font-size:12px; font-weight:600; background:#F0F9FF; color:var(--primary-d); border:1px solid #BAE6FD; }
+    .quill-wrapper { border:1.5px solid var(--border); border-radius:8px; overflow:hidden; background:white; }
+    .quill-wrapper:focus-within { border-color:var(--primary); box-shadow:0 0 0 3px rgba(14,165,233,.1); }
+    .quill-wrapper .ql-toolbar.ql-snow { border:none; border-bottom:1px solid var(--border); background:#F8FAFC; }
+    .quill-wrapper .ql-container.ql-snow { border:none; font-family:inherit; font-size:13.5px; }
+    .quill-wrapper .ql-editor { min-height:180px; color:var(--text); line-height:1.7; }
 </style>
 @endsection
 
@@ -48,7 +54,7 @@
     <div class="alert-error">{{ $errors->first() }}</div>
 @endif
 
-<form method="POST" action="{{ route('admin.seo-meta.store') }}" enctype="multipart/form-data">
+<form method="POST" action="{{ route('admin.seo-meta.store') }}" enctype="multipart/form-data" id="seoMetaForm">
     @csrf
 
     {{-- Entity Selection Section --}}
@@ -160,19 +166,16 @@
         </div>
 
         <div class="form-group" style="margin-bottom:20px;">
-            <label class="form-label">Content</label>
-            <textarea name="content" class="form-input form-textarea" rows="6" placeholder="Main page content (HTML supported)">{{ old('content') }}</textarea>
+            <label class="form-label">Bottom Header</label>
+            <input type="text" name="bottom_header" class="form-input" value="{{ old('bottom_header') }}"
+                   placeholder="Bottom section heading"/>
         </div>
 
-        <div class="form-grid-2">
-            <div class="form-group">
-                <label class="form-label">Bottom Header</label>
-                <input type="text" name="bottom_header" class="form-input" value="{{ old('bottom_header') }}"
-                       placeholder="Bottom section heading"/>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Bottom Description</label>
-                <textarea name="bottom_description" class="form-input" rows="2" placeholder="Bottom section text">{{ old('bottom_description') }}</textarea>
+        <div class="form-group">
+            <label class="form-label">Bottom Description</label>
+            <textarea name="bottom_description" id="bottomDescriptionInput" style="display:none;">{{ old('bottom_description') }}</textarea>
+            <div class="quill-wrapper">
+                <div id="bottomDescriptionEditor"></div>
             </div>
         </div>
     </div>
@@ -351,8 +354,40 @@
 @endsection
 
 @section('scripts')
+<script src="{{ asset('assets/vendor/quill.min.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const bottomDescriptionInput = document.getElementById('bottomDescriptionInput');
+    const bottomDescriptionEditor = document.getElementById('bottomDescriptionEditor');
+    const seoMetaForm = document.getElementById('seoMetaForm');
+
+    if (bottomDescriptionInput && bottomDescriptionEditor && seoMetaForm) {
+        const bottomDescriptionQuill = new Quill(bottomDescriptionEditor, {
+            theme: 'snow',
+            placeholder: 'Enter bottom section text...',
+            modules: {
+                toolbar: [
+                    [{ header: [1, 2, 3, false] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ color: [] }, { background: [] }],
+                    [{ list: 'ordered' }, { list: 'bullet' }],
+                    [{ align: [] }],
+                    ['link'],
+                    ['clean']
+                ]
+            }
+        });
+
+        if (bottomDescriptionInput.value.trim()) {
+            bottomDescriptionQuill.clipboard.dangerouslyPasteHTML(bottomDescriptionInput.value);
+        }
+
+        seoMetaForm.addEventListener('submit', function() {
+            const html = bottomDescriptionQuill.root.innerHTML;
+            bottomDescriptionInput.value = html === '<p><br></p>' ? '' : html;
+        });
+    }
+
     const categorySelect = document.getElementById('category_id');
     const subCategorySelect = document.getElementById('sub_category_id');
     const brandSelect = document.getElementById('brand_id');
@@ -419,6 +454,7 @@ document.addEventListener('DOMContentLoaded', function() {
 @section('title', 'Edit SEO Meta')
 
 @section('styles')
+<link rel="stylesheet" href="{{ asset('assets/css/vendor-quill.css') }}">
 <style>
     .content-panel { background:white; border:1px solid var(--border); border-radius:12px; padding:28px; box-shadow:0 1px 4px rgba(0,0,0,.04); }
     .section-divider { border:none; border-top:2px solid #E2E8F0; margin:28px 0; }
@@ -451,6 +487,11 @@ document.addEventListener('DOMContentLoaded', function() {
     .image-preview-item { position:relative; width:120px; height:80px; border-radius:8px; overflow:hidden; border:1px solid var(--border); }
     .image-preview-item img { width:100%; height:100%; object-fit:cover; }
     .image-preview-item .delete-btn { position:absolute; top:4px; right:4px; width:20px; height:20px; background:#EF4444; color:white; border:none; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:12px; }
+    .quill-wrapper { border:1.5px solid var(--border); border-radius:8px; overflow:hidden; background:white; }
+    .quill-wrapper:focus-within { border-color:var(--primary); box-shadow:0 0 0 3px rgba(14,165,233,.1); }
+    .quill-wrapper .ql-toolbar.ql-snow { border:none; border-bottom:1px solid var(--border); background:#F8FAFC; }
+    .quill-wrapper .ql-container.ql-snow { border:none; font-family:inherit; font-size:13.5px; }
+    .quill-wrapper .ql-editor { min-height:180px; color:var(--text); line-height:1.7; }
 </style>
 @endsection
 
@@ -465,7 +506,7 @@ document.addEventListener('DOMContentLoaded', function() {
     <div class="alert-error">{{ $errors->first() }}</div>
 @endif
 
-<form method="POST" action="{{ route('admin.seo-meta.update', $record->id) }}" enctype="multipart/form-data">
+<form method="POST" action="{{ route('admin.seo-meta.update', $record->id) }}" enctype="multipart/form-data" id="seoMetaForm">
     @csrf
     @method('PUT')
 
@@ -565,20 +606,17 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
 
         <div class="form-group" style="margin-bottom:20px;">
-            <label class="form-label">Content</label>
-            <textarea name="content" class="form-input form-textarea" rows="6" placeholder="Main page content (HTML supported)">{{ old('content', $record->content) }}</textarea>
+            <label class="form-label">Bottom Header</label>
+            <input type="text" name="bottom_header" class="form-input"
+                   value="{{ old('bottom_header', $record->bottom_header) }}"
+                   placeholder="Bottom section heading"/>
         </div>
 
-        <div class="form-grid-2">
-            <div class="form-group">
-                <label class="form-label">Bottom Header</label>
-                <input type="text" name="bottom_header" class="form-input"
-                       value="{{ old('bottom_header', $record->bottom_header) }}"
-                       placeholder="Bottom section heading"/>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Bottom Description</label>
-                <textarea name="bottom_description" class="form-input" rows="2" placeholder="Bottom section text">{{ old('bottom_description', $record->bottom_description) }}</textarea>
+        <div class="form-group">
+            <label class="form-label">Bottom Description</label>
+            <textarea name="bottom_description" id="bottomDescriptionInput" style="display:none;">{{ old('bottom_description', $record->bottom_description) }}</textarea>
+            <div class="quill-wrapper">
+                <div id="bottomDescriptionEditor"></div>
             </div>
         </div>
     </div>
@@ -802,7 +840,43 @@ document.addEventListener('DOMContentLoaded', function() {
 @endsection
 
 @section('scripts')
+<script src="{{ asset('assets/vendor/quill.min.js') }}"></script>
 <script>
+document.addEventListener('DOMContentLoaded', function() {
+    const bottomDescriptionInput = document.getElementById('bottomDescriptionInput');
+    const bottomDescriptionEditor = document.getElementById('bottomDescriptionEditor');
+    const seoMetaForm = document.getElementById('seoMetaForm');
+
+    if (!bottomDescriptionInput || !bottomDescriptionEditor || !seoMetaForm) {
+        return;
+    }
+
+    const bottomDescriptionQuill = new Quill(bottomDescriptionEditor, {
+        theme: 'snow',
+        placeholder: 'Enter bottom section text...',
+        modules: {
+            toolbar: [
+                [{ header: [1, 2, 3, false] }],
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ color: [] }, { background: [] }],
+                [{ list: 'ordered' }, { list: 'bullet' }],
+                [{ align: [] }],
+                ['link'],
+                ['clean']
+            ]
+        }
+    });
+
+    if (bottomDescriptionInput.value.trim()) {
+        bottomDescriptionQuill.clipboard.dangerouslyPasteHTML(bottomDescriptionInput.value);
+    }
+
+    seoMetaForm.addEventListener('submit', function() {
+        const html = bottomDescriptionQuill.root.innerHTML;
+        bottomDescriptionInput.value = html === '<p><br></p>' ? '' : html;
+    });
+});
+
 function markForDeletion(type, imageId, btn) {
     const container = btn.closest('.image-preview-item');
     const input = container.querySelector('input[type="hidden"]');

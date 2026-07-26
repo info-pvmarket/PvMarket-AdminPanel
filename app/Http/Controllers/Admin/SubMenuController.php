@@ -13,11 +13,9 @@ class SubMenuController extends Controller
 {
     public function __construct(protected TranslationService $translator) {}
 
-    private function stockEnabledMainMenus()
+    private function availableMainMenus()
     {
-        return MainMenu::where('stock_value', true)
-            ->where('is_active', '!=', false)
-            ->where('is_hold', '!=', true)
+        return MainMenu::where('is_active', true)
             ->orderBy('category_name')
             ->get();
     }
@@ -41,7 +39,7 @@ class SubMenuController extends Controller
 
     public function create()
     {
-        $mainMenus = $this->stockEnabledMainMenus();
+        $mainMenus = $this->availableMainMenus();
 
         return view('admin.setup.sub-menu.sub-menu', [
             'mode'      => 'create',
@@ -69,8 +67,8 @@ class SubMenuController extends Controller
             'is_hold'              => false,
             'is_active'            => true,
             'stock_value'          => false,
-            'pallet_applicable'    => isset($item['pallet']),
-            'container_applicable' => isset($item['container']),
+            'pallet_applicable'    => false,
+            'container_applicable' => false,
             'created_by'           => new \MongoDB\BSON\ObjectId(auth()->id()),
         ];
 
@@ -85,7 +83,7 @@ class SubMenuController extends Controller
     public function edit($id)
     {
         $record    = SubMenu::findOrFail($id);
-        $mainMenus = $this->stockEnabledMainMenus();
+        $mainMenus = $this->availableMainMenus();
 
         if ($record->category_id && !$mainMenus->contains('id', (string) $record->category_id)) {
             $currentMenu = MainMenu::find($record->category_id);
@@ -118,8 +116,6 @@ class SubMenuController extends Controller
         'category_id'          => new \MongoDB\BSON\ObjectId($request->category_id),
         'slug'                 => $request->slug ?: Str::slug($request->sub_category_name),
         'category_name'        => MainMenu::find($request->category_id)?->category_name ?? '',
-        'pallet_applicable'    => $request->has('pallet_applicable'),
-        'container_applicable' => $request->has('container_applicable'),
         'updated_by'           => new \MongoDB\BSON\ObjectId(auth()->id()),
     ];
 
@@ -133,9 +129,13 @@ class SubMenuController extends Controller
     public function toggleStatus($id)
 {
     $subMenu = SubMenu::findOrFail($id);
-    $subMenu->update(['is_hold' => !$subMenu->is_hold]);
+    $isActive = !$subMenu->is_active;
+    $subMenu->update([
+        'is_active' => $isActive,
+        'is_hold'   => !$isActive,
+    ]);
 
-    return back()->with('success', 'Status updated.');
+    return back()->with('success', 'Active status updated.');
 }
 
     public function toggleStock($id)

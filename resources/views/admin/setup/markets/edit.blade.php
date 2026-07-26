@@ -20,13 +20,6 @@
     .btn-save { display:inline-flex; align-items:center; gap:8px; padding:10px 28px; background:#10B981; color:white; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; transition:background .15s; }
     .btn-save:hover { background:#059669; }
     .btn-back { display:inline-flex; align-items:center; gap:7px; padding:9px 18px; background:var(--text); color:white; border-radius:8px; font-size:13.5px; font-weight:600; text-decoration:none; transition:background .15s; white-space:nowrap; border:1.5px solid var(--text); }
-    .btn-small { display:inline-flex; align-items:center; gap:5px; padding:6px 14px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; transition:all .15s; text-decoration:none; border:none; }
-    .btn-primary { background:var(--primary); color:white; }
-    .btn-primary:hover { background:var(--primary-d); }
-    .btn-danger { background:#FEF2F2; color:#DC2626; border:1px solid #FECACA; }
-    .btn-danger:hover { background:#FEE2E2; }
-    .btn-success { background:#ECFDF5; color:#059669; border:1px solid #A7F3D0; }
-    .btn-success:hover { background:#D1FAE5; }
     .alert-error { padding:12px 16px; background:#FEE2E2; color:#991B1B; border:1px solid #FECACA; border-radius:8px; font-size:13.5px; margin-bottom:20px; }
     .alert-success { padding:12px 16px; background:#D1FAE5; color:#065F46; border:1px solid #A7F3D0; border-radius:8px; font-size:13.5px; margin-bottom:20px; display:flex; align-items:center; gap:8px; }
     .toggle-wrap { display:flex; align-items:center; gap:10px; }
@@ -36,19 +29,6 @@
     .toggle-input:checked + .toggle-slider { background:#10B981; }
     .toggle-input:checked + .toggle-slider::after { transform:translateX(20px); }
     .toggle-label { font-size:13px; font-weight:500; color:var(--text); }
-
-    /* Domain list styles */
-    .domain-list { margin-top:16px; }
-    .domain-item { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; background:#F8FAFC; border:1px solid var(--border); border-radius:8px; margin-bottom:8px; }
-    .domain-item:last-child { margin-bottom:0; }
-    .domain-info { display:flex; align-items:center; gap:12px; }
-    .domain-name { font-family:monospace; font-size:14px; font-weight:600; color:var(--text); }
-    .domain-badge { padding:3px 8px; border-radius:4px; font-size:10px; font-weight:700; text-transform:uppercase; }
-    .domain-badge.primary { background:#DBEAFE; color:#1E40AF; }
-    .domain-actions { display:flex; align-items:center; gap:8px; }
-    .add-domain-form { display:flex; align-items:flex-end; gap:12px; margin-top:16px; padding-top:16px; border-top:1px dashed var(--border); }
-    .add-domain-form .form-group { flex:1; margin-bottom:0; }
-    .empty-domains { text-align:center; padding:24px; color:var(--muted); font-size:13px; }
 </style>
 @endsection
 
@@ -82,70 +62,27 @@
         <div class="form-grid">
             <div class="form-group">
                 <label class="form-label">Market Code <span>*</span></label>
-                <input type="text" name="code" class="form-input" placeholder="e.g. global, in, uk"
-                       value="{{ old('code', $record->code) }}" required maxlength="10" style="text-transform:lowercase;"/>
-                <div class="form-hint">Unique identifier (lowercase, max 10 chars)</div>
+                <select name="code" class="form-input" required>
+                    <option value="">Select country</option>
+                    @if(strtolower((string) $record->code) === 'global')
+                        <option value="global" {{ old('code', $record->code) === 'global' ? 'selected' : '' }}>
+                            Global Market (GLOBAL)
+                        </option>
+                    @endif
+                    @foreach($marketCountries as $country)
+                        <option value="{{ strtolower($country['code']) }}"
+                            {{ strtolower((string) old('code', $record->code)) === strtolower($country['code']) ? 'selected' : '' }}>
+                            {{ $country['name'] }} ({{ $country['code'] }})
+                        </option>
+                    @endforeach
+                </select>
+                <div class="form-hint">The selected two-letter country code is stored as the market code</div>
             </div>
 
             <div class="form-group">
                 <label class="form-label">Market Name <span>*</span></label>
                 <input type="text" name="name" class="form-input" placeholder="e.g. Global, India"
                        value="{{ old('name', $record->name) }}" required/>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Default Currency <span>*</span></label>
-                <input type="text" name="default_currency" class="form-input" placeholder="e.g. USD, INR"
-                       value="{{ old('default_currency', $record->default_currency) }}" required maxlength="10" style="text-transform:uppercase;"/>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Default Locale <span>*</span></label>
-                <input type="text" name="default_locale" class="form-input" placeholder="e.g. en-US, en-IN"
-                       value="{{ old('default_locale', $record->default_locale) }}" required maxlength="10"/>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Status</label>
-                <div class="toggle-wrap">
-                    <input type="checkbox" name="is_active" id="is_active" class="toggle-input" value="1"
-                           {{ old('is_active', $record->is_active) ? 'checked' : '' }}/>
-                    <label for="is_active" class="toggle-slider"></label>
-                    <span class="toggle-label">Active</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="content-panel">
-        <h3 class="section-title">Site Settings</h3>
-
-        <div class="form-grid">
-            <div class="form-group">
-                <label class="form-label">Site Name</label>
-                <input type="text" name="site_name" class="form-input" placeholder="e.g. pv.market India"
-                       value="{{ old('site_name', $settings->site_name ?? '') }}"/>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Metadata Base URL</label>
-                <input type="url" name="metadata_base" class="form-input" placeholder="e.g. https://pvmarket.in"
-                       value="{{ old('metadata_base', $settings->metadata_base ?? '') }}"/>
-            </div>
-
-            <div class="form-group full">
-                <label class="form-label">Site Description</label>
-                <input type="text" name="site_description" class="form-input"
-                       placeholder="e.g. India's Digital Market Place for Solar & Renewable Energy Products"
-                       value="{{ old('site_description', $settings->site_description ?? '') }}"/>
-            </div>
-
-            <div class="form-group full">
-                <label class="form-label">Available Currencies</label>
-                <input type="text" name="available_currencies" class="form-input"
-                       placeholder="e.g. USD, EUR, GBP, INR (comma-separated)"
-                       value="{{ old('available_currencies', implode(', ', $settings->available_currencies ?? [])) }}"/>
-                <div class="form-hint">Comma-separated list of currency codes</div>
             </div>
         </div>
     </div>
@@ -160,7 +97,7 @@
                     <option value="">-- All Countries (Global) --</option>
                     @foreach($countries as $country)
                         <option value="{{ $country->code }}"
-                            {{ old('default_country_code', $settings->default_country_code ?? '') == $country->code ? 'selected' : '' }}>
+                            {{ old('default_country_code', $settings->default_country_code ?? strtoupper((string) $record->code)) == $country->code ? 'selected' : '' }}>
                             {{ $country->name }} ({{ $country->code }})
                         </option>
                     @endforeach
@@ -173,7 +110,7 @@
                 <div class="toggle-wrap">
                     <input type="checkbox" name="filter_by_country" id="filter_by_country"
                            class="toggle-input" value="1"
-                           {{ old('filter_by_country', $settings->filter_by_country ?? false) ? 'checked' : '' }}/>
+                           {{ old('filter_by_country', $settings->filter_by_country ?? strtolower((string) $record->code) !== 'global') ? 'checked' : '' }}/>
                     <label for="filter_by_country" class="toggle-slider"></label>
                     <span class="toggle-label">Only show products from default country</span>
                 </div>
@@ -202,86 +139,12 @@
                 <input type="text" name="contact_address" class="form-input" placeholder="e.g. Mumbai, India"
                        value="{{ old('contact_address', $settings->contact_address ?? '') }}"/>
             </div>
-        </div>
-    </div>
 
-    <div class="content-panel">
-        <h3 class="section-title">Social Links</h3>
-
-        <div class="form-grid-3">
-            <div class="form-group">
-                <label class="form-label">Facebook</label>
-                <input type="url" name="social_facebook" class="form-input" placeholder="https://facebook.com/..."
-                       value="{{ old('social_facebook', $settings->social_links['facebook'] ?? '') }}"/>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Twitter</label>
-                <input type="url" name="social_twitter" class="form-input" placeholder="https://twitter.com/..."
-                       value="{{ old('social_twitter', $settings->social_links['twitter'] ?? '') }}"/>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">LinkedIn</label>
-                <input type="url" name="social_linkedin" class="form-input" placeholder="https://linkedin.com/..."
-                       value="{{ old('social_linkedin', $settings->social_links['linkedin'] ?? '') }}"/>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Instagram</label>
-                <input type="url" name="social_instagram" class="form-input" placeholder="https://instagram.com/..."
-                       value="{{ old('social_instagram', $settings->social_links['instagram'] ?? '') }}"/>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">YouTube</label>
-                <input type="url" name="social_youtube" class="form-input" placeholder="https://youtube.com/..."
-                       value="{{ old('social_youtube', $settings->social_links['youtube'] ?? '') }}"/>
-            </div>
-        </div>
-    </div>
-
-    <div class="content-panel">
-        <h3 class="section-title">Analytics</h3>
-
-        <div class="form-grid">
-            <div class="form-group">
-                <label class="form-label">GTM Container ID</label>
-                <input type="text" name="gtm_container_id" class="form-input" placeholder="e.g. GTM-XXXXXXX"
-                       value="{{ old('gtm_container_id', $settings->gtm_container_id ?? '') }}"/>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Google Analytics ID</label>
-                <input type="text" name="google_analytics_id" class="form-input" placeholder="e.g. G-XXXXXXXXXX"
-                       value="{{ old('google_analytics_id', $settings->google_analytics_id ?? '') }}"/>
-            </div>
-        </div>
-    </div>
-
-    <div class="content-panel">
-        <h3 class="section-title">Features</h3>
-
-        <div style="display:flex; gap:32px; flex-wrap:wrap;">
-            <div class="toggle-wrap">
-                <input type="checkbox" name="feature_rfq" id="feature_rfq" class="toggle-input" value="1"
-                       {{ old('feature_rfq', $settings->features['rfq_enabled'] ?? true) ? 'checked' : '' }}/>
-                <label for="feature_rfq" class="toggle-slider"></label>
-                <span class="toggle-label">RFQ Enabled</span>
-            </div>
-
-            <div class="toggle-wrap">
-                <input type="checkbox" name="feature_checkout" id="feature_checkout" class="toggle-input" value="1"
-                       {{ old('feature_checkout', $settings->features['checkout_enabled'] ?? true) ? 'checked' : '' }}/>
-                <label for="feature_checkout" class="toggle-slider"></label>
-                <span class="toggle-label">Checkout Enabled</span>
-            </div>
-
-            <div class="toggle-wrap">
-                <input type="checkbox" name="feature_bidding" id="feature_bidding" class="toggle-input" value="1"
-                       {{ old('feature_bidding', $settings->features['bidding_enabled'] ?? true) ? 'checked' : '' }}/>
-                <label for="feature_bidding" class="toggle-slider"></label>
-                <span class="toggle-label">Bidding Enabled</span>
+            <div class="form-group full">
+                <label class="form-label">Calendly Link</label>
+                <input type="url" name="calendly_link" class="form-input" placeholder="e.g. https://calendly.com/pv-market/consultation"
+                       value="{{ old('calendly_link', $settings->calendly_link ?? '') }}" maxlength="2048"/>
+                <div class="form-hint">Optional scheduling link for this market</div>
             </div>
         </div>
     </div>
@@ -297,82 +160,5 @@
         </button>
     </div>
 </form>
-
-{{-- Domain Management Section --}}
-<div class="content-panel">
-    <h3 class="section-title">
-        <span>Domain Mappings</span>
-        <span style="font-size:12px; font-weight:500; color:var(--muted);">{{ count($domains) }} domain(s)</span>
-    </h3>
-
-    @if(count($domains) > 0)
-        <div class="domain-list">
-            @foreach($domains as $domain)
-                <div class="domain-item">
-                    <div class="domain-info">
-                        <span class="domain-name">{{ $domain->domain }}</span>
-                        @if($domain->is_primary)
-                            <span class="domain-badge primary">Primary</span>
-                        @endif
-                    </div>
-                    <div class="domain-actions">
-                        @if(!$domain->is_primary)
-                            <form method="POST" action="{{ route('admin.setup.markets.domains.primary', [$record->id, $domain->id]) }}" style="display:inline;">
-                                @csrf
-                                @method('PATCH')
-                                <button type="submit" class="btn-small btn-success" title="Set as Primary">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                                    </svg>
-                                    Set Primary
-                                </button>
-                            </form>
-                        @endif
-                        <form method="POST" action="{{ route('admin.setup.markets.domains.remove', [$record->id, $domain->id]) }}" style="display:inline;"
-                              onsubmit="return confirm('Remove domain {{ $domain->domain }}?');">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="btn-small btn-danger" title="Remove">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="3 6 5 6 21 6"/>
-                                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                                </svg>
-                                Remove
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            @endforeach
-        </div>
-    @else
-        <div class="empty-domains">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 8px; opacity:.3; display:block;">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="2" y1="12" x2="22" y2="12"/>
-                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-            </svg>
-            No domains configured yet
-        </div>
-    @endif
-
-    <form method="POST" action="{{ route('admin.setup.markets.domains.add', $record->id) }}" class="add-domain-form">
-        @csrf
-        <div class="form-group">
-            <label class="form-label">Add Domain</label>
-            <input type="text" name="domain" class="form-input" placeholder="e.g. pvmarket.in or www.pvmarket.in" required/>
-        </div>
-        <div class="toggle-wrap" style="margin-bottom:6px;">
-            <input type="checkbox" name="is_primary" id="new_is_primary" class="toggle-input" value="1"/>
-            <label for="new_is_primary" class="toggle-slider"></label>
-            <span class="toggle-label">Primary</span>
-        </div>
-        <button type="submit" class="btn-small btn-primary">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-            Add Domain
-        </button>
-    </form>
-</div>
 
 @endsection

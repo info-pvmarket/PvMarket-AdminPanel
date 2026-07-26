@@ -23,8 +23,6 @@
     .form-file-wrap { border:1.5px solid var(--border); border-radius:8px; overflow:hidden; display:flex; align-items:center; background:white; }
     .form-file-wrap input[type="file"] { flex:1; padding:7px 10px; border:none; outline:none; font-family:inherit; font-size:13px; background:transparent; cursor:pointer; }
     .form-file-wrap input[type="file"]::-webkit-file-upload-button { padding:5px 12px; background:var(--light); border:none; border-right:1px solid var(--border); font-family:inherit; font-size:12px; font-weight:600; cursor:pointer; margin-right:8px; }
-    .checkbox-wrap { display:flex; align-items:center; justify-content:center; gap:6px; }
-    .checkbox-wrap input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:var(--primary); }
     .btn-add-row { display:inline-flex; align-items:center; gap:7px; padding:9px 18px; background:var(--primary); color:white; border:none; border-radius:8px; font-size:13.5px; font-weight:600; cursor:pointer; font-family:inherit; transition:background .15s; }
     .btn-add-row:hover { background:var(--primary-d); }
     .btn-save { display:inline-flex; align-items:center; gap:8px; padding:10px 28px; background:#10B981; color:white; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; transition:background .15s; }
@@ -74,7 +72,6 @@
                     <th style="width:60px;">S.No</th>
                     <th>Sub Category Name</th>
                     <th>Alt Tag</th>
-                    <th style="width:220px; text-align:center;">Pallet/Container Sell Applicable</th>
                     <th style="width:60px;">Actions</th>
                 </tr>
             </thead>
@@ -83,15 +80,6 @@
                     <td class="sno">1.</td>
                     <td><input type="text" name="items[0][name]" class="form-row-input" placeholder="Sub Category Name" required/></td>
                     <td><input type="text" name="items[0][alt_tag]" class="form-row-input" placeholder="Alt Tag"/></td>
-                    <td>
-                        <div class="checkbox-wrap">
-                            <input type="checkbox" name="items[0][pallet]" id="pallet_0" value="1"/>
-                            <label for="pallet_0" style="font-size:12px; color:var(--muted);">Pallet</label>
-                            &nbsp;&nbsp;
-                            <input type="checkbox" name="items[0][container]" id="container_0" value="1"/>
-                            <label for="container_0" style="font-size:12px; color:var(--muted);">Container</label>
-                        </div>
-                    </td>
                     <td>
                         <button type="button" class="btn-remove" onclick="removeRow(this)">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -133,15 +121,6 @@ function addRow() {
         <td><input type="text" name="items[${idx}][name]" class="form-row-input" placeholder="Sub Category Name" required/></td>
         <td><input type="text" name="items[${idx}][alt_tag]" class="form-row-input" placeholder="Alt Tag"/></td>
         <td>
-            <div class="checkbox-wrap">
-                <input type="checkbox" name="items[${idx}][pallet]" id="pallet_${idx}" value="1"/>
-                <label for="pallet_${idx}" style="font-size:12px; color:var(--muted);">Pallet</label>
-                &nbsp;&nbsp;
-                <input type="checkbox" name="items[${idx}][container]" id="container_${idx}" value="1"/>
-                <label for="container_${idx}" style="font-size:12px; color:var(--muted);">Container</label>
-            </div>
-        </td>
-        <td>
             <button type="button" class="btn-remove" onclick="removeRow(this)">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M3 6h18M8 6V4h8v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
@@ -168,9 +147,6 @@ function renumber() {
         tr.querySelectorAll('input[type="file"]').forEach(inp => {
             inp.name = inp.name.replace(/items\[\d+\]/, `items[${i}]`);
         });
-        tr.querySelectorAll('input[type="checkbox"]').forEach(inp => {
-            inp.name = inp.name.replace(/items\[\d+\]/, `items[${i}]`);
-        });
     });
 }
 </script>
@@ -185,7 +161,6 @@ function renumber() {
 @section('styles')
 <style>
     .content-panel { background:white; border:1px solid var(--border); border-radius:12px; padding:28px; box-shadow:0 1px 4px rgba(0,0,0,.04); }
-    .form-grid-3 { display:grid; grid-template-columns:1fr 1fr auto; gap:20px; margin-bottom:24px; align-items:end; }
     .form-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px; }
     .form-grid-1 { margin-bottom:20px; }
     .form-group { display:flex; flex-direction:column; gap:6px; }
@@ -207,9 +182,6 @@ function renumber() {
     .btn-save:hover { background:#059669; }
     .btn-back { display:inline-flex; align-items:center; gap:7px; padding:9px 18px; background:var(--text); color:white; border-radius:8px; font-size:13.5px; font-weight:600; text-decoration:none; transition:background .15s; white-space:nowrap; border:1.5px solid var(--text); }
     .btn-back:hover { background:#334155; border-color:#334155; }
-    .checkbox-group { display:flex; align-items:center; gap:10px; padding:10px 0; }
-    .checkbox-group input[type="checkbox"] { width:18px; height:18px; cursor:pointer; accent-color:var(--primary); }
-    .checkbox-group label { font-size:14px; font-weight:600; color:var(--text); cursor:pointer; }
     .alert-error { padding:12px 16px; background:#FEE2E2; color:#991B1B; border:1px solid #FECACA; border-radius:8px; font-size:13.5px; margin-bottom:20px; }
 </style>
 @endsection
@@ -233,8 +205,7 @@ function renumber() {
         @csrf
         @method('PUT')
 
-        {{-- Row 1: Name + Category + Pallet/Container --}}
-        <div class="form-grid-3">
+        <div class="form-grid-2">
             <div class="form-group">
                 <label class="form-label">Sub Category Name <span>*</span></label>
                 <input type="text" name="sub_category_name" class="form-input"
@@ -251,21 +222,6 @@ function renumber() {
                         </option>
                     @endforeach
                 </select>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Pallet/Container Applicable</label>
-                <div style="display:flex; gap:20px; padding:10px 0;">
-                    <div class="checkbox-group">
-                        <input type="checkbox" name="pallet_applicable" id="pallet_applicable" value="1"
-                               {{ old('pallet_applicable', $record->pallet_applicable) ? 'checked' : '' }}/>
-                        <label for="pallet_applicable">Pallet</label>
-                    </div>
-                    <div class="checkbox-group">
-                        <input type="checkbox" name="container_applicable" id="container_applicable" value="1"
-                               {{ old('container_applicable', $record->container_applicable) ? 'checked' : '' }}/>
-                        <label for="container_applicable">Container</label>
-                    </div>
-                </div>
             </div>
         </div>
 
@@ -313,9 +269,6 @@ function renumber() {
     .data-table tbody tr:nth-child(odd) td { background:white; }
     .data-table tbody tr:nth-child(even) td { background:#FAFBFD; }
     .data-table tbody tr:hover td { background:#E0F2FE !important; }
-    .badge { display:inline-flex; align-items:center; padding:3px 10px; border-radius:20px; font-size:11.5px; font-weight:600; }
-    .badge-yes { background:#D1FAE5; color:#065F46; }
-    .badge-no  { background:#F1F5F9; color:#94A3B8; }
     .action-btns { display:flex; align-items:center; justify-content:center; gap:8px; }
     .action-icon { width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; border:1.5px solid transparent; background:none; border-radius:7px; transition:all .15s; text-decoration:none; }
     .action-icon svg { width:15px; height:15px; }
@@ -324,7 +277,6 @@ function renumber() {
     .action-icon.toggle.off { color:#94A3B8; border-color:#E2E8F0; background:#F8FAFC; }
     .action-icon.delete { color:#DC2626; border-color:#FECACA; background:#FEF2F2; }
     .action-icon:hover  { transform:translateY(-2px) scale(1.08); box-shadow:0 3px 8px rgba(0,0,0,.12); }
-    .stock-checkbox { width:17px; height:17px; cursor:pointer; accent-color:var(--primary); }
     .table-footer { padding:12px 20px; font-size:13px; color:var(--muted); border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; background:#FAFBFD; }
     .pagination { display:flex; gap:3px; list-style:none; }
     .pagination li a,.pagination li span { display:flex; align-items:center; justify-content:center; min-width:32px; height:32px; padding:0 8px; border-radius:6px; border:1.5px solid var(--border); font-size:13px; font-weight:500; text-decoration:none; color:var(--text); background:white; transition:all .15s; }
@@ -396,9 +348,6 @@ function renumber() {
                 <th class="center" style="width:70px;">S.No</th>
                 <th>Sub Category</th>
                 <th>Category</th>
-                <th class="center" style="width:110px;">Pallet</th>
-                <th class="center" style="width:120px;">Container</th>
-                <th class="center" style="width:140px;">Value of Stocks</th>
                 <th class="center" style="width:100px;">Action</th>
             </tr>
         </thead>
@@ -415,35 +364,6 @@ function renumber() {
                         {{ $sub->category_name ?? '—' }}
                     </span>
                 </td>
-                <td class="center">
-                    <span class="badge {{ $sub->pallet_applicable ? 'badge-yes' : 'badge-no' }}">
-                        {{ $sub->pallet_applicable ? 'Yes' : 'No' }}
-                    </span>
-                </td>
-                <td class="center">
-                    <span class="badge {{ $sub->container_applicable ? 'badge-yes' : 'badge-no' }}">
-                        {{ $sub->container_applicable ? 'Yes' : 'No' }}
-                    </span>
-                </td>
-
-                {{-- ── Value of Stocks ── --}}
-                <td class="center">
-                    <form method="POST"
-                          action="{{ route('admin.setup.sub-menus.stock-toggle', $sub->id) }}"
-                          style="display:contents;">
-                        @csrf
-                        @method('PATCH')
-                        <input
-                            type="checkbox"
-                            class="stock-checkbox"
-                            name="stock_value"
-                            onchange="this.form.submit()"
-                            {{ $sub->stock_value ? 'checked' : '' }}
-                            title="{{ $sub->stock_value ? 'Enabled — click to disable' : 'Disabled — click to enable' }}"
-                        />
-                    </form>
-                </td>
-
                 <td>
                     <div class="action-btns">
                         <a href="{{ route('admin.setup.sub-menus.edit', $sub->id) }}"
@@ -459,11 +379,11 @@ function renumber() {
                               style="display:contents;">
                             @csrf @method('PATCH')
                             <button type="submit"
-                                    class="action-icon toggle {{ !$sub->is_hold ? '' : 'off' }}"
-                                    title="{{ !$sub->is_hold ? 'Active — click to hold' : 'On Hold — click to activate' }}">
+                                    class="action-icon toggle {{ $sub->is_active ? '' : 'off' }}"
+                                    title="{{ $sub->is_active ? 'Active — click to deactivate' : 'Inactive — click to activate' }}">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <rect x="1" y="5" width="22" height="14" rx="7"/>
-                                    <circle cx="{{ !$sub->is_hold ? '16' : '8' }}" cy="12" r="4"
+                                    <circle cx="{{ $sub->is_active ? '16' : '8' }}" cy="12" r="4"
                                             fill="currentColor" stroke="none"/>
                                 </svg>
                             </button>
@@ -487,7 +407,7 @@ function renumber() {
             </tr>
             @empty
             <tr>
-                <td colspan="7">
+                <td colspan="4">
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                             <path d="M4 6h16M4 12h10M4 18h6"/>

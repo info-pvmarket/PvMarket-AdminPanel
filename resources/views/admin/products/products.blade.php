@@ -691,7 +691,7 @@ document.addEventListener('DOMContentLoaded', function () {
         <div class="filter-group-pills">
             @foreach(['all' => 'All', 'pending' => 'Pending', 'verified' => 'Verified', 'rejected' => 'Rejected'] as $key => $label)
                 <a href="{{ route('admin.products.index', array_merge(
-                        request()->only(['listings_filter', 'search', 'entries']),
+                        request()->only(['listings_filter', 'search', 'entries', 'sort']),
                         ['verification_status' => $key]
                     )) }}"
                    class="filter-pill {{ ($verificationFilter ?? 'all') === $key ? 'active' : '' }}">
@@ -707,7 +707,7 @@ document.addEventListener('DOMContentLoaded', function () {
         <div class="filter-group-pills">
             @foreach(['all' => 'All Listings', 'has_listings' => 'Has Listings', 'no_listings' => 'No Listings'] as $key => $label)
                 <a href="{{ route('admin.products.index', array_merge(
-                        request()->only(['verification_status', 'search', 'entries']),
+                        request()->only(['verification_status', 'search', 'entries', 'sort']),
                         ['listings_filter' => $key]
                     )) }}"
                    class="filter-pill {{ ($listingsFilter ?? 'all') === $key ? 'active-purple' : '' }}">
@@ -716,6 +716,17 @@ document.addEventListener('DOMContentLoaded', function () {
             @endforeach
         </div>
     </div>
+
+    <form method="GET" action="{{ route('admin.products.index') }}" class="filter-group">
+        <span class="filter-group-label">Created Date</span>
+        @foreach(request()->only(['verification_status', 'listings_filter', 'search', 'entries']) as $name => $value)
+            <input type="hidden" name="{{ $name }}" value="{{ $value }}">
+        @endforeach
+        <select name="sort" class="entries-select" aria-label="Sort products by created date" onchange="this.form.submit()">
+            <option value="latest" {{ ($sort ?? 'latest') === 'latest' ? 'selected' : '' }}>Latest first</option>
+            <option value="oldest" {{ ($sort ?? 'latest') === 'oldest' ? 'selected' : '' }}>Oldest first</option>
+        </select>
+    </form>
 </div>
 
 <div class="content-panel">
@@ -730,6 +741,7 @@ document.addEventListener('DOMContentLoaded', function () {
             @if(request('entries'))
                 <input type="hidden" name="entries" value="{{ request('entries') }}">
             @endif
+            <input type="hidden" name="sort" value="{{ $sort ?? 'latest' }}">
             <label>Search:</label>
             <div class="search-input-wrap">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -749,6 +761,7 @@ document.addEventListener('DOMContentLoaded', function () {
             @if(request('search'))
                 <input type="hidden" name="search" value="{{ request('search') }}">
             @endif
+            <input type="hidden" name="sort" value="{{ $sort ?? 'latest' }}">
             Show
             <select name="entries" class="entries-select" onchange="this.form.submit()">
                 @foreach([10,25,50,100] as $n)
@@ -766,6 +779,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 <th>Product Name</th>
                 <th style="width:120px;">Brand</th>
                 <th style="width:220px;">Created User</th>
+                <th style="width:150px;">Created Date</th>
                 <th class="center" style="width:160px;">Verification Status</th>
                 <th class="center" style="width:140px;">Updated By</th>
                 <th class="center" style="width:130px;">Action</th>
@@ -792,6 +806,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         <span class="creator-detail">{{ $creatorEmail }}</span>
                         <span class="creator-detail">{{ $creatorPhone }}</span>
                     </div>
+                </td>
+                <td>
+                    {{ $product->created_at
+                        ? \Illuminate\Support\Carbon::parse($product->created_at)->format('d M Y, H:i')
+                        : '—' }}
                 </td>
                 <td class="center">
                     <span class="badge badge-{{ $product->verification_status ?? 'pending' }}">
@@ -863,7 +882,7 @@ document.addEventListener('DOMContentLoaded', function () {
             </tr>
             @empty
             <tr>
-                <td colspan="7">
+                <td colspan="8">
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>

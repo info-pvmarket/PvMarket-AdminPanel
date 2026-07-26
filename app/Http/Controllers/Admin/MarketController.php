@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Country;
+use App\Models\Currency;
 use App\Models\Market;
 use App\Models\MarketDomain;
 use App\Models\MarketSettings;
@@ -45,25 +47,34 @@ class MarketController extends Controller
 
     public function create()
     {
-        return view('admin.setup.markets.create');
+        return view('admin.setup.markets.create', [
+            'marketCountries' => $this->marketCountryOptions(),
+        ]);
     }
 
     // ─── STORE ───────────────────────────────────────────────────────────────
 
     public function store(Request $request)
     {
-        $request->validate([
-            'code'             => 'required|string|max:10|unique:mongodb.markets,code',
-            'name'             => 'required|string|max:255',
-            'default_currency' => 'required|string|max:10',
-            'default_locale'   => 'required|string|max:10',
+        $request->merge([
+            'code' => strtolower(trim((string) $request->code)),
         ]);
 
+        $request->validate([
+            'code'          => $this->marketCodeRules(),
+            'name'          => 'required|string|max:255',
+            'calendly_link' => 'nullable|url|max:2048',
+        ]);
+
+        $defaultCurrency = Currency::where('code', 'USD')->exists()
+            ? 'USD'
+            : (Currency::orderBy('code')->value('code') ?? 'USD');
+
         $market = Market::create([
-            'code'             => strtolower($request->code),
+            'code'             => $request->code,
             'name'             => $request->name,
-            'default_currency' => strtoupper($request->default_currency),
-            'default_locale'   => $request->default_locale,
+            'default_currency' => $defaultCurrency,
+            'default_locale'   => 'en-US',
             'is_active'        => $request->boolean('is_active', true),
         ]);
 
@@ -76,18 +87,18 @@ class MarketController extends Controller
             'contact_email'        => $request->contact_email ?? '',
             'contact_phone'        => $request->contact_phone ?? '',
             'contact_address'      => $request->contact_address ?? '',
+            'calendly_link'        => $request->calendly_link ?? '',
             'social_links'         => [],
             'gtm_container_id'     => $request->gtm_container_id ?? '',
             'google_analytics_id'  => $request->google_analytics_id ?? '',
-            'available_currencies' => [$request->default_currency],
             'features'             => [
                 'rfq_enabled'      => true,
                 'checkout_enabled' => true,
                 'bidding_enabled'  => true,
             ],
             'metadata_base'        => $request->metadata_base ?? '',
-            'default_country_code' => $request->default_country_code ?? '',
-            'filter_by_country'    => $request->boolean('filter_by_country'),
+            'default_country_code' => strtoupper($request->code),
+            'filter_by_country'    => true,
         ]);
 
         return redirect()->route('admin.setup.markets.index')
@@ -101,14 +112,13 @@ class MarketController extends Controller
         $record   = Market::findOrFail($id);
         $marketId = new ObjectId((string) $record->_id);
         $settings = MarketSettings::where('market_id', $marketId)->first();
-        $domains  = MarketDomain::where('market_id', $marketId)->get();
-        $countries = \App\Models\Country::orderBy('name')->get();
+        $countries = Country::orderBy('name')->get();
 
         return view('admin.setup.markets.edit', [
-            'record'    => $record,
-            'settings'  => $settings,
-            'domains'   => $domains,
-            'countries' => $countries,
+            'record'          => $record,
+            'settings'        => $settings,
+            'countries'       => $countries,
+            'marketCountries' => $this->marketCountryOptions(),
         ]);
     }
 
@@ -116,21 +126,21 @@ class MarketController extends Controller
 
     public function update(Request $request, string $id)
     {
-        $request->validate([
-            'code'             => 'required|string|max:10|unique:mongodb.markets,code,' . $id . ',_id',
-            'name'             => 'required|string|max:255',
-            'default_currency' => 'required|string|max:10',
-            'default_locale'   => 'required|string|max:10',
-        ]);
-
         $record = Market::findOrFail($id);
 
+        $request->merge([
+            'code' => strtolower(trim((string) $request->code)),
+        ]);
+
+        $request->validate([
+            'code'          => $this->marketCodeRules($id, strtolower((string) $record->code) === 'global'),
+            'name'          => 'required|string|max:255',
+            'calendly_link' => 'nullable|url|max:2048',
+        ]);
+
         $record->update([
-            'code'             => strtolower($request->code),
-            'name'             => $request->name,
-            'default_currency' => strtoupper($request->default_currency),
-            'default_locale'   => $request->default_locale,
-            'is_active'        => $request->boolean('is_active'),
+            'code' => $request->code,
+            'name' => $request->name,
         ]);
 
         // Update or create settings (remove all scopes to ensure we find any existing record)
@@ -141,27 +151,10 @@ class MarketController extends Controller
 
         $settingsData = [
             'market_id'            => $marketId,
-            'site_name'            => $request->site_name ?? $record->name,
-            'site_description'     => $request->site_description ?? '',
             'contact_email'        => $request->contact_email ?? '',
             'contact_phone'        => $request->contact_phone ?? '',
             'contact_address'      => $request->contact_address ?? '',
-            'gtm_container_id'     => $request->gtm_container_id ?? '',
-            'google_analytics_id'  => $request->google_analytics_id ?? '',
-            'metadata_base'        => $request->metadata_base ?? '',
-            'social_links'         => [
-                'facebook'  => $request->social_facebook ?? '',
-                'twitter'   => $request->social_twitter ?? '',
-                'linkedin'  => $request->social_linkedin ?? '',
-                'instagram' => $request->social_instagram ?? '',
-                'youtube'   => $request->social_youtube ?? '',
-            ],
-            'available_currencies' => array_filter(array_map('trim', explode(',', $request->available_currencies ?? ''))),
-            'features'             => [
-                'rfq_enabled'      => $request->boolean('feature_rfq'),
-                'checkout_enabled' => $request->boolean('feature_checkout'),
-                'bidding_enabled'  => $request->boolean('feature_bidding'),
-            ],
+            'calendly_link'        => $request->calendly_link ?? '',
             'default_country_code' => $request->default_country_code ?? '',
             'filter_by_country'    => $request->boolean('filter_by_country'),
         ];
@@ -173,7 +166,19 @@ class MarketController extends Controller
             }
             $settings->update($settingsData);
         } else {
-            MarketSettings::create($settingsData);
+            MarketSettings::create($settingsData + [
+                'site_name'           => $record->name,
+                'site_description'    => '',
+                'social_links'        => [],
+                'gtm_container_id'    => '',
+                'google_analytics_id' => '',
+                'metadata_base'       => '',
+                'features'            => [
+                    'rfq_enabled'      => true,
+                    'checkout_enabled' => true,
+                    'bidding_enabled'  => true,
+                ],
+            ]);
         }
 
         return redirect()->route('admin.setup.markets.index')
@@ -250,5 +255,57 @@ class MarketController extends Controller
 
         return redirect()->route('admin.setup.markets.edit', $marketId)
                          ->with('success', 'Primary domain updated.');
+    }
+
+    private function marketCountryOptions()
+    {
+        return Country::orderBy('name')
+            ->get()
+            ->map(function (Country $country) {
+                $code = strtoupper(trim((string) ($country->iso2 ?: $country->code)));
+
+                return [
+                    'code' => $code,
+                    'name' => $country->name,
+                ];
+            })
+            ->filter(fn (array $country) => preg_match('/^[A-Z]{2}$/', $country['code']) === 1)
+            ->unique('code')
+            ->values();
+    }
+
+    private function marketCodeRules(?string $marketId = null, bool $allowGlobal = false): array
+    {
+        $uniqueRule = $marketId
+            ? 'unique:mongodb.markets,code,' . $marketId . ',_id'
+            : 'unique:mongodb.markets,code';
+
+        return [
+            'required',
+            'string',
+            'max:10',
+            function (string $attribute, mixed $value, \Closure $fail) use ($allowGlobal) {
+                if ($allowGlobal && $value === 'global') {
+                    return;
+                }
+
+                if (!preg_match('/^[a-z]{2}$/', (string) $value)) {
+                    $fail('Please select a valid country for the market code.');
+
+                    return;
+                }
+
+                $countryCode = strtoupper((string) $value);
+                $countryExists = Country::where(function ($query) use ($countryCode) {
+                    $query->where('iso2', $countryCode)
+                        ->orWhere('code', $countryCode);
+                })->exists();
+
+                if (!$countryExists) {
+                    $fail('The selected country is not available.');
+                }
+            },
+            $uniqueRule,
+        ];
     }
 }

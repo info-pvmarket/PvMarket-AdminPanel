@@ -71,7 +71,7 @@
             @if($user->hasAdminPermission('settings.categories'))
             <a href="{{ route('admin.setup.main-menus.index') }}"
                class="nav-sub-item {{ request()->routeIs('admin.setup.main-menus.*') ? 'active' : '' }}">
-               Categories
+               Categories/main menu
             </a>
             @endif
             @if($user->hasAdminPermission('settings.sub_categories'))
@@ -162,6 +162,10 @@
             <a href="{{ route('admin.setup.markets.index') }}"
                class="nav-sub-item {{ request()->routeIs('admin.setup.markets.*') ? 'active' : '' }}">
                Markets
+            </a>
+            <a href="{{ route('admin.setup.currencies.index') }}"
+               class="nav-sub-item {{ request()->routeIs('admin.setup.currencies.*') ? 'active' : '' }}">
+               Currencies
             </a>
             @endif
             @if($user->hasAdminPermission('settings.seo_meta'))

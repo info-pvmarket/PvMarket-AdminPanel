@@ -64,7 +64,6 @@
                     <th style="min-width:220px;">Brand Image</th>
                     <th style="min-width:160px;">Alt Tag</th>
                     <th style="min-width:110px;">Menu Order</th>
-                    <th style="min-width:110px;">Show Menu</th>
                     <th style="width:60px;">Action</th>
                 </tr>
             </thead>
@@ -86,15 +85,9 @@
                     </td>
                     <td>
                         <input type="number" name="brands[0][menu_order]" class="form-row-input"
-                               placeholder="e.g. 1" min="0"/>
+                               placeholder="e.g. 1" min="0"
+                               title="Use 1, 2, 3... for top-bar order. Zero appears last."/>
                     </td>
-                    <td>
-    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-        <input type="checkbox" name="brands[0][can_show_menu]" value="1"
-               style="width:16px;height:16px;cursor:pointer;" checked/>
-        <span style="font-size:13px;color:var(--text);">Visible</span>
-    </label>
-</td>
                     <td>
                         <button type="button" class="btn-remove" onclick="removeRow(this)" title="Remove">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -150,15 +143,9 @@ function addRow() {
         </td>
         <td>
             <input type="number" name="brands[${idx}][menu_order]" class="form-row-input"
-                   placeholder="e.g. 1" min="0"/>
+                   placeholder="e.g. 1" min="0"
+                   title="Use 1, 2, 3... for top-bar order. Zero appears last."/>
         </td>
-        <td>
-    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-        <input type="checkbox" name="brands[${idx}][can_show_menu]" value="1"
-               style="width:16px;height:16px;cursor:pointer;" checked/>
-        <span style="font-size:13px;color:var(--text);">Visible</span>
-    </label>
-</td>
         <td>
             <button type="button" class="btn-remove" onclick="removeRow(this)" title="Remove">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -290,19 +277,8 @@ function renumber() {
                 <input type="number" name="menu_order" class="form-input"
                        placeholder="e.g. 1" min="0"
                        value="{{ old('menu_order', $record->menu_order ?? 0) }}"/>
-                <span class="form-hint">Lower number appears first</span>
+                <span class="form-hint">Use 1, 2, 3... for top-bar order. Zero appears last.</span>
             </div>
-
-        {{-- Can Show Menu --}}
-<div class="form-group">
-    <label class="form-label">Show in Menu</label>
-    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:9px 0;">
-        <input type="checkbox" name="can_show_menu" value="1"
-               style="width:16px;height:16px;cursor:pointer;"
-               {{ old('can_show_menu', $record->can_show_menu ?? true) ? 'checked' : '' }}/>
-        <span style="font-size:13.5px;color:var(--text);">Visible in menu</span>
-    </label>
-</div>
 
         </div>
 
@@ -366,6 +342,7 @@ function renumber() {
     .action-icon svg { width:15px; height:15px; }
     .action-icon.edit   { color:#D97706; border-color:#FDE68A; background:#FFFBEB; }
     .action-icon.toggle { color:#059669; border-color:#A7F3D0; background:#ECFDF5; }
+    .action-icon.toggle.off { color:#94A3B8; border-color:#E2E8F0; background:#F8FAFC; }
     .action-icon.delete { color:#DC2626; border-color:#FECACA; background:#FEF2F2; }
     .action-icon:hover { transform:translateY(-2px) scale(1.08); box-shadow:0 3px 8px rgba(0,0,0,.12); }
     .action-icon.edit:hover   { background:#FEF3C7; border-color:#F59E0B; }
@@ -395,9 +372,7 @@ function renumber() {
         .data-table th:nth-child(4),
         .data-table td:nth-child(4) { width:64px !important; }
         .data-table th:nth-child(5),
-        .data-table td:nth-child(5) { width:78px !important; }
-        .data-table th:nth-child(6),
-        .data-table td:nth-child(6) { width:82px !important; }
+        .data-table td:nth-child(5) { width:90px !important; }
         .brand-img-wrap { height:48px; }
         .brand-img { max-height:40px; max-width:82px; }
         .brand-img-placeholder { width:74px; height:40px; }
@@ -447,6 +422,7 @@ function renumber() {
             @if(request('entries'))
                 <input type="hidden" name="entries" value="{{ request('entries') }}">
             @endif
+            <input type="hidden" name="sort" value="{{ request('sort', 'newest') }}">
             <label>Search:</label>
             <div class="search-input-wrap">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -458,6 +434,12 @@ function renumber() {
         </form>
 
         <form method="GET" action="{{ route('admin.setup.brands.index') }}" class="entries-group">
+            <label for="brandSort">Sort:</label>
+            <select name="sort" id="brandSort" class="entries-select" onchange="this.form.submit()"
+                    aria-label="Sort brands by created date">
+                <option value="newest" {{ request('sort', 'newest') === 'newest' ? 'selected' : '' }}>Newest</option>
+                <option value="oldest" {{ request('sort') === 'oldest' ? 'selected' : '' }}>Oldest</option>
+            </select>
             Show
             <select name="entries" class="entries-select" onchange="this.form.submit()">
                 @foreach([10,25,50,100] as $n)
@@ -479,7 +461,6 @@ function renumber() {
                 <th class="center" style="width:160px;">Logo</th>
                 <th>Brand</th>
                 <th class="center" style="width:100px;">Order</th>
-                <th class="center" style="width:100px;">Menu</th>
                 <th class="center" style="width:130px;">Action</th>
             </tr>
         </thead>
@@ -521,17 +502,6 @@ function renumber() {
                 <td class="center">
                     <span class="order-badge">{{ $brand->menu_order ?? 0 }}</span>
                 </td>
-                <td class="center">
-    @if($brand->can_show_menu ?? true)
-        <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:#D1FAE5;color:#065F46;border-radius:12px;font-size:12px;font-weight:600;">
-            ✓ Yes
-        </span>
-    @else
-        <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:#FEE2E2;color:#991B1B;border-radius:12px;font-size:12px;font-weight:600;">
-            ✗ No
-        </span>
-    @endif
-</td>
                 <td>
                     <div class="action-btns">
                         <a href="{{ route('admin.setup.brands.edit', $brand->id) }}"
@@ -541,11 +511,12 @@ function renumber() {
                                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                             </svg>
                         </a>
-                        <button class="action-icon toggle" title="Toggle active"
+                        <button class="action-icon toggle {{ $brand->is_active ? '' : 'off' }}"
+                            title="{{ $brand->is_active ? 'Active — click to deactivate' : 'Inactive — click to activate' }}"
                             onclick="document.getElementById('tog-{{ $brand->id }}').submit();">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <rect x="1" y="5" width="22" height="14" rx="7" ry="7"/>
-                                <circle cx="{{ ($brand->is_active ?? true) ? '16' : '8' }}" cy="12" r="3" fill="currentColor"/>
+                                <circle cx="{{ $brand->is_active ? '16' : '8' }}" cy="12" r="3" fill="currentColor"/>
                             </svg>
                         </button>
                         <form id="tog-{{ $brand->id }}" method="POST"
@@ -571,7 +542,7 @@ function renumber() {
             </tr>
             @empty
             <tr>
-                <td colspan="6">
+                <td colspan="5">
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                             <rect x="3" y="3" width="18" height="18" rx="2"/>

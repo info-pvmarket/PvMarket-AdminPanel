@@ -77,6 +77,47 @@ class UserController extends Controller
         return view('admin.users.index', compact('users', 'admins', 'roles'));
     }
 
+    public function toggleStatus(string $id)
+    {
+        $user = $this->managedUser($id);
+        $user->syncActiveStatus(!$user->isActiveForManagement())->save();
+
+        return back()->with(
+            'success',
+            'User status updated to ' . ($user->isActiveForManagement() ? 'Active.' : 'Inactive.')
+        );
+    }
+
+    public function destroy(string $id)
+    {
+        $user = $this->managedUser($id);
+        $userName = $user->name;
+        $user->delete();
+
+        return back()->with('success', "User {$userName} deleted successfully.");
+    }
+
+    private function managedUser(string $id): User
+    {
+        abort_unless(preg_match('/^[a-f\d]{24}$/i', $id), 404);
+
+        $query = User::with('role')->where('_id', new ObjectId($id));
+
+        if (!Auth::user()->isSuperAdmin()) {
+            $query->where('assigned_admin_id', new ObjectId((string) Auth::id()));
+        }
+
+        $user = $query->firstOrFail();
+
+        abort_if(
+            in_array($user->role?->slug, Role::ADMIN_SLUGS, true),
+            403,
+            'Administrator accounts cannot be managed from User Management.'
+        );
+
+        return $user;
+    }
+
     public function edit(Request $request, $id)
     {
         $user = User::with('role')->findOrFail($id);

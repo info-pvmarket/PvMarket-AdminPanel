@@ -51,9 +51,16 @@
         <div class="form-grid">
             <div class="form-group">
                 <label class="form-label">Market Code <span>*</span></label>
-                <input type="text" name="code" class="form-input" placeholder="e.g. global, in, uk"
-                       value="{{ old('code') }}" required maxlength="10" style="text-transform:lowercase;"/>
-                <div class="form-hint">Unique identifier (lowercase, max 10 chars)</div>
+                <select name="code" class="form-input" required>
+                    <option value="">Select country</option>
+                    @foreach($marketCountries as $country)
+                        <option value="{{ strtolower($country['code']) }}"
+                            {{ old('code') === strtolower($country['code']) ? 'selected' : '' }}>
+                            {{ $country['name'] }} ({{ $country['code'] }})
+                        </option>
+                    @endforeach
+                </select>
+                <div class="form-hint">The selected two-letter country code is stored as the market code</div>
             </div>
 
             <div class="form-group">
@@ -63,49 +70,12 @@
             </div>
 
             <div class="form-group">
-                <label class="form-label">Default Currency <span>*</span></label>
-                <input type="text" name="default_currency" class="form-input" placeholder="e.g. USD, INR, GBP"
-                       value="{{ old('default_currency', 'USD') }}" required maxlength="10" style="text-transform:uppercase;"/>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Default Locale <span>*</span></label>
-                <input type="text" name="default_locale" class="form-input" placeholder="e.g. en-US, en-IN, en-GB"
-                       value="{{ old('default_locale', 'en-US') }}" required maxlength="10"/>
-            </div>
-
-            <div class="form-group">
                 <label class="form-label">Status</label>
                 <div class="toggle-wrap">
                     <input type="checkbox" name="is_active" id="is_active" class="toggle-input" value="1" checked/>
                     <label for="is_active" class="toggle-slider"></label>
                     <span class="toggle-label">Active</span>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="content-panel" style="margin-bottom:20px;">
-        <h3 class="section-title">Site Settings (Optional)</h3>
-
-        <div class="form-grid">
-            <div class="form-group">
-                <label class="form-label">Site Name</label>
-                <input type="text" name="site_name" class="form-input" placeholder="e.g. pv.market India"
-                       value="{{ old('site_name') }}"/>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Metadata Base URL</label>
-                <input type="url" name="metadata_base" class="form-input" placeholder="e.g. https://pvmarket.in"
-                       value="{{ old('metadata_base') }}"/>
-            </div>
-
-            <div class="form-group full">
-                <label class="form-label">Site Description</label>
-                <input type="text" name="site_description" class="form-input"
-                       placeholder="e.g. India's Digital Market Place for Solar & Renewable Energy Products"
-                       value="{{ old('site_description') }}"/>
             </div>
         </div>
     </div>
@@ -131,23 +101,12 @@
                 <input type="text" name="contact_address" class="form-input" placeholder="e.g. Mumbai, India"
                        value="{{ old('contact_address') }}"/>
             </div>
-        </div>
-    </div>
 
-    <div class="content-panel" style="margin-bottom:20px;">
-        <h3 class="section-title">Analytics (Optional)</h3>
-
-        <div class="form-grid">
-            <div class="form-group">
-                <label class="form-label">GTM Container ID</label>
-                <input type="text" name="gtm_container_id" class="form-input" placeholder="e.g. GTM-XXXXXXX"
-                       value="{{ old('gtm_container_id') }}"/>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Google Analytics ID</label>
-                <input type="text" name="google_analytics_id" class="form-input" placeholder="e.g. G-XXXXXXXXXX"
-                       value="{{ old('google_analytics_id') }}"/>
+            <div class="form-group full">
+                <label class="form-label">Calendly Link</label>
+                <input type="url" name="calendly_link" class="form-input" placeholder="e.g. https://calendly.com/pv-market/consultation"
+                       value="{{ old('calendly_link') }}" maxlength="2048"/>
+                <div class="form-hint">Optional scheduling link for this market</div>
             </div>
         </div>
     </div>
