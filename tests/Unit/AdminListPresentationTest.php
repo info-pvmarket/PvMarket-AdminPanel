@@ -231,4 +231,22 @@ class AdminListPresentationTest extends TestCase
         $this->assertStringContainsString("Currency::orderBy('code')", $listingController);
         $this->assertStringNotContainsString("\$currencies    = ['AED', 'USD', 'GBP', 'EUR'];", $listingController);
     }
+
+    public function test_product_forms_have_a_database_backed_product_badge_before_details(): void
+    {
+        $controller = file_get_contents($this->projectFile('app/Http/Controllers/Admin/ProductController.php'));
+        $model = file_get_contents($this->projectFile('app/Models/Product.php'));
+        $view = file_get_contents($this->projectFile('resources/views/admin/products/products.blade.php'));
+
+        $this->assertLessThan(strpos($view, '<div class="section-title">Product Details</div>'), strpos($view, '<div class="section-title">Product Badge</div>'));
+        $this->assertStringContainsString('name="specific_value"', $view);
+        $this->assertStringContainsString('name="specific_value_unit_id"', $view);
+        $this->assertStringContainsString('Specification <span>*</span>', $view);
+        $this->assertStringContainsString('<label class="form-label">Unit</label>', $view);
+        $this->assertStringContainsString("Unit::where('is_active', true)->orderBy('unit_name')->get()", $controller);
+        $this->assertStringContainsString("'specific_value' => 'required|string|max:255'", $controller);
+        $this->assertStringContainsString("'specific_value_unit_id' => ['nullable'", $controller);
+        $this->assertStringContainsString("'specific_value'", $model);
+        $this->assertStringContainsString("'specific_value_unit_id'", $model);
+    }
 }

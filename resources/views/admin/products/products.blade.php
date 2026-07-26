@@ -250,6 +250,40 @@
         {{-- ── Product Details ── --}}
         @endif
 
+        {{-- Product Badge --}}
+        <div class="section-header" onclick="toggleSection('badge')">
+            <div class="section-title">Product Badge</div>
+            <div class="section-toggle" id="toggle-badge">−</div>
+        </div>
+        <div id="section-badge">
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label class="form-label">Specification <span>*</span></label>
+                    <input type="text"
+                           name="specific_value"
+                           class="form-input"
+                           placeholder="e.g. 580"
+                           value="{{ old('specific_value', $record->specific_value ?? '') }}"
+                           required/>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Unit</label>
+                    <select name="specific_value_unit_id" class="form-select">
+                        <option value="">No unit</option>
+                        @foreach($units as $unit)
+                            <option value="{{ $unit->id }}"
+                                {{ old('specific_value_unit_id', $record->specific_value_unit_id ?? '') == $unit->id ? 'selected' : '' }}>
+                                {{ $unit->unit_name }}{{ $unit->unit_code ? ' (' . $unit->unit_code . ')' : '' }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <hr class="divider">
+
+        {{-- Product Details --}}
         <div class="section-header" onclick="toggleSection('details')">
             <div class="section-title">Product Details</div>
             <div class="section-toggle" id="toggle-details">−</div>

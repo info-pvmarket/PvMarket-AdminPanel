@@ -38,7 +38,8 @@ class ProductController extends Controller
     // ── Shared dropdown data ──────────────────────────
     private function getDropdowns(?string $subCategoryId = null): array
     {
-        $brands      = Brand::where('is_active', true)->orderBy('name')->get();
+        $brands    = Brand::where('is_active', true)->orderBy('name')->get();
+        $units     = Unit::where('is_active', true)->orderBy('unit_name')->get();
         $mainMenus = MainMenu::orderBy('category_name')->get();
         $subMenus  = SubMenu::orderBy('sub_category_name')->get();
 
@@ -50,7 +51,7 @@ class ProductController extends Controller
             $options = collect();
         }
 
-        return compact('brands', 'mainMenus', 'subMenus', 'options');
+        return compact('brands', 'units', 'mainMenus', 'subMenus', 'options');
     }
 
     // ── Index ─────────────────────────────────────────
@@ -162,6 +163,8 @@ class ProductController extends Controller
             'category_id'    => 'required|string',
             'sub_category_id'=> 'required|string',
             'brand_id'       => 'nullable|string',
+            'specific_value' => 'required|string|max:255',
+            'specific_value_unit_id' => ['nullable', 'string', 'regex:/^[a-fA-F0-9]{24}$/'],
             'pieces_per_pallet'    => 'nullable|string|max:100',
             'pallets_per_container'=> 'nullable|string|max:100',
             'product_description'  => 'nullable|string',
@@ -170,10 +173,17 @@ class ProductController extends Controller
         // Resolve display names
         $category    = MainMenu::find($request->category_id);
         $subCategory = SubMenu::find($request->sub_category_id);
+        $specificValueUnit = $request->filled('specific_value_unit_id')
+            ? Unit::findOrFail($request->specific_value_unit_id)
+            : null;
 
         $data = [
     'product_name'          => $request->product_name,
     'product_description'   => $request->product_description,
+    'specific_value'        => trim($request->specific_value),
+    'specific_value_unit_id'   => $specificValueUnit ? new \MongoDB\BSON\ObjectId((string) $specificValueUnit->_id) : null,
+    'specific_value_unit_name' => $specificValueUnit?->unit_name,
+    'specific_value_unit_code' => $specificValueUnit?->unit_code,
     'category_id'           => new \MongoDB\BSON\ObjectId($request->category_id),
     'category_name'         => $category?->category_name,
     'sub_category_id'       => new \MongoDB\BSON\ObjectId($request->sub_category_id),
@@ -265,14 +275,23 @@ class ProductController extends Controller
             'product_name'    => 'required|string|max:500',
             'category_id'     => 'required|string',
             'sub_category_id' => 'required|string',
+            'specific_value'  => 'required|string|max:255',
+            'specific_value_unit_id' => ['nullable', 'string', 'regex:/^[a-fA-F0-9]{24}$/'],
         ]);
 
         $category    = MainMenu::find($request->category_id);
         $subCategory = SubMenu::find($request->sub_category_id);
+        $specificValueUnit = $request->filled('specific_value_unit_id')
+            ? Unit::findOrFail($request->specific_value_unit_id)
+            : null;
 
         $data = [
     'product_name'          => $request->product_name,
     'product_description'   => $request->product_description,
+    'specific_value'        => trim($request->specific_value),
+    'specific_value_unit_id'   => $specificValueUnit ? new \MongoDB\BSON\ObjectId((string) $specificValueUnit->_id) : null,
+    'specific_value_unit_name' => $specificValueUnit?->unit_name,
+    'specific_value_unit_code' => $specificValueUnit?->unit_code,
     'category_id'           => new \MongoDB\BSON\ObjectId($request->category_id),
     'category_name'         => $category?->category_name,
     'sub_category_id'       => new \MongoDB\BSON\ObjectId($request->sub_category_id),
