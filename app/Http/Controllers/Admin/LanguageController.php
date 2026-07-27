@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Jobs\TranslatePageJob;
 use App\Models\Language;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class LanguageController extends Controller
@@ -130,20 +132,28 @@ class LanguageController extends Controller
     public function translate(Request $request, string $code)
     {
         $request->validate([
-            'pages'   => ['required', 'array', 'min:1'],
-            'pages.*' => ['string', Rule::in(TranslatePageJob::supportedPages())],
+            'collection' => ['required', 'string', Rule::in(TranslatePageJob::supportedPages())],
         ]);
 
         $language = Language::where('code', $code)->firstOrFail();
-        $pages    = $request->input('pages', []);
+        $collection = $request->string('collection')->toString();
+        $runId = (string) Str::uuid();
 
-        foreach ($pages as $page) {
-            TranslatePageJob::dispatch($code, $page);
-        }
-
-        return back()->with('success',
-            count($pages) . ' page(s) queued for translation to ' . $language->name
-            . '. Existing translations will be replaced in the background.'
+        TranslatePageJob::dispatch(
+            $code,
+            $collection,
+            (string) Auth::id(),
+            $language->name,
+            $runId,
         );
+
+        return back()
+            ->with(
+                'success',
+                str($collection)->replace('-', ' ')->title()
+                . ' queued for translation to ' . $language->name
+                . '. Every record will be processed and existing translations will be replaced.'
+            )
+            ->with('translation_run_id', $runId);
     }
 }

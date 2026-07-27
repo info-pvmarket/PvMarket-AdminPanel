@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use MongoDB\BSON\ObjectId;
 
 class NotificationController extends Controller
 {
@@ -15,31 +16,48 @@ class NotificationController extends Controller
     public function index(Request $request)
     {
         $userId = Auth::id();
-        $limit = $request->input('limit', 20);
+        $limit = min(max($request->integer('limit', 20), 1), 100);
 
         $notifications = Notification::forUser($userId)
             ->notDeleted()
             ->orderBy('created_at', 'desc')
             ->limit($limit)
             ->get()
-            ->map(function ($notification) {
-                return [
-                    'id' => (string) $notification->_id,
-                    'type' => $notification->type,
-                    'title' => $notification->title,
-                    'message' => $notification->message,
-                    'metadata' => $notification->metadata,
-                    'is_read' => $notification->is_read,
-                    'link' => $notification->getLink(),
-                    'time_ago' => $notification->getTimeAgo(),
-                    'created_at' => $notification->created_at?->toISOString(),
-                ];
-            });
+            ->map(fn (Notification $notification) => $this->serialize($notification));
 
         return response()->json([
             'success' => true,
             'notifications' => $notifications,
         ]);
+    }
+
+    /**
+     * Show every notification for the authenticated admin user.
+     */
+    public function page(Request $request)
+    {
+        $status = $request->string('status')->toString();
+        $query = Notification::forUser(Auth::id())
+            ->notDeleted()
+            ->orderBy('created_at', 'desc');
+
+        if ($status === 'unread') {
+            $query->unread();
+        } elseif ($status === 'read') {
+            $query->where('is_read', true);
+        }
+
+        $notifications = $query->paginate(25)->withQueryString();
+        $unreadCount = Notification::forUser(Auth::id())
+            ->notDeleted()
+            ->unread()
+            ->count();
+
+        return view('admin.notifications.index', compact(
+            'notifications',
+            'status',
+            'unreadCount',
+        ));
     }
 
     /**
@@ -67,11 +85,11 @@ class NotificationController extends Controller
     {
         $userId = Auth::id();
 
-        $notification = Notification::where('_id', new \MongoDB\BSON\ObjectId($id))
+        $notification = Notification::where('_id', new ObjectId($id))
             ->forUser($userId)
             ->first();
 
-        if (!$notification) {
+        if (! $notification) {
             return response()->json([
                 'success' => false,
                 'message' => 'Notification not found',
@@ -117,11 +135,11 @@ class NotificationController extends Controller
     {
         $userId = Auth::id();
 
-        $notification = Notification::where('_id', new \MongoDB\BSON\ObjectId($id))
+        $notification = Notification::where('_id', new ObjectId($id))
             ->forUser($userId)
             ->first();
 
-        if (!$notification) {
+        if (! $notification) {
             return response()->json([
                 'success' => false,
                 'message' => 'Notification not found',
@@ -136,5 +154,20 @@ class NotificationController extends Controller
             'success' => true,
             'message' => 'Notification deleted',
         ]);
+    }
+
+    private function serialize(Notification $notification): array
+    {
+        return [
+            'id' => (string) $notification->_id,
+            'type' => $notification->type,
+            'title' => $notification->title,
+            'message' => $notification->message,
+            'metadata' => $notification->metadataArray(),
+            'is_read' => $notification->is_read,
+            'link' => $notification->getLink(),
+            'time_ago' => $notification->getTimeAgo(),
+            'created_at' => $notification->created_at?->toISOString(),
+        ];
     }
 }

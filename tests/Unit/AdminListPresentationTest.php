@@ -55,6 +55,16 @@ class AdminListPresentationTest extends TestCase
         $this->assertStringContainsString('<label>Created Date</label>', $listings);
     }
 
+    public function test_listing_csv_export_includes_created_and_updated_dates(): void
+    {
+        $controller = file_get_contents($this->projectFile('app/Http/Controllers/Admin/ProductListingController.php'));
+
+        $this->assertStringContainsString("'Created At',", $controller);
+        $this->assertStringContainsString("'Updated At',", $controller);
+        $this->assertStringContainsString('$formatDate($listing->created_at ?? null),', $controller);
+        $this->assertStringContainsString('$formatDate($listing->updated_at ?? null),', $controller);
+    }
+
     public function test_super_admin_category_label_matches_main_menu_context(): void
     {
         $sidebar = file_get_contents($this->projectFile('resources/views/components/admin/sidebar.blade.php'));

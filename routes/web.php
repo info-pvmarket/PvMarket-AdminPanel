@@ -64,6 +64,7 @@ Route::middleware('auth')->group(function () {
     // Notifications (accessible to all authenticated admin users)
     Route::prefix('admin/notifications')->name('admin.notifications.')->group(function () {
         Route::get('/', [NotificationController::class, 'index'])->name('index');
+        Route::get('/all', [NotificationController::class, 'page'])->name('page');
         Route::get('/unread-count', [NotificationController::class, 'unreadCount'])->name('unread-count');
         Route::post('/{id}/read', [NotificationController::class, 'markAsRead'])->name('mark-read');
         Route::post('/read-all', [NotificationController::class, 'markAllAsRead'])->name('read-all');

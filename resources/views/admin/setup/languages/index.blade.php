@@ -253,6 +253,27 @@
     .edit-form-inline .form-control { padding: 6px 10px; font-size:0.8rem; }
 
     .actions-cell { display:flex; gap:6px; align-items:center; }
+
+    .translation-toast {
+        position: fixed;
+        right: 24px;
+        bottom: 24px;
+        z-index: 1100;
+        max-width: 420px;
+        padding: 14px 18px;
+        border-radius: 10px;
+        color: #fff;
+        background: #059669;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, .24);
+        font-size: .85rem;
+        font-weight: 600;
+        opacity: 0;
+        transform: translateY(16px);
+        pointer-events: none;
+        transition: opacity .2s ease, transform .2s ease;
+    }
+    .translation-toast.show { opacity: 1; transform: translateY(0); }
+    .translation-toast.error { background: #dc2626; }
 </style>
 
 <div class="lang-page">
@@ -505,7 +526,7 @@ return [
                         Translate to <span id="tm-lang-name">—</span>
                     </div>
                     <div style="font-size:.75rem;color:var(--text-muted,#6b7280);">
-                        Select pages to translate. Existing translations will be replaced.
+                        Select one collection. Every record will be translated and existing translations will be replaced.
                     </div>
                 </div>
             </div>
@@ -514,12 +535,10 @@ return [
             </button>
         </div>
 
-        {{-- Select All bar --}}
+        {{-- Collection selection summary --}}
         <div style="padding:10px 16px;border-bottom:1px solid var(--border,#e5e7eb);display:flex;align-items:center;justify-content:space-between;background:var(--bg-subtle,#f9fafb);">
-            <label style="display:flex;align-items:center;gap:8px;font-size:.8rem;font-weight:600;cursor:pointer;color:var(--text-primary,#111);">
-                <input type="checkbox" id="tm-select-all" onchange="tmToggleAll(this)"> Select all pages
-            </label>
-            <span id="tm-count-label" style="font-size:.75rem;color:var(--text-muted,#6b7280);">0 selected</span>
+            <span style="font-size:.8rem;font-weight:600;color:var(--text-primary,#111);">Choose collection</span>
+            <span id="tm-count-label" style="font-size:.75rem;color:var(--text-muted,#6b7280);">None selected</span>
         </div>
 
         {{-- Page list --}}
@@ -527,23 +546,24 @@ return [
 
         {{-- Footer --}}
         <div style="padding:14px 20px;border-top:1px solid var(--border,#e5e7eb);display:flex;align-items:center;justify-content:space-between;gap:10px;">
-            <span style="font-size:.8rem;color:var(--text-muted,#6b7280);"><strong id="tm-footer-count" style="color:var(--text-primary,#111);">0</strong> pages selected</span>
+            <span id="tm-footer-label" style="font-size:.8rem;color:var(--text-muted,#6b7280);">No collection selected</span>
             <div style="display:flex;gap:8px;">
                 <button class="btn btn-ghost btn-sm" onclick="closeTranslateModal()">Cancel</button>
-                <form id="tm-form" method="POST" action="" style="display:inline;">
+                <form id="tm-form" method="POST" action="" style="display:inline;" onsubmit="tmSubmitting()">
                     @csrf
-                    <input type="hidden" id="tm-lang-code" name="language">
-                    <div id="tm-hidden-pages"></div>
+                    <input type="hidden" id="tm-collection" name="collection">
                     <button type="submit" id="tm-submit" class="btn btn-sm" disabled
                             style="background:#7c3aed;color:#fff;border-color:#7c3aed;">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M5 8l6 6"/><path d="M4 14l6-6 2-2M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6"/></svg>
-                        Translate selected
+                        <span id="tm-submit-label">Translate collection</span>
                     </button>
                 </form>
             </div>
         </div>
     </div>
 </div>
+
+<div id="translationToast" class="translation-toast" role="status" aria-live="polite"></div>
 
 </div>
 
@@ -611,8 +631,9 @@ const TM_PAGES = [
 
 function openTranslateModal(code, name) {
     document.getElementById('tm-lang-name').textContent = name;
-    document.getElementById('tm-lang-code').value = code;
     document.getElementById('tm-form').action = '{{ url("admin/setup/languages") }}/' + code + '/translate';
+    document.getElementById('tm-collection').value = '';
+    document.getElementById('tm-submit-label').textContent = 'Translate collection';
 
     const list = document.getElementById('tm-page-list');
     list.innerHTML = '';
@@ -624,11 +645,13 @@ function openTranslateModal(code, name) {
             const lbl = document.createElement('label');
             lbl.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;margin-bottom:2px;';
             lbl.innerHTML = `
-                <input type="checkbox" data-tm-page="${page.id}" value="${page.id}" style="accent-color:#7c3aed;width:15px;height:15px;">
+                <input type="radio" name="tm-collection-choice" data-tm-page="${page.id}" data-tm-label="${page.label}" value="${page.id}" style="accent-color:#7c3aed;width:15px;height:15px;">
                 <span style="font-size:.85rem;color:var(--text-primary,#111);">${page.label}</span>`;
             const chk = lbl.querySelector('input');
             chk.addEventListener('change', function() {
-                lbl.style.background = this.checked ? '#f5f3ff' : '';
+                document.querySelectorAll('[data-tm-page]').forEach(input => {
+                    input.closest('label').style.background = input.checked ? '#f5f3ff' : '';
+                });
                 tmUpdateCount();
             });
             lbl.onmouseenter = () => { if (!chk.checked) lbl.style.background = 'var(--bg-subtle,#f9fafb)'; };
@@ -638,8 +661,6 @@ function openTranslateModal(code, name) {
         list.appendChild(grpDiv);
     });
 
-    document.getElementById('tm-select-all').checked = false;
-    document.getElementById('tm-select-all').indeterminate = false;
     document.getElementById('translateModal').style.display = 'flex';
     tmUpdateCount();
 }
@@ -648,34 +669,66 @@ function closeTranslateModal() {
     document.getElementById('translateModal').style.display = 'none';
 }
 
-function tmToggleAll(cb) {
-    document.querySelectorAll('[data-tm-page]').forEach(chk => {
-        chk.checked = cb.checked;
-        chk.closest('label').style.background = cb.checked ? '#f5f3ff' : '';
-    });
-    tmUpdateCount();
-}
-
 function tmUpdateCount() {
-    const all     = document.querySelectorAll('[data-tm-page]');
-    const checked = document.querySelectorAll('[data-tm-page]:checked');
-    const n = checked.length, total = all.length;
+    const selected = document.querySelector('[data-tm-page]:checked');
+    const selectedLabel = selected?.getAttribute('data-tm-label') || '';
 
-    document.getElementById('tm-count-label').textContent = `${n} of ${total} selected`;
-    document.getElementById('tm-footer-count').textContent = n;
-    document.getElementById('tm-submit').disabled = n === 0;
-
-    const sa = document.getElementById('tm-select-all');
-    sa.indeterminate = n > 0 && n < total;
-    sa.checked = n === total && total > 0;
-
-    const container = document.getElementById('tm-hidden-pages');
-    container.innerHTML = '';
-    checked.forEach(chk => {
-        const inp = document.createElement('input');
-        inp.type = 'hidden'; inp.name = 'pages[]'; inp.value = chk.value;
-        container.appendChild(inp);
-    });
+    document.getElementById('tm-count-label').textContent = selectedLabel || 'None selected';
+    document.getElementById('tm-footer-label').textContent = selectedLabel
+        ? `${selectedLabel} selected`
+        : 'No collection selected';
+    document.getElementById('tm-collection').value = selected?.value || '';
+    document.getElementById('tm-submit').disabled = !selected;
 }
+
+function tmSubmitting() {
+    const submit = document.getElementById('tm-submit');
+    submit.disabled = true;
+    document.getElementById('tm-submit-label').textContent = 'Queueing...';
+}
+
+function tmShowTranslationNotice(message, type = 'success') {
+    const toast = document.getElementById('translationToast');
+    toast.textContent = message;
+    toast.className = `translation-toast ${type === 'error' ? 'error' : ''} show`;
+    window.setTimeout(() => {
+        toast.className = `translation-toast ${type === 'error' ? 'error' : ''}`;
+    }, 8000);
+}
+
+@if(session('translation_run_id'))
+const translationRunId = @json(session('translation_run_id'));
+let translationNoticeAttempts = 0;
+
+async function watchTranslationCompletion() {
+    translationNoticeAttempts++;
+
+    try {
+        const response = await fetch('{{ route("admin.notifications.index") }}?limit=30', {
+            headers: { 'Accept': 'application/json' },
+        });
+        const data = await response.json();
+        const notification = (data.notifications || []).find(item =>
+            item.metadata?.translation_run_id === translationRunId
+        );
+
+        if (notification) {
+            const type = notification.type === 'translation_failed' ? 'error' : 'success';
+            tmShowTranslationNotice(notification.message || notification.title, type);
+            return;
+        }
+    } catch (error) {
+        console.error('Failed to check translation completion:', error);
+    }
+
+    // Keep watching for up to two hours. The persistent bell notification
+    // remains available even if the admin leaves this page.
+    if (translationNoticeAttempts < 1440) {
+        window.setTimeout(watchTranslationCompletion, 5000);
+    }
+}
+
+window.setTimeout(watchTranslationCompletion, 2000);
+@endif
 </script>
 @endsection

@@ -892,7 +892,7 @@
                             <div class="notification-loading">Loading...</div>
                         </div>
                         <div class="notification-footer">
-                            <a href="{{ route('admin.dashboard') }}">View all notifications</a>
+                            <a href="{{ route('admin.notifications.page') }}">View all notifications</a>
                         </div>
                     </div>
                 </div>

@@ -9,6 +9,9 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use App\Services\TranslationService;
+use App\Services\TranslationNotifier;
+use RuntimeException;
+use Throwable;
 
 class TranslatePageJob implements ShouldQueue
 {
@@ -86,16 +89,24 @@ class TranslatePageJob implements ShouldQueue
 
     public function __construct(
         public string $language,
-        public string $page
+        public string $page,
+        public ?string $requestedBy = null,
+        public ?string $languageName = null,
+        public ?string $runId = null,
     ) {}
 
-    public function handle(TranslationService $translator): void
+    /**
+     * @return array{total: int, processed: int, updated: int, failed: int}
+     */
+    public function handle(
+        TranslationService $translator,
+        ?TranslationNotifier $notifier = null,
+    ): array
     {
         $modelClass = $this->resolveModel($this->page);
 
         if (!$modelClass || !class_exists($modelClass)) {
-            Log::warning("TranslatePageJob: no model mapped for page '{$this->page}'");
-            return;
+            throw new RuntimeException("No model is mapped for collection '{$this->page}'.");
         }
 
         $model    = new $modelClass;
@@ -103,15 +114,25 @@ class TranslatePageJob implements ShouldQueue
         $locale   = $this->language;
 
         if (empty($fields)) {
-            Log::info("TranslatePageJob: no translatable fields on {$modelClass}");
-            return;
+            throw new RuntimeException("No translatable fields are configured for {$modelClass}.");
         }
 
         // Stream records in chunks to avoid memory issues
         $totalCount = $modelClass::count();
         $processed = 0;
+        $updated = 0;
+        $failed = 0;
 
-        $modelClass::chunk(50, function ($records) use ($translator, $fields, $locale, $modelClass, $totalCount, &$processed) {
+        $modelClass::chunk(50, function ($records) use (
+            $translator,
+            $fields,
+            $locale,
+            $modelClass,
+            $totalCount,
+            &$processed,
+            &$updated,
+            &$failed,
+        ) {
             foreach ($records as $record) {
                 $processed++;
                 Log::info("TranslatePageJob: processing record {$processed}/{$totalCount} for {$modelClass}");
@@ -265,15 +286,53 @@ class TranslatePageJob implements ShouldQueue
                         $record->newQuery()
                                ->where('_id', $record->_id)
                                ->update([$locale => $existing]);
+                        $updated++;
 
                     } catch (\Exception $e) {
                         Log::error("TranslatePageJob: save failed for {$modelClass}#{$record->_id}: {$e->getMessage()}");
+                        $failed++;
                     }
                 }
             }
         });
 
         Log::info("TranslatePageJob: finished page='{$this->page}' lang='{$locale}'");
+
+        $stats = [
+            'total' => $totalCount,
+            'processed' => $processed,
+            'updated' => $updated,
+            'failed' => $failed,
+        ];
+
+        if ($notifier && $this->requestedBy && $this->runId) {
+            $notifier->completed(
+                $this->requestedBy,
+                $this->runId,
+                $this->languageName ?: strtoupper($locale),
+                $locale,
+                $this->page,
+                $stats,
+            );
+        }
+
+        return $stats;
+    }
+
+    public function failed(Throwable $exception): void
+    {
+        if (!$this->requestedBy || !$this->runId) {
+            return;
+        }
+
+        app(TranslationNotifier::class)->failed(
+            $this->requestedBy,
+            $this->runId,
+            $this->languageName ?: strtoupper($this->language),
+            $this->language,
+            $this->page,
+            $exception->getMessage(),
+        );
     }
 
     /**
@@ -305,7 +364,7 @@ class TranslatePageJob implements ShouldQueue
                 usleep(50000);
 
                 return $translated !== null
-                    ? [$translated, $translated !== $value]
+                    ? [$translated, true]
                     : [$value, false];
             } catch (\Exception $e) {
                 Log::error("TranslatePageJob: structured field '{$key}': {$e->getMessage()}");

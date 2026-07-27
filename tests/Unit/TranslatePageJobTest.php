@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Jobs\TranslatePageJob;
+use App\Services\TranslationNotifier;
 use App\Services\TranslationService;
 use Mockery;
 use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
@@ -136,6 +137,71 @@ class TranslatePageJobTest extends TestCase
             'https://linkedin.com/company/example',
             $record->fr['extra']['social_linkedin']
         );
+    }
+
+    public function test_static_page_extra_replaces_existing_value_when_result_matches_source(): void
+    {
+        FakeTranslatableRecord::$translatableFields = ['extra'];
+
+        $record = new FakeTranslatableRecord;
+        $record->extra = ['content' => 'PV Market'];
+        $record->fr = ['extra' => ['content' => 'Ancienne traduction']];
+        FakeTranslatableRecord::$records = [$record];
+
+        $translator = Mockery::mock(TranslationService::class);
+        $translator->shouldReceive('translateText')
+            ->once()
+            ->with('PV Market', 'fr', 'en', true)
+            ->andReturn('PV Market');
+
+        (new TestableTranslatePageJob('fr', 'fake'))->handle($translator);
+
+        $this->assertSame(['content' => 'PV Market'], $record->fr['extra']);
+    }
+
+    public function test_completed_collection_notifies_the_requesting_admin_with_record_totals(): void
+    {
+        $record = new FakeTranslatableRecord;
+        $record->name = 'PV Market';
+        FakeTranslatableRecord::$records = [$record];
+
+        $translator = Mockery::mock(TranslationService::class);
+        $translator->shouldReceive('translateText')
+            ->once()
+            ->with('PV Market', 'fr', 'en', true)
+            ->andReturn('Marché PV');
+
+        $notifier = Mockery::mock(TranslationNotifier::class);
+        $notifier->shouldReceive('completed')
+            ->once()
+            ->with(
+                'admin-id',
+                'run-id',
+                'French',
+                'fr',
+                'fake',
+                [
+                    'total' => 1,
+                    'processed' => 1,
+                    'updated' => 1,
+                    'failed' => 0,
+                ],
+            );
+
+        $job = new TestableTranslatePageJob(
+            'fr',
+            'fake',
+            'admin-id',
+            'French',
+            'run-id',
+        );
+
+        $this->app->instance(TranslationService::class, $translator);
+        $this->app->instance(TranslationNotifier::class, $notifier);
+        $stats = $this->app->call([$job, 'handle']);
+
+        $this->assertSame(1, $stats['processed']);
+        $this->assertSame(1, $stats['updated']);
     }
 
     public function test_every_supported_page_maps_to_an_existing_translatable_model(): void

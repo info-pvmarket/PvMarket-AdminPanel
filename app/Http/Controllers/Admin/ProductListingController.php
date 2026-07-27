@@ -363,6 +363,7 @@ class ProductListingController extends Controller
                 'Tier 2',
                 'Tier 3',
                 'Created At',
+                'Updated At',
             ]);
 
             foreach ($listings as $index => $listing) {
@@ -418,6 +419,7 @@ class ProductListingController extends Controller
                     $slotPrice($slots[1] ?? null),
                     $slotPrice($slots[2] ?? null),
                     $formatDate($listing->created_at ?? null),
+                    $formatDate($listing->updated_at ?? null),
                 ]);
             }
 
