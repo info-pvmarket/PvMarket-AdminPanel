@@ -295,6 +295,88 @@
     .tab-placeholder svg { width: 44px; height: 44px; margin: 0 auto 12px; opacity:.15; display:block; }
     .tab-placeholder p { font-size: 14px; font-weight: 500; }
 
+    /* Subscriptions */
+    .subscription-overview {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(300px, .8fr);
+        gap: 20px;
+        margin-bottom: 28px;
+    }
+
+    .subscription-panel {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px;
+        background: #F8FAFC;
+    }
+
+    .subscription-panel h3 {
+        margin: 0 0 14px;
+        font-size: 15px;
+        font-weight: 800;
+        color: var(--text);
+    }
+
+    .subscription-plan-name {
+        font-size: 22px;
+        font-weight: 800;
+        color: var(--primary-d);
+        margin-bottom: 14px;
+    }
+
+    .subscription-details {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .subscription-detail {
+        padding: 10px 12px;
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+    }
+
+    .subscription-detail span {
+        display: block;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        margin-bottom: 3px;
+    }
+
+    .subscription-detail strong {
+        color: var(--text);
+        font-size: 13px;
+    }
+
+    .coupon-form {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+    }
+
+    .coupon-form .form-input { text-transform: uppercase; }
+
+    .coupon-help {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+    }
+
+    .field-error {
+        color: #B91C1C;
+        font-size: 12px;
+        font-weight: 600;
+        margin-top: 6px;
+    }
+
+    @media (max-width: 900px) {
+        .subscription-overview { grid-template-columns: 1fr; }
+    }
+
     /* Alert */
     .alert-success {
         padding: 12px 16px; background: #D1FAE5; color: #065F46;
@@ -899,6 +981,19 @@
             Company Details
         </button>
 
+        <button class="tab-btn {{ $activeTab === 'subscriptions' ? 'active' : '' }}"
+                onclick="switchTab('subscriptions', this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="5" width="20" height="14" rx="2"/>
+                <line x1="2" y1="10" x2="22" y2="10"/>
+                <line x1="6" y1="15" x2="10" y2="15"/>
+            </svg>
+            Subscriptions
+            @if($subscriptions->count() > 0)
+                <span class="badge badge-info" style="margin-left:4px;">{{ $subscriptions->count() }}</span>
+            @endif
+        </button>
+
         <button class="tab-btn {{ $activeTab === 'documents' ? 'active' : '' }}"
                 onclick="switchTab('documents', this)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1055,8 +1150,168 @@
     </div>
 
     {{-- ══════════════════════════
-         TAB: Documents
+         TAB: Subscriptions
     ══════════════════════════ --}}
+    {{-- Subscriptions --}}
+    <div class="tab-content {{ $activeTab === 'subscriptions' ? 'active' : '' }}"
+         id="tab-subscriptions">
+
+        <div class="section-title">Subscriptions</div>
+
+        <div class="subscription-overview">
+            <div class="subscription-panel">
+                <h3>Current Subscription</h3>
+
+                @if($activeSubscription)
+                    <div class="subscription-plan-name">{{ $activeSubscription->plan_name }}</div>
+                    <div class="subscription-details">
+                        <div class="subscription-detail">
+                            <span>Status</span>
+                            <strong>Active</strong>
+                        </div>
+                        <div class="subscription-detail">
+                            <span>Coupon</span>
+                            <strong>{{ $activeSubscription->coupon_code ?: 'N/A' }}</strong>
+                        </div>
+                        <div class="subscription-detail">
+                            <span>Product Limit</span>
+                            <strong>{{ number_format($activeSubscription->products) }}</strong>
+                        </div>
+                        <div class="subscription-detail">
+                            <span>Warehouse Limit</span>
+                            <strong>{{ number_format($activeSubscription->warehouses) }}</strong>
+                        </div>
+                        <div class="subscription-detail">
+                            <span>Starts</span>
+                            <strong>{{ $activeSubscription->start_date?->format('M d, Y') ?? 'N/A' }}</strong>
+                        </div>
+                        <div class="subscription-detail">
+                            <span>Ends</span>
+                            <strong>{{ $activeSubscription->end_date?->format('M d, Y') ?? 'N/A' }}</strong>
+                        </div>
+                    </div>
+                    <form method="POST"
+                          action="{{ route('admin.users.subscriptions.cancel', [
+                              'id' => $user->id,
+                              'subscriptionId' => $activeSubscription->id,
+                          ]) }}"
+                          style="margin-top:16px;"
+                          onsubmit="return confirm('Cancel this subscription? The user will lose subscription access immediately.');">
+                        @csrf
+                        @method('PATCH')
+                        <button type="submit" class="btn-action btn-action-danger">
+                            Cancel Subscription
+                        </button>
+                    </form>
+                @else
+                    <div class="tab-placeholder" style="padding:28px 10px;">
+                        <p>This user does not have an active subscription.</p>
+                    </div>
+                @endif
+            </div>
+
+            <div class="subscription-panel">
+                <h3>Subscribe to a New Plan</h3>
+
+                @if($activeSubscription)
+                    <p class="coupon-help" style="margin-top:0;">
+                        A new coupon can be applied after the current subscription expires or is cancelled.
+                    </p>
+                @else
+                    <form method="POST"
+                          action="{{ route('admin.users.subscriptions.store', $user->id) }}">
+                        @csrf
+                        <input type="hidden" name="active_tab" value="subscriptions">
+
+                        <label class="form-label" for="coupon_code">Coupon Code</label>
+                        <div class="coupon-form">
+                            <input type="text"
+                                   id="coupon_code"
+                                   name="coupon_code"
+                                   class="form-input"
+                                   value="{{ old('coupon_code') }}"
+                                   placeholder="Enter coupon code"
+                                   maxlength="50"
+                                   autocomplete="off"
+                                   required>
+                            <button type="submit" class="btn-save">Subscribe</button>
+                        </div>
+                        @error('coupon_code')
+                            <div class="field-error">{{ $message }}</div>
+                        @enderror
+                        <p class="coupon-help">
+                            The coupon determines the plan name, duration, product limit, and warehouse limit.
+                        </p>
+                    </form>
+                @endif
+            </div>
+        </div>
+
+        <h3 style="font-size:16px; font-weight:800; color:var(--text); margin:0 0 14px;">
+            Subscription History
+        </h3>
+
+        @if($subscriptions->isNotEmpty())
+            <div style="overflow-x:auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Plan</th>
+                            <th>Coupon</th>
+                            <th>Products</th>
+                            <th>Warehouses</th>
+                            <th>Start Date</th>
+                            <th>End Date</th>
+                            <th>Payment</th>
+                            <th>Status</th>
+                            <th>Subscribed On</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($subscriptions as $subscription)
+                            @php
+                                $subscriptionStatus = $subscription->statusForDisplay();
+                                $subscriptionStatusClass = match($subscriptionStatus) {
+                                    'active' => 'badge-success',
+                                    'pending' => 'badge-warning',
+                                    'cancelled', 'expired', 'failed' => 'badge-danger',
+                                    default => 'badge-secondary',
+                                };
+                            @endphp
+                            <tr>
+                                <td><strong>{{ $subscription->plan_name ?: 'N/A' }}</strong></td>
+                                <td>{{ $subscription->coupon_code ?: 'N/A' }}</td>
+                                <td>{{ number_format($subscription->products) }}</td>
+                                <td>{{ number_format($subscription->warehouses) }}</td>
+                                <td>{{ $subscription->start_date?->format('M d, Y') ?? 'N/A' }}</td>
+                                <td>{{ $subscription->end_date?->format('M d, Y') ?? 'N/A' }}</td>
+                                <td>
+                                    @if($subscription->is_free_subscription)
+                                        Free
+                                    @else
+                                        {{ $subscription->currency ?: 'USD' }}
+                                        {{ number_format((float) $subscription->amount_paid, 2) }}
+                                    @endif
+                                </td>
+                                <td>
+                                    <span class="badge {{ $subscriptionStatusClass }}">
+                                        {{ ucfirst($subscriptionStatus) }}
+                                    </span>
+                                </td>
+                                <td>{{ $subscription->created_at?->format('M d, Y H:i') ?? 'N/A' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @else
+            <div class="tab-placeholder">
+                <p>No subscription history found for this user.</p>
+            </div>
+        @endif
+    </div>
+
+    {{-- Documents --}}
     <div class="tab-content {{ $activeTab === 'documents' ? 'active' : '' }}" id="tab-documents">
 
         <div class="section-title">Documents</div>
@@ -1152,20 +1407,35 @@
                     Unpaid listings: <strong style="color:#F59E0B;">{{ $listings->where('is_paid', false)->count() }}</strong>
                 </div>
             </div>
-            <div class="view-toggle">
-                <button type="button" class="view-toggle-btn active" id="btnListUser" onclick="setViewUser('list')" title="List view">
-                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
-                        <line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/>
-                        <line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
-                    </svg>
-                </button>
-                <button type="button" class="view-toggle-btn" id="btnGridUser" onclick="setViewUser('grid')" title="Grid view">
-                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-                        <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
-                    </svg>
-                </button>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <a href="{{ route('admin.users.listings.export', array_merge(
+                        ['id' => $user->id],
+                        request()->only([
+                            'listing_filter',
+                            'listing_status',
+                            'listing_payment',
+                            'listing_realtime',
+                        ])
+                    )) }}"
+                   class="btn-action btn-action-info"
+                   title="Export this user's filtered listings">
+                    Export CSV
+                </a>
+                <div class="view-toggle">
+                    <button type="button" class="view-toggle-btn active" id="btnListUser" onclick="setViewUser('list')" title="List view">
+                        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+                            <line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/>
+                            <line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+                        </svg>
+                    </button>
+                    <button type="button" class="view-toggle-btn" id="btnGridUser" onclick="setViewUser('grid')" title="Grid view">
+                        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                            <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -1438,6 +1708,22 @@
                         <div class="meta-item">
                             <label>Currency</label>
                             <span>{{ $listing->currency_id ?? 'USD' }}</span>
+                        </div>
+                        <div class="meta-item">
+                            <label>Listed On</label>
+                            <span>
+                                {{ $listing->created_at
+                                    ? \Carbon\Carbon::parse($listing->created_at)->format('M d, Y H:i')
+                                    : 'N/A' }}
+                            </span>
+                        </div>
+                        <div class="meta-item">
+                            <label>Last Updated At</label>
+                            <span>
+                                {{ $listing->updated_at
+                                    ? \Carbon\Carbon::parse($listing->updated_at)->format('M d, Y H:i')
+                                    : 'N/A' }}
+                            </span>
                         </div>
                     </div>
 

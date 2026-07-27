@@ -393,6 +393,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/admin/users/{id}/edit', [UserController::class, 'edit'])->name('admin.users.edit');
         Route::put('/admin/users/{id}/update-basic', [UserController::class, 'updateBasic'])->name('admin.users.update-basic');
         Route::put('/admin/users/{id}/update-company', [UserController::class, 'updateCompany'])->name('admin.users.update-company');
+        Route::post('/admin/users/{id}/subscriptions', [UserController::class, 'subscribeWithCoupon'])->name('admin.users.subscriptions.store');
+        Route::patch('/admin/users/{id}/subscriptions/{subscriptionId}/cancel', [UserController::class, 'cancelSubscription'])->name('admin.users.subscriptions.cancel');
+        Route::get('/admin/users/{id}/listings/export', [UserController::class, 'exportUserListings'])->name('admin.users.listings.export');
         Route::patch('/admin/users/{id}/toggle-status', [UserController::class, 'toggleStatus'])->name('admin.users.toggle-status');
         Route::delete('/admin/users/{id}', [UserController::class, 'destroy'])->name('admin.users.destroy');
         Route::patch('/admin/users/{id}/toggle-verified', [UserController::class, 'toggleCompanyVerified'])->name('admin.users.toggle-verified');

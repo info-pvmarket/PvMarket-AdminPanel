@@ -12,8 +12,11 @@ use App\Models\Product;
 use App\Models\Warehouse;
 use App\Models\ProductListingImage;
 use App\Models\Role;
+use App\Models\Subscription;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Services\AdminSubscriptionService;
+use App\Services\ProductListingCsvExporter;
 use App\Services\TranslationService;
 use App\Traits\FiltersAssignedUsers;
 use MongoDB\BSON\ObjectId;
@@ -120,9 +123,17 @@ class UserController extends Controller
 
     public function edit(Request $request, $id)
     {
-        $user = User::with('role')->findOrFail($id);
+        $user = $this->managedUser($id);
         $userId = new ObjectId($id);
         $company = Company::where('user_id', $userId)->first();
+
+        $subscriptions = Subscription::where('user_id', $userId)
+            ->whereNull('deleted_at')
+            ->orderBy('created_at', 'desc')
+            ->get();
+        $activeSubscription = $subscriptions->first(
+            fn (Subscription $subscription) => $subscription->isActiveAt()
+        );
 
         // ── Company Documents ─────────────────────────────────────────
         $documents = $company
@@ -135,32 +146,12 @@ class UserController extends Controller
         // ── Listings (ProductListings by this user) ───────────────────
         $listingsQuery = ProductListing::where('user_id', $userId);
 
-        // Apply filters
-        $listingFilter = $request->get('listing_filter', 'all');
-        $listingStatus = $request->get('listing_status', 'all');
-        $listingPayment = $request->get('listing_payment', 'all');
-        $listingRealtime = $request->get('listing_realtime', 'all');
-
-        if ($listingFilter !== 'all') {
-            $listingsQuery->where('verification_status', $listingFilter);
-        }
-        if ($listingStatus === 'active') {
-            $listingsQuery->where('is_active', true);
-        } elseif ($listingStatus === 'on_hold') {
-            $listingsQuery->where('is_active', false);
-        }
-        if ($listingPayment === 'paid') {
-            $listingsQuery->where('is_paid', true);
-        } elseif ($listingPayment === 'unpaid') {
-            $listingsQuery->where('is_paid', false);
-        }
-        if ($listingRealtime === 'enabled') {
-            $listingsQuery->where('real_time_price', true);
-        } elseif ($listingRealtime === 'disabled') {
-            $listingsQuery->where(function($q) {
-                $q->where('real_time_price', false)->orWhereNull('real_time_price');
-            });
-        }
+        [
+            $listingFilter,
+            $listingStatus,
+            $listingPayment,
+            $listingRealtime,
+        ] = $this->applyUserListingFilters($listingsQuery, $request);
 
         $listings = $listingsQuery->orderBy('created_at', 'desc')->get();
 
@@ -247,8 +238,72 @@ class UserController extends Controller
             'sellerUsersMap',
             'sales',
             'salesListingsMap',
-            'buyerUsersMap'
+            'buyerUsersMap',
+            'subscriptions',
+            'activeSubscription'
         ) + compact('company'));
+    }
+
+    public function subscribeWithCoupon(
+        Request $request,
+        string $id,
+        AdminSubscriptionService $subscriptions
+    ) {
+        $validated = $request->validate([
+            'coupon_code' => ['required', 'string', 'max:50'],
+        ]);
+
+        $user = $this->managedUser($id);
+        $admin = Auth::user();
+        abort_unless($admin instanceof User, 403);
+
+        $subscription = $subscriptions->subscribeWithCoupon(
+            $user,
+            $validated['coupon_code'],
+            $admin
+        );
+
+        return redirect()->route('admin.users.edit', [
+            'id' => $id,
+            'active_tab' => 'subscriptions',
+        ])->with(
+            'success',
+            "The {$subscription->plan_name} subscription was activated successfully."
+        );
+    }
+
+    public function cancelSubscription(
+        string $id,
+        string $subscriptionId,
+        AdminSubscriptionService $subscriptions
+    ) {
+        $user = $this->managedUser($id);
+        $admin = Auth::user();
+        abort_unless($admin instanceof User, 403);
+
+        $subscriptions->cancel($user, $subscriptionId, $admin);
+
+        return redirect()->route('admin.users.edit', [
+            'id' => $id,
+            'active_tab' => 'subscriptions',
+        ])->with('success', 'The subscription was cancelled successfully.');
+    }
+
+    public function exportUserListings(
+        Request $request,
+        string $id,
+        ProductListingCsvExporter $exporter
+    ) {
+        $user = $this->managedUser($id);
+        $userId = new ObjectId((string) $user->_id);
+        $query = ProductListing::where('user_id', $userId);
+
+        $this->applyUserListingFilters($query, $request);
+
+        return $exporter->download(
+            $query->orderBy('created_at', 'desc')->get(),
+            "user_{$id}_listings"
+        );
     }
 
     public function updateBasic(Request $request, $id)
@@ -272,6 +327,62 @@ class UserController extends Controller
 
         return redirect()->route('admin.users.edit', ['id' => $id, 'active_tab' => 'basic'])
                          ->with('success', 'Basic details updated.');
+    }
+
+    private function applyUserListingFilters($query, Request $request): array
+    {
+        $listingFilter = in_array(
+            $request->input('listing_filter', 'all'),
+            ['all', 'pending', 'verified', 'rejected'],
+            true
+        ) ? $request->input('listing_filter', 'all') : 'all';
+        $listingStatus = in_array(
+            $request->input('listing_status', 'all'),
+            ['all', 'active', 'on_hold'],
+            true
+        ) ? $request->input('listing_status', 'all') : 'all';
+        $listingPayment = in_array(
+            $request->input('listing_payment', 'all'),
+            ['all', 'paid', 'unpaid'],
+            true
+        ) ? $request->input('listing_payment', 'all') : 'all';
+        $listingRealtime = in_array(
+            $request->input('listing_realtime', 'all'),
+            ['all', 'enabled', 'disabled'],
+            true
+        ) ? $request->input('listing_realtime', 'all') : 'all';
+
+        if ($listingFilter !== 'all') {
+            $query->where('verification_status', $listingFilter);
+        }
+
+        if ($listingStatus === 'active') {
+            $query->where('is_active', true);
+        } elseif ($listingStatus === 'on_hold') {
+            $query->where('is_active', false);
+        }
+
+        if ($listingPayment === 'paid') {
+            $query->where('is_paid', true);
+        } elseif ($listingPayment === 'unpaid') {
+            $query->where('is_paid', false);
+        }
+
+        if ($listingRealtime === 'enabled') {
+            $query->where('real_time_price', true);
+        } elseif ($listingRealtime === 'disabled') {
+            $query->where(function ($nested) {
+                $nested->where('real_time_price', false)
+                    ->orWhereNull('real_time_price');
+            });
+        }
+
+        return [
+            $listingFilter,
+            $listingStatus,
+            $listingPayment,
+            $listingRealtime,
+        ];
     }
 
     public function updateCompany(Request $request, $id)

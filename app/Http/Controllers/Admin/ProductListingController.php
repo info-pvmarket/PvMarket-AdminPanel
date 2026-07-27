@@ -11,13 +11,13 @@ use App\Models\SubMenu;
 use App\Models\Product;
 use App\Models\Brand;
 use App\Models\Warehouse;
-use App\Models\Country;
 use App\Models\Commission;
 use App\Services\TranslationService;
 use App\Models\ProductListingImage;
 use App\Models\Incoterm;
 use App\Models\Currency;
 use App\Traits\FiltersAssignedUsers;
+use App\Services\ProductListingCsvExporter;
 
 class ProductListingController extends Controller
 {
@@ -154,7 +154,7 @@ class ProductListingController extends Controller
 
     // ── Create ──────────────────────────────────────────────────────
 
-    public function export(Request $request)
+    public function export(Request $request, ProductListingCsvExporter $exporter)
     {
         $query = ProductListing::query();
         $this->filterByAssignedUsers($query, 'user_id');
@@ -207,176 +207,9 @@ class ProductListingController extends Controller
             $query->whereIn('warehouse_id', $this->mongoIdCandidates($warehouseFilter));
         }
 
-        $listings = $query->orderBy('created_at', 'desc')->get();
-
-        $productIds = $listings->pluck('product_id')->filter()->unique()
-            ->map(fn($id) => (string) $id)
-            ->values();
-        $warehouseIds = $listings->pluck('warehouse_id')->filter()->unique()
-            ->map(fn($id) => (string) $id)
-            ->values();
-        $categoryIds = $listings->pluck('main_category_id')->filter()->unique()
-            ->map(fn($id) => (string) $id)
-            ->values();
-        $subCategoryIds = $listings->pluck('sub_category_id')->filter()->unique()
-            ->map(fn($id) => (string) $id)
-            ->values();
-        $userIds = $listings
-            ->flatMap(fn($listing) => [$listing->created_by ?? null, $listing->user_id ?? null])
-            ->filter()
-            ->unique(fn($id) => is_object($id) ? get_class($id) . ':' . (string) $id : 'string:' . (string) $id)
-            ->map(fn($id) => (string) $id)
-            ->values();
-
-        $productsMap = Product::whereIn('_id', $productIds)->get()
-            ->keyBy(fn($product) => (string) $product->_id);
-        $warehousesMap = Warehouse::whereIn('_id', $warehouseIds)->get()
-            ->keyBy(fn($warehouse) => (string) $warehouse->_id);
-        $countryIds = $warehousesMap
-            ->pluck('country')
-            ->filter()
-            ->flatMap(fn($id) => $this->mongoIdCandidates($id))
-            ->unique(fn($id) => is_object($id) ? get_class($id) . ':' . (string) $id : 'string:' . $id)
-            ->values()
-            ->all();
-        $countriesMap = Country::whereIn('_id', $countryIds)->get()
-            ->keyBy(fn($country) => (string) $country->_id);
-        $categoriesMap = MainMenu::whereIn('_id', $categoryIds)->get()
-            ->keyBy(fn($category) => (string) $category->_id);
-        $subCategoriesMap = SubMenu::whereIn('_id', $subCategoryIds)->get()
-            ->keyBy(fn($subCategory) => (string) $subCategory->_id);
-        $usersMap = \App\Models\User::whereIn('_id', $userIds)->get()
-            ->keyBy(fn($user) => (string) $user->_id);
-
-        $filename = 'listings_export_' . now()->format('Y-m-d_His') . '.csv';
-        $headers = [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-            'Pragma' => 'no-cache',
-            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
-            'Expires' => '0',
-        ];
-
-        $callback = function () use ($listings, $productsMap, $warehousesMap, $countriesMap, $categoriesMap, $subCategoriesMap, $usersMap) {
-            $handle = fopen('php://output', 'w');
-            fputs($handle, "\xEF\xBB\xBF");
-
-            $formatDate = function ($value) {
-                if (!$value) {
-                    return '';
-                }
-
-                if ($value instanceof \DateTimeInterface) {
-                    return $value->format('Y-m-d H:i');
-                }
-
-                try {
-                    return \Carbon\Carbon::parse($value)->format('Y-m-d H:i');
-                } catch (\Throwable) {
-                    return (string) $value;
-                }
-            };
-
-            $slotPrice = function ($slot) {
-                $totalPrice = data_get($slot, 'total_price');
-                if ($totalPrice !== null && $totalPrice !== '') {
-                    return $totalPrice;
-                }
-
-                return data_get($slot, 'price', '');
-            };
-
-            $isMongoId = static fn($value) => is_string($value) && preg_match('/^[a-f\d]{24}$/i', $value);
-
-            fputcsv($handle, [
-                'S.No',
-                'Listing SKU',
-                'Created User Name',
-                'Created User Email',
-                'Created User Phone',
-                'Product SKU',
-                'Product Name',
-                'Category',
-                'Sub Category',
-                'Pieces Per Pallet',
-                'Pallets Per Container',
-                'Warehouse Name',
-                'Warehouse Country',
-                'is_realtime_price',
-                'Sell Type',
-                'Currency',
-                'Total Quantity',
-                'Verification Status',
-                'Payment Status',
-                'Listing Status',
-                'Tier 1',
-                'Tier 2',
-                'Tier 3',
-                'Created At',
-                'Updated At',
-            ]);
-
-            foreach ($listings as $index => $listing) {
-                $productId = is_object($listing->product_id) ? (string) $listing->product_id : (string) ($listing->product_id ?? '');
-                $warehouseId = is_object($listing->warehouse_id) ? (string) $listing->warehouse_id : (string) ($listing->warehouse_id ?? '');
-                $categoryId = is_object($listing->main_category_id) ? (string) $listing->main_category_id : (string) ($listing->main_category_id ?? '');
-                $subCategoryId = is_object($listing->sub_category_id) ? (string) $listing->sub_category_id : (string) ($listing->sub_category_id ?? '');
-                $createdUserId = is_object($listing->created_by ?? null)
-                    ? (string) $listing->created_by
-                    : (string) ($listing->created_by ?? '');
-                if ($createdUserId === '') {
-                    $createdUserId = is_object($listing->user_id ?? null)
-                        ? (string) $listing->user_id
-                        : (string) ($listing->user_id ?? '');
-                }
-                $product = $productsMap->get($productId);
-                $warehouse = $warehousesMap->get($warehouseId);
-                $category = $categoriesMap->get($categoryId);
-                $subCategory = $subCategoriesMap->get($subCategoryId);
-                $createdUser = $usersMap->get($createdUserId);
-                $slots = $listing->slots ?? [];
-                $warehouseCountryId = is_object($warehouse->country ?? null) && method_exists($warehouse->country, '__toString')
-                    ? (string) $warehouse->country
-                    : (string) ($warehouse->country ?? '');
-                $country = $countriesMap->get($warehouseCountryId);
-                $warehouseCountryName = (string) ($warehouse->country_name ?? '');
-                if ($warehouseCountryName === '' || $isMongoId($warehouseCountryName)) {
-                    $warehouseCountryName = $country->name ?? ($isMongoId($warehouseCountryId) ? '' : $warehouseCountryId);
-                }
-
-                fputcsv($handle, [
-                    $index + 1,
-                    $listing->sku_code ?? '',
-                    $createdUser->name ?? '',
-                    $createdUser->email ?? '',
-                    $createdUser->mobile ?? $createdUser->phone ?? '',
-                    $product->sku_code ?? '',
-                    $product->product_name ?? '',
-                    $category->category_name ?? '',
-                    $subCategory->sub_category_name ?? '',
-                    $product->pieces_per_pallet ?? '',
-                    $product->pallets_per_container ?? '',
-                    $warehouse->warehouse_name ?? $warehouse->name ?? '',
-                    $warehouseCountryName,
-                    ($listing->real_time_price ?? false) ? 'Yes' : 'No',
-                    $listing->sell_type ?? '',
-                    $listing->currency_id ?? '',
-                    $listing->total_quantity ?? '',
-                    $listing->verification_status ?? '',
-                    ($listing->is_paid ?? false) ? 'Paid' : 'Unpaid',
-                    ($listing->is_active ?? false) ? 'Active' : 'On Hold',
-                    $slotPrice($slots[0] ?? null),
-                    $slotPrice($slots[1] ?? null),
-                    $slotPrice($slots[2] ?? null),
-                    $formatDate($listing->created_at ?? null),
-                    $formatDate($listing->updated_at ?? null),
-                ]);
-            }
-
-            fclose($handle);
-        };
-
-        return response()->stream($callback, 200, $headers);
+        return $exporter->download(
+            $query->orderBy('created_at', 'desc')->get()
+        );
     }
 
     /**

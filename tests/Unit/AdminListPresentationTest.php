@@ -2,13 +2,14 @@
 
 namespace Tests\Unit;
 
+use App\Services\ProductListingCsvExporter;
 use PHPUnit\Framework\TestCase;
 
 class AdminListPresentationTest extends TestCase
 {
     private function projectFile(string $path): string
     {
-        return dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $path);
+        return dirname(__DIR__, 2).DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $path);
     }
 
     public function test_user_management_has_real_status_and_delete_forms(): void
@@ -72,11 +73,34 @@ class AdminListPresentationTest extends TestCase
     public function test_listing_csv_export_includes_created_and_updated_dates(): void
     {
         $controller = file_get_contents($this->projectFile('app/Http/Controllers/Admin/ProductListingController.php'));
+        $exporter = file_get_contents($this->projectFile('app/Services/ProductListingCsvExporter.php'));
 
-        $this->assertStringContainsString("'Created At',", $controller);
-        $this->assertStringContainsString("'Updated At',", $controller);
-        $this->assertStringContainsString('$formatDate($listing->created_at ?? null),', $controller);
-        $this->assertStringContainsString('$formatDate($listing->updated_at ?? null),', $controller);
+        $this->assertContains('Created At', ProductListingCsvExporter::HEADERS);
+        $this->assertContains('Updated At', ProductListingCsvExporter::HEADERS);
+        $this->assertStringContainsString('$this->formatDate($listing->created_at ?? null),', $exporter);
+        $this->assertStringContainsString('$this->formatDate($listing->updated_at ?? null),', $exporter);
+        $this->assertStringContainsString('ProductListingCsvExporter $exporter', $controller);
+        $this->assertStringContainsString('$exporter->download(', $controller);
+    }
+
+    public function test_user_edit_listings_show_dates_and_export_only_that_users_filtered_records(): void
+    {
+        $routes = file_get_contents($this->projectFile('routes/web.php'));
+        $controller = file_get_contents($this->projectFile('app/Http/Controllers/Admin/UserController.php'));
+        $view = file_get_contents($this->projectFile('resources/views/admin/users/edit.blade.php'));
+
+        $this->assertStringContainsString("name('admin.users.listings.export')", $routes);
+        $this->assertStringContainsString('public function exportUserListings(', $controller);
+        $this->assertStringContainsString("ProductListing::where('user_id', \$userId)", $controller);
+        $this->assertStringContainsString('$this->applyUserListingFilters($query, $request);', $controller);
+        $this->assertStringContainsString('$exporter->download(', $controller);
+        $this->assertStringContainsString('<label>Listed On</label>', $view);
+        $this->assertStringContainsString('<label>Last Updated At</label>', $view);
+        $this->assertStringContainsString("route('admin.users.listings.export'", $view);
+        $this->assertStringContainsString("'listing_filter'", $view);
+        $this->assertStringContainsString("'listing_status'", $view);
+        $this->assertStringContainsString("'listing_payment'", $view);
+        $this->assertStringContainsString("'listing_realtime'", $view);
     }
 
     public function test_listing_search_resolves_product_names_through_real_mongodb_ids(): void
