@@ -30,7 +30,9 @@
     .form-label span { color:var(--danger); margin-left:2px; }
     .form-input, .form-select { width:100%; padding:9px 13px; border:1.5px solid var(--border); border-radius:8px; font-family:inherit; font-size:13.5px; color:var(--text); outline:none; transition:border-color .2s, box-shadow .2s; background:white; }
     .form-input:focus, .form-select:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(14,165,233,.1); }
+    .form-input.input-error { border-color:var(--danger); }
     .form-input::placeholder { color:#CBD5E1; }
+    .field-error { color:var(--danger); font-size:11.5px; font-weight:600; }
     .form-select { appearance:none; background:white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 12px center; cursor:pointer; }
     .form-file-wrap { border:1.5px solid var(--border); border-radius:8px; overflow:hidden; display:flex; align-items:center; background:white; }
     .form-file-wrap input[type="file"] { flex:1; padding:8px 12px; border:none; outline:none; font-family:inherit; font-size:13px; background:transparent; cursor:pointer; }
@@ -121,9 +123,12 @@
         <div class="form-grid-3">
             <div class="form-group">
                 <label class="form-label">Product Name <span>*</span></label>
-                <input type="text" name="product_name" class="form-input"
+                <input type="text" name="product_name" class="form-input @error('product_name') input-error @enderror"
                        placeholder="e.g. Jinko Tiger Pro 580W"
                        value="{{ old('product_name', $record->product_name ?? '') }}" required/>
+                @error('product_name')
+                    <span class="field-error">{{ $message }}</span>
+                @enderror
             </div>
             <div class="form-group">
                 <label class="form-label">Datasheet</label>

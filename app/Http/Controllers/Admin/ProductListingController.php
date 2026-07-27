@@ -45,32 +45,7 @@ class ProductListingController extends Controller
             $search = trim($request->search);
 
             if ($search !== '') {
-                $brandIdCandidates = Brand::where(function ($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                        ->orWhere('slug', 'like', "%{$search}%");
-                })
-                    ->pluck('_id')
-                    ->flatMap(fn($id) => $this->mongoIdCandidates($id))
-                    ->unique(fn($id) => is_object($id) ? get_class($id) . ':' . (string) $id : 'string:' . $id)
-                    ->values()
-                    ->all();
-
-                $productQuery = Product::where(function ($q) use ($search, $brandIdCandidates) {
-                    $q->where('product_name', 'like', "%{$search}%")
-                        ->orWhere('sku_code', 'like', "%{$search}%")
-                        ->orWhere('brand_name', 'like', "%{$search}%");
-
-                    if (!empty($brandIdCandidates)) {
-                        $q->orWhereIn('brand_id', $brandIdCandidates);
-                    }
-                });
-
-                $productIdCandidates = $productQuery
-                    ->pluck('_id')
-                    ->flatMap(fn($id) => $this->mongoIdCandidates($id))
-                    ->unique(fn($id) => is_object($id) ? get_class($id) . ':' . (string) $id : 'string:' . $id)
-                    ->values()
-                    ->all();
+                $productIdCandidates = $this->searchProductIdCandidates($search);
 
                 $query->where(function ($q) use ($search, $productIdCandidates) {
                     $q->where('sku_code', 'like', "%{$search}%");
@@ -188,32 +163,7 @@ class ProductListingController extends Controller
             $search = trim($request->search);
 
             if ($search !== '') {
-                $brandIdCandidates = Brand::where(function ($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                        ->orWhere('slug', 'like', "%{$search}%");
-                })
-                    ->pluck('_id')
-                    ->flatMap(fn($id) => $this->mongoIdCandidates($id))
-                    ->unique(fn($id) => is_object($id) ? get_class($id) . ':' . (string) $id : 'string:' . $id)
-                    ->values()
-                    ->all();
-
-                $productQuery = Product::where(function ($q) use ($search, $brandIdCandidates) {
-                    $q->where('product_name', 'like', "%{$search}%")
-                        ->orWhere('sku_code', 'like', "%{$search}%")
-                        ->orWhere('brand_name', 'like', "%{$search}%");
-
-                    if (!empty($brandIdCandidates)) {
-                        $q->orWhereIn('brand_id', $brandIdCandidates);
-                    }
-                });
-
-                $productIdCandidates = $productQuery
-                    ->pluck('_id')
-                    ->flatMap(fn($id) => $this->mongoIdCandidates($id))
-                    ->unique(fn($id) => is_object($id) ? get_class($id) . ':' . (string) $id : 'string:' . $id)
-                    ->values()
-                    ->all();
+                $productIdCandidates = $this->searchProductIdCandidates($search);
 
                 $query->where(function ($q) use ($search, $productIdCandidates) {
                     $q->where('sku_code', 'like', "%{$search}%");
@@ -427,6 +377,38 @@ class ProductListingController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Find products by name, SKU, or brand and return both MongoDB ObjectId
+     * and string candidates for legacy listing references.
+     */
+    private function searchProductIdCandidates(string $search): array
+    {
+        $brandIdCandidates = Brand::where(function ($query) use ($search) {
+            $query->where('name', 'like', "%{$search}%")
+                ->orWhere('slug', 'like', "%{$search}%");
+        })
+            ->get(['_id'])
+            ->flatMap(fn($brand) => $this->mongoIdCandidates($brand->_id))
+            ->unique(fn($id) => is_object($id) ? get_class($id) . ':' . (string) $id : 'string:' . $id)
+            ->values()
+            ->all();
+
+        return Product::where(function ($query) use ($search, $brandIdCandidates) {
+            $query->where('product_name', 'like', "%{$search}%")
+                ->orWhere('sku_code', 'like', "%{$search}%")
+                ->orWhere('brand_name', 'like', "%{$search}%");
+
+            if (!empty($brandIdCandidates)) {
+                $query->orWhereIn('brand_id', $brandIdCandidates);
+            }
+        })
+            ->get(['_id'])
+            ->flatMap(fn($product) => $this->mongoIdCandidates($product->_id))
+            ->unique(fn($id) => is_object($id) ? get_class($id) . ':' . (string) $id : 'string:' . $id)
+            ->values()
+            ->all();
     }
 
     public function create()

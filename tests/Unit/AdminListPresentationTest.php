@@ -55,6 +55,20 @@ class AdminListPresentationTest extends TestCase
         $this->assertStringContainsString('<label>Created Date</label>', $listings);
     }
 
+    public function test_admin_product_create_and_edit_enforce_unique_names(): void
+    {
+        $controller = file_get_contents($this->projectFile('app/Http/Controllers/Admin/ProductController.php'));
+        $view = file_get_contents($this->projectFile('resources/views/admin/products/products.blade.php'));
+
+        $this->assertSame(2, substr_count($controller, "'product_name' => trim((string) \$request->input('product_name'))"));
+        $this->assertStringContainsString("'product_name'   => \$this->productNameRules(),", $controller);
+        $this->assertStringContainsString("'product_name'    => \$this->productNameRules((string) \$product->_id),", $controller);
+        $this->assertStringContainsString("new \\MongoDB\\BSON\\Regex(\$pattern, 'i')", $controller);
+        $this->assertStringContainsString("'A product with this name already exists.'", $controller);
+        $this->assertStringContainsString("@error('product_name')", $view);
+        $this->assertStringContainsString('class="field-error"', $view);
+    }
+
     public function test_listing_csv_export_includes_created_and_updated_dates(): void
     {
         $controller = file_get_contents($this->projectFile('app/Http/Controllers/Admin/ProductListingController.php'));
@@ -63,6 +77,17 @@ class AdminListPresentationTest extends TestCase
         $this->assertStringContainsString("'Updated At',", $controller);
         $this->assertStringContainsString('$formatDate($listing->created_at ?? null),', $controller);
         $this->assertStringContainsString('$formatDate($listing->updated_at ?? null),', $controller);
+    }
+
+    public function test_listing_search_resolves_product_names_through_real_mongodb_ids(): void
+    {
+        $controller = file_get_contents($this->projectFile('app/Http/Controllers/Admin/ProductListingController.php'));
+
+        $this->assertSame(2, substr_count($controller, '$this->searchProductIdCandidates($search)'));
+        $this->assertStringContainsString('private function searchProductIdCandidates(string $search): array', $controller);
+        $this->assertStringContainsString("->get(['_id'])", $controller);
+        $this->assertStringContainsString('->flatMap(fn($product) => $this->mongoIdCandidates($product->_id))', $controller);
+        $this->assertStringNotContainsString("->pluck('_id')\n                    ->flatMap(fn(\$id) => \$this->mongoIdCandidates(\$id))", $controller);
     }
 
     public function test_super_admin_category_label_matches_main_menu_context(): void

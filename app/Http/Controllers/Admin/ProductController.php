@@ -35,6 +35,33 @@ class ProductController extends Controller
         return "{$prefix}-{$timestamp}-{$random}";
     }
 
+    /**
+     * Validate product names case-insensitively against MongoDB.
+     */
+    private function productNameRules(?string $ignoreId = null): array
+    {
+        return [
+            'bail',
+            'required',
+            'string',
+            'max:500',
+            function ($attribute, $value, $fail) use ($ignoreId) {
+                $name = trim((string) $value);
+                $pattern = '^' . preg_quote($name) . '$';
+                $query = Product::query()
+                    ->where('product_name', 'regex', new \MongoDB\BSON\Regex($pattern, 'i'));
+
+                if ($ignoreId !== null) {
+                    $query->where('_id', '!=', new \MongoDB\BSON\ObjectId($ignoreId));
+                }
+
+                if ($query->exists()) {
+                    $fail('A product with this name already exists.');
+                }
+            },
+        ];
+    }
+
     // ── Shared dropdown data ──────────────────────────
     private function getDropdowns(?string $subCategoryId = null): array
     {
@@ -158,8 +185,12 @@ class ProductController extends Controller
     // ── Store ─────────────────────────────────────────
     public function store(Request $request)
     {
+        $request->merge([
+            'product_name' => trim((string) $request->input('product_name')),
+        ]);
+
         $request->validate([
-            'product_name'   => 'required|string|max:500',
+            'product_name'   => $this->productNameRules(),
             'category_id'    => 'required|string',
             'sub_category_id'=> 'required|string',
             'brand_id'       => 'nullable|string',
@@ -271,8 +302,12 @@ class ProductController extends Controller
     {
         $product = Product::findOrFail($id);
 
+        $request->merge([
+            'product_name' => trim((string) $request->input('product_name')),
+        ]);
+
         $request->validate([
-            'product_name'    => 'required|string|max:500',
+            'product_name'    => $this->productNameRules((string) $product->_id),
             'category_id'     => 'required|string',
             'sub_category_id' => 'required|string',
             'specific_value'  => 'required|string|max:255',
