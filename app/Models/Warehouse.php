@@ -43,7 +43,7 @@ class Warehouse extends Model
     public array $translatable = [
         'warehouse_name',
         'city',
-        'country',
+        'country_name',
     ];
 
     public function getNameAttribute(): ?string

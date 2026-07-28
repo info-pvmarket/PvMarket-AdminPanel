@@ -870,6 +870,21 @@
     $listingUserId = is_object($listing->user_id)      ? $listing->user_id->__toString()      : (string)$listing->user_id;
     $product       = $productsMap[$productId] ?? null;
     $warehouse     = $warehousesMap[$warehouseId] ?? null;
+    $warehouseCountryId = $warehouse?->country ? (string) $warehouse->country : '';
+    $country       = $warehouseCountryId !== '' ? ($countriesMap[$warehouseCountryId] ?? null) : null;
+    $cityName      = $warehouse ? trim(lang($warehouse, 'city')) : '';
+    $countryName   = $country
+        ? trim(lang($country, 'name'))
+        : ($warehouse ? trim(lang($warehouse, 'country_name')) : '');
+    $locationName  = collect([$cityName, $countryName])->filter()->implode(', ');
+    $incotermId    = $listing->incoterms_id ? (string) $listing->incoterms_id : '';
+    $incoterm      = $incotermId !== '' ? ($incotermsMap[$incotermId] ?? null) : null;
+    $incotermLabel = $incoterm
+        ? collect([trim((string) $incoterm->code), trim(lang($incoterm, 'name'))])
+            ->filter()
+            ->unique()
+            ->implode(' — ')
+        : 'N/A';
     $lister        = $usersMap[$listingUserId] ?? null;
     $slots         = $listing->slots ?? [];
     $listingImgs   = $imagesMap[(string)$listing->_id] ?? collect();
@@ -1040,12 +1055,12 @@
                     <div class="meta-item">
                         <label>Location</label>
                         <span>
-                            @if($warehouse?->country)
+                            @if($locationName !== '')
                                 <span class="country-cell">
-                                    {{ lang($warehouse, 'city') }}, {{ lang($warehouse, 'country') }}
+                                    {{ $locationName }}
                                 </span>
                             @else
-                                {{ $listing->warehouse_id }}
+                                N/A
                             @endif
                         </span>
                     </div>
@@ -1086,7 +1101,7 @@
                     <div class="slots-footer">
                         <span class="slots-hint">
                             📦 {{ count($slots) }} price {{ count($slots) === 1 ? 'tier' : 'tiers' }}
-                            &nbsp;·&nbsp; Incoterm: {{ $listing->incoterms_id ?? '—' }}
+                            &nbsp;·&nbsp; Incoterm: {{ $incotermLabel }}
                         </span>
                         <button class="view-slots-btn" onclick="toggleSlots('{{ $listing->id }}')">
                             View Slots ({{ count($slots) }})

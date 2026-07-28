@@ -12,6 +12,7 @@ use App\Models\Product;
 use App\Models\Brand;
 use App\Models\Warehouse;
 use App\Models\Commission;
+use App\Models\Country;
 use App\Services\TranslationService;
 use App\Models\ProductListingImage;
 use App\Models\Incoterm;
@@ -122,6 +123,26 @@ class ProductListingController extends Controller
         $warehousesMap = Warehouse::whereIn('_id', $warehouseIds)->get()
             ->keyBy(fn($w) => (string)$w->_id);
 
+        $countryIds = $warehousesMap->pluck('country')
+            ->filter()
+            ->flatMap(fn($id) => $this->mongoIdCandidates($id))
+            ->unique(fn($id) => is_object($id) ? get_class($id) . ':' . (string)$id : 'string:' . $id)
+            ->values()
+            ->all();
+
+        $countriesMap = Country::whereIn('_id', $countryIds)->get()
+            ->keyBy(fn($country) => (string)$country->_id);
+
+        $incotermIds = $listings->pluck('incoterms_id')
+            ->filter()
+            ->flatMap(fn($id) => $this->mongoIdCandidates($id))
+            ->unique(fn($id) => is_object($id) ? get_class($id) . ':' . (string)$id : 'string:' . $id)
+            ->values()
+            ->all();
+
+        $incotermsMap = Incoterm::whereIn('_id', $incotermIds)->get()
+            ->keyBy(fn($incoterm) => (string)$incoterm->_id);
+
         $userIds  = $listings->pluck('user_id')->filter()->unique()
             ->map(fn($id) => (string)$id)->values();
         $usersMap = \App\Models\User::whereIn('_id', $userIds)->get()
@@ -147,6 +168,8 @@ class ProductListingController extends Controller
             'realTimePriceFilter',
             'productsMap',
             'warehousesMap',
+            'countriesMap',
+            'incotermsMap',
             'usersMap',
             'imagesMap',
         ));

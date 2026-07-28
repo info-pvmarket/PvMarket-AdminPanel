@@ -291,6 +291,38 @@ class AdminListPresentationTest extends TestCase
         $this->assertStringNotContainsString("\$currencies    = ['AED', 'USD', 'GBP', 'EUR'];", $listingController);
     }
 
+    public function test_manage_listings_resolves_warehouse_country_ids_to_readable_names(): void
+    {
+        $controller = file_get_contents($this->projectFile('app/Http/Controllers/Admin/ProductListingController.php'));
+        $warehouseModel = file_get_contents($this->projectFile('app/Models/Warehouse.php'));
+        $view = file_get_contents($this->projectFile('resources/views/admin/product_listing/index.blade.php'));
+
+        $this->assertStringContainsString("Country::whereIn('_id', \$countryIds)", $controller);
+        $this->assertStringContainsString("'countriesMap'", $controller);
+        $this->assertStringContainsString("\$countryName   = \$country", $view);
+        $this->assertStringContainsString("trim(lang(\$country, 'name'))", $view);
+        $this->assertStringContainsString("trim(lang(\$warehouse, 'country_name'))", $view);
+        $this->assertStringContainsString('{{ $locationName }}', $view);
+        $this->assertStringNotContainsString("lang(\$warehouse, 'country')", $view);
+        $this->assertStringContainsString("'country_name'", $warehouseModel);
+        $this->assertStringNotContainsString("\n        'country',\n", $warehouseModel);
+    }
+
+    public function test_manage_listings_resolves_incoterm_ids_to_code_and_name(): void
+    {
+        $controller = file_get_contents($this->projectFile('app/Http/Controllers/Admin/ProductListingController.php'));
+        $view = file_get_contents($this->projectFile('resources/views/admin/product_listing/index.blade.php'));
+
+        $this->assertStringContainsString("\$listings->pluck('incoterms_id')", $controller);
+        $this->assertStringContainsString("Incoterm::whereIn('_id', \$incotermIds)", $controller);
+        $this->assertStringContainsString("'incotermsMap'", $controller);
+        $this->assertStringContainsString("\$incotermLabel = \$incoterm", $view);
+        $this->assertStringContainsString("trim((string) \$incoterm->code)", $view);
+        $this->assertStringContainsString("trim(lang(\$incoterm, 'name'))", $view);
+        $this->assertStringContainsString('Incoterm: {{ $incotermLabel }}', $view);
+        $this->assertStringNotContainsString("Incoterm: {{ \$listing->incoterms_id", $view);
+    }
+
     public function test_product_forms_have_a_database_backed_product_badge_before_details(): void
     {
         $controller = file_get_contents($this->projectFile('app/Http/Controllers/Admin/ProductController.php'));
