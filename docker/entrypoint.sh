@@ -11,6 +11,10 @@ mkdir -p \
 chown -R www-data:www-data storage bootstrap/cache
 php artisan storage:link --force >/dev/null
 
+if [ "${1:-}" = "apache2-foreground" ]; then
+  gosu www-data php artisan migrate --force --no-interaction
+fi
+
 if [ "${1:-}" = "php" ]; then
   exec gosu www-data "$@"
 fi
