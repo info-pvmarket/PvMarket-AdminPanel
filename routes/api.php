@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\SeoApiController;
 use App\Http\Controllers\Api\SolarAnalysisController;
+use App\Http\Controllers\Api\WebsiteTranslationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -49,6 +50,9 @@ Route::get('seo-meta', [SeoApiController::class, 'getSeoMeta']);
  * Returns array of URLs with lastmod, changefreq, priority for XML sitemap
  */
 Route::get('seo-meta/sitemap', [SeoApiController::class, 'getAllForSitemap']);
+
+Route::get('website-translations/{locale}', [WebsiteTranslationController::class, 'show'])
+    ->where('locale', '[a-zA-Z]{2,3}');
 
 Route::prefix('solar-analysis')->group(function () {
     Route::post('analyze', [SolarAnalysisController::class, 'analyze']);

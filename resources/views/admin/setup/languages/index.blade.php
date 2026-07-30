@@ -526,7 +526,7 @@ return [
                         Translate to <span id="tm-lang-name">—</span>
                     </div>
                     <div style="font-size:.75rem;color:var(--text-muted,#6b7280);">
-                        Select one collection. Every record will be translated and existing translations will be replaced.
+                        Select one database collection or the website static-text bundle. Existing translations will be replaced.
                     </div>
                 </div>
             </div>
@@ -537,7 +537,7 @@ return [
 
         {{-- Collection selection summary --}}
         <div style="padding:10px 16px;border-bottom:1px solid var(--border,#e5e7eb);display:flex;align-items:center;justify-content:space-between;background:var(--bg-subtle,#f9fafb);">
-            <span style="font-size:.8rem;font-weight:600;color:var(--text-primary,#111);">Choose collection</span>
+            <span style="font-size:.8rem;font-weight:600;color:var(--text-primary,#111);">Choose translation source</span>
             <span id="tm-count-label" style="font-size:.75rem;color:var(--text-muted,#6b7280);">None selected</span>
         </div>
 
@@ -591,6 +591,9 @@ function toggleEdit(code, open) {
 
 /* ── Translate Modal ── */
 const TM_PAGES = [
+    { group: 'Website', items: [
+        { id: 'website-static-text', label: 'Website Static Text' },
+    ]},
     { group: 'Setting', items: [
         { id: 'categories',      label: 'Categories' },
         { id: 'sub-categories',  label: 'Sub Categories' },

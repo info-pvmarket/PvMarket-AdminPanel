@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\TranslatePageJob;
+use App\Jobs\TranslateWebsiteStaticTextJob;
 use App\Models\Language;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -131,28 +132,42 @@ class LanguageController extends Controller
      */
     public function translate(Request $request, string $code)
     {
+        $supportedCollections = [
+            ...TranslatePageJob::supportedPages(),
+            TranslateWebsiteStaticTextJob::COLLECTION,
+        ];
+
         $request->validate([
-            'collection' => ['required', 'string', Rule::in(TranslatePageJob::supportedPages())],
+            'collection' => ['required', 'string', Rule::in($supportedCollections)],
         ]);
 
         $language = Language::where('code', $code)->firstOrFail();
         $collection = $request->string('collection')->toString();
         $runId = (string) Str::uuid();
 
-        TranslatePageJob::dispatch(
-            $code,
-            $collection,
-            (string) Auth::id(),
-            $language->name,
-            $runId,
-        );
+        if ($collection === TranslateWebsiteStaticTextJob::COLLECTION) {
+            TranslateWebsiteStaticTextJob::dispatch(
+                $code,
+                (string) Auth::id(),
+                $language->name,
+                $runId,
+            );
+        } else {
+            TranslatePageJob::dispatch(
+                $code,
+                $collection,
+                (string) Auth::id(),
+                $language->name,
+                $runId,
+            );
+        }
 
         return back()
             ->with(
                 'success',
                 str($collection)->replace('-', ' ')->title()
                 . ' queued for translation to ' . $language->name
-                . '. Every record will be processed and existing translations will be replaced.'
+                . '. Existing translations will be replaced when the job finishes.'
             )
             ->with('translation_run_id', $runId);
     }
