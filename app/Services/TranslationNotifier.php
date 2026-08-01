@@ -22,6 +22,9 @@ class TranslationNotifier
         $hasErrors = $stats['failed'] > 0;
         $isWebsiteText = $collection === TranslateWebsiteStaticTextJob::COLLECTION;
         $unit = $isWebsiteText ? 'text value' : 'record';
+        $result = $isWebsiteText
+            ? "replaced {$stats['updated']} text value(s)"
+            : "updated {$stats['updated']} record(s)";
 
         Notification::create([
             'user_id' => $userId,
@@ -30,11 +33,11 @@ class TranslationNotifier
                 ? "{$languageName} translation completed with errors"
                 : "{$languageName} translation completed",
             'message' => sprintf(
-                '%s: processed %d %s(s), replaced %d translation(s)%s.',
+                '%s: processed %d %s(s), %s%s.',
                 $label,
                 $stats['processed'],
                 $unit,
-                $stats['updated'],
+                $result,
                 $hasErrors ? ", and failed to translate {$stats['failed']} {$unit}(s)" : '',
             ),
             'metadata' => [
