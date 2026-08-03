@@ -1,9 +1,9 @@
-name: Build and deploy staging admin
+name: Build and deploy production admin
 
 on:
   push:
     branches:
-      - staging
+      - main
   workflow_dispatch:
 
 permissions:
@@ -11,7 +11,7 @@ permissions:
   packages: write
 
 concurrency:
-  group: pv-market-staging-admin
+  group: pv-market-production-admin
   cancel-in-progress: true
 
 env:
@@ -57,7 +57,7 @@ jobs:
         with:
           images: ${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=staging
+            type=raw,value=production
             type=raw,value=sha-${{ github.sha }}
 
       - name: Build and push image
@@ -75,8 +75,8 @@ jobs:
       - name: Configure SSH
         shell: bash
         env:
-          SSH_PRIVATE_KEY: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
-          SSH_KNOWN_HOSTS: ${{ secrets.STAGING_SSH_KNOWN_HOSTS }}
+          SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY || secrets.STAGING_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS || secrets.STAGING_SSH_KNOWN_HOSTS }}
         run: |
           install -m 700 -d "$HOME/.ssh"
           printf '%s\n' "$SSH_PRIVATE_KEY" > "$HOME/.ssh/id_ed25519"
@@ -86,8 +86,8 @@ jobs:
       - name: Deploy immutable image
         shell: bash
         env:
-          DEPLOY_HOST: ${{ secrets.STAGING_SSH_HOST }}
-          DEPLOY_USER: ${{ secrets.STAGING_SSH_USER }}
+          DEPLOY_HOST: ${{ secrets.PRODUCTION_SSH_HOST || secrets.STAGING_SSH_HOST }}
+          DEPLOY_USER: ${{ secrets.PRODUCTION_SSH_USER || secrets.STAGING_SSH_USER }}
           IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GHCR_USER: ${{ github.actor }}
