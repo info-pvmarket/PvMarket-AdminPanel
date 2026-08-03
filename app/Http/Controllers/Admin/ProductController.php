@@ -67,18 +67,28 @@ class ProductController extends Controller
     {
         $brands    = Brand::where('is_active', true)->orderBy('name')->get();
         $units     = Unit::where('is_active', true)->orderBy('unit_name')->get();
-        $mainMenus = MainMenu::orderBy('category_name')->get();
-        $subMenus  = SubMenu::orderBy('sub_category_name')->get();
+        $mainMenus = MainMenu::availableForDropdown()->orderBy('category_name')->get();
+        $subMenus  = SubMenu::availableForDropdown()->orderBy('sub_category_name')->get();
 
-        if ($subCategoryId) {
-            $options = ProductDetailOption::where('sub_category_id', new \MongoDB\BSON\ObjectId($subCategoryId))
-                                          ->orderBy('option_name')
+        $subCategoryObjectId = $this->toObjectId($subCategoryId);
+        if ($subCategoryObjectId) {
+            $options = ProductDetailOption::where('sub_category_id', $subCategoryObjectId)
+                                          ->orderBy('name')
                                           ->get();
         } else {
             $options = collect();
         }
 
         return compact('brands', 'units', 'mainMenus', 'subMenus', 'options');
+    }
+
+    private function toObjectId(mixed $value): ?\MongoDB\BSON\ObjectId
+    {
+        $value = trim((string) $value);
+
+        return preg_match('/^[a-f\d]{24}$/i', $value)
+            ? new \MongoDB\BSON\ObjectId($value)
+            : null;
     }
 
     // ── Index ─────────────────────────────────────────
@@ -88,7 +98,19 @@ class ProductController extends Controller
         $sort = in_array($request->get('sort'), ['latest', 'oldest'], true)
             ? $request->get('sort')
             : 'latest';
-         
+
+        $categoryFilterId = $this->toObjectId($request->get('category_id'));
+        $subCategoryFilterId = $this->toObjectId($request->get('sub_category_id'));
+        $categoryFilter = $categoryFilterId ? (string) $categoryFilterId : '';
+        $subCategoryFilter = $subCategoryFilterId ? (string) $subCategoryFilterId : '';
+
+        if ($categoryFilterId) {
+            $query->where('category_id', $categoryFilterId);
+        }
+
+        if ($subCategoryFilterId) {
+            $query->where('sub_category_id', $subCategoryFilterId);
+        }
 
         // Verification status filter
         $verificationFilter = $request->get('verification_status', 'all');
@@ -161,6 +183,13 @@ class ProductController extends Controller
                                         ->get(['_id', 'name', 'email', 'mobile', 'phone'])
                                         ->keyBy(fn($u) => (string) $u->_id);
 
+        $filterMainMenus = MainMenu::availableForDropdown()->orderBy('category_name')->get();
+        $filterSubMenusQuery = SubMenu::availableForDropdown()->orderBy('sub_category_name');
+        if ($categoryFilterId) {
+            $filterSubMenusQuery->where('category_id', $categoryFilterId);
+        }
+        $filterSubMenus = $filterSubMenusQuery->get();
+
 
         return view('admin.products.products', [
             'mode'               => 'index',
@@ -169,6 +198,10 @@ class ProductController extends Controller
             'creatorUsers'       => $creatorUsers,
             'verificationFilter' => $verificationFilter,
             'listingsFilter'     => $listingsFilter,
+            'categoryFilter'     => $categoryFilter,
+            'subCategoryFilter'  => $subCategoryFilter,
+            'filterMainMenus'    => $filterMainMenus,
+            'filterSubMenus'     => $filterSubMenus,
             'sort'               => $sort,
         ]);
     }
@@ -398,36 +431,59 @@ class ProductController extends Controller
 
     // ── AJAX: Get options by sub_category_id ──────────
     public function getOptionsBySubMenu(Request $request)
-{
-    $subCategoryId = $request->input('sub_menu_id');
+    {
+        $subCategoryId = $this->toObjectId($request->input('sub_menu_id'));
 
-    $options = ProductDetailOption::where('sub_category_id', $subCategoryId)  // ✅ fix here
-                                  ->orderBy('option_name')
-                                  ->get(['_id', 'option_name', 'unit_ids']);
-
-    $options = $options->map(function ($option) {
-        $unitIds = $option->unit_ids ?? [];
-        $units   = collect();
-        if (!empty($unitIds)) {
-            $units = Unit::whereIn('_id', $unitIds)
-                         ->orderBy('unit_name')
-                         ->get(['_id', 'unit_name'])
-                         ->map(fn($u) => ['unit_name' => $u->unit_name]);
+        if (!$subCategoryId) {
+            return response()->json([
+                'message' => 'A valid sub category is required.',
+                'options' => [],
+            ], 422);
         }
-        return [
-            'option_name' => $option->option_name,
-            'units'       => $units,
-        ];
-    });
 
-    return response()->json(['options' => $options]);
-}
+        $options = ProductDetailOption::where('sub_category_id', $subCategoryId)
+                                      ->orderBy('name')
+                                      ->get(['_id', 'name', 'unit_ids', 'unit_names']);
+
+        $options = $options->map(function ($option) {
+            $unitIds = collect($option->unit_ids ?? [])
+                ->map(fn ($id) => $id instanceof \MongoDB\BSON\ObjectId ? $id : $this->toObjectId($id))
+                ->filter()
+                ->values();
+
+            $units = collect();
+            if ($unitIds->isNotEmpty()) {
+                $units = Unit::whereIn('_id', $unitIds->all())
+                             ->orderBy('unit_name')
+                             ->get(['_id', 'unit_name'])
+                             ->map(fn ($unit) => ['unit_name' => $unit->unit_name]);
+            }
+
+            if ($units->isEmpty()) {
+                $units = collect($option->unit_names ?? [])
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->map(fn ($unitName) => ['unit_name' => $unitName]);
+            }
+
+            return [
+                'option_name' => $option->name,
+                'units'       => $units,
+            ];
+        });
+
+        return response()->json(['options' => $options]);
+    }
 
     // ── AJAX: Get sub categories by category_id ───────
     public function getSubMenusByMainMenu(Request $request)
     {
         $categoryId  = $request->input('main_menu_id');
-        $subMenus = SubMenu::where('category_id', new \MongoDB\BSON\ObjectId($categoryId))->orderBy('sub_category_name')->get(['_id', 'sub_category_name']);
+        $subMenus = SubMenu::availableForDropdown()
+            ->where('category_id', new \MongoDB\BSON\ObjectId($categoryId))
+            ->orderBy('sub_category_name')
+            ->get(['_id', 'sub_category_name']);
         return response()->json(['subMenus' => $subMenus]);
     }
 

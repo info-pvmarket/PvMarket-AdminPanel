@@ -18,7 +18,6 @@ class ProductDetailOption extends Model
 
    protected $fillable = [
         'name',
-        'data_type',
         'category_id',
         'category_name',
         'sub_category_id',

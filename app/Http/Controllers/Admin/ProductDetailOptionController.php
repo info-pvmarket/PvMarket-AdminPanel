@@ -3,53 +3,96 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\MainMenu;
 use App\Models\ProductDetailOption;
+use App\Models\SubMenu;
 use Illuminate\Http\Request;
 use App\Services\TranslationService;
 use Illuminate\Support\Facades\Log;
+use MongoDB\BSON\ObjectId;
 
 class ProductDetailOptionController extends Controller
 {
     public function __construct(protected TranslationService $translator) {}
 
+    private function getCategoryDropdownData(?ObjectId $categoryId = null): array
+    {
+        $mainMenus = collect();
+        $subMenus = collect();
+
+        try {
+            $mainMenus = MainMenu::availableForDropdown()->orderBy('category_name')->get();
+        } catch (\Exception $e) {}
+
+        try {
+            $subMenusQuery = SubMenu::availableForDropdown()->orderBy('sub_category_name');
+            if ($categoryId) {
+                $subMenusQuery->where('category_id', $categoryId);
+            }
+            $subMenus = $subMenusQuery->get();
+        } catch (\Exception $e) {}
+
+        return [
+            'mainMenus' => $mainMenus,
+            'subMenus' => $subMenus,
+            'categoryNames' => $mainMenus->mapWithKeys(
+                fn ($menu) => [(string) $menu->_id => $menu->category_name]
+            ),
+            'subCategoryNames' => $subMenus->mapWithKeys(
+                fn ($menu) => [(string) $menu->_id => $menu->sub_category_name]
+            ),
+        ];
+    }
+
     private function getDropdownData(): array
     {
-        $mainMenus = [];
-        $subMenus  = [];
-        $units     = [];
-
-        try {
-            $mainMenus = \App\Models\MainMenu::orderBy('category_name')->get();
-        } catch (\Exception $e) {}
-
-        try {
-            $subMenus = \App\Models\SubMenu::orderBy('sub_category_name')->get();
-        } catch (\Exception $e) {}
+        $data = $this->getCategoryDropdownData();
+        $units = collect();
 
         try {
             $units = \App\Models\Unit::orderBy('unit_name')->get();
         } catch (\Exception $e) {}
 
-        return compact('mainMenus', 'subMenus', 'units');
+        return array_merge($data, compact('units'));
+    }
+
+    private function objectId(mixed $value): ?ObjectId
+    {
+        $value = trim((string) $value);
+
+        return preg_match('/^[a-f0-9]{24}$/i', $value)
+            ? new ObjectId($value)
+            : null;
     }
 
     public function index(Request $request)
     {
-        $search  = $request->input('search');
+        $search = trim((string) $request->input('search', ''));
         $entries = (int) $request->input('entries', 10);
+        $entries = in_array($entries, [10, 25, 50, 100], true) ? $entries : 10;
+        $categoryId = $this->objectId($request->input('category_id'));
+        $subCategoryId = $this->objectId($request->input('sub_category_id'));
 
         $query = ProductDetailOption::query();
 
-        if ($search) {
-            $query->where('option_name', 'like', "%{$search}%");
+        if ($search !== '') {
+            $query->where('name', 'like', "%{$search}%");
+        }
+
+        if ($categoryId) {
+            $query->where('category_id', $categoryId);
+        }
+
+        if ($subCategoryId) {
+            $query->where('sub_category_id', $subCategoryId);
         }
 
         $options = $query->orderBy('_id', 'desc')->paginate($entries)->withQueryString();
 
-        return view('admin.products.product-detail-options', [
-            'mode'    => 'index',
+        return view('admin.products.product-detail-options', array_merge([
+            'mode' => 'index',
             'options' => $options,
-        ]);
+        ], $this->getCategoryDropdownData($categoryId)));
     }
 
     public function create()
@@ -64,7 +107,6 @@ class ProductDetailOptionController extends Controller
     {
         $request->validate([
             'option_name'     => 'required|string|max:255',
-            'data_type'       => 'required|in:integer,float,small_text,long_text',
             'category_id'     => 'nullable',
             'sub_category_id' => 'nullable',
             'unit_ids'        => 'nullable|array',
@@ -90,7 +132,6 @@ class ProductDetailOptionController extends Controller
 
         $data = [
             'name'              => $request->option_name,
-            'data_type'         => $request->data_type,
             'is_tag'            => false,
             'is_active'         => true,
             'category_id'       => $request->category_id
@@ -127,7 +168,6 @@ class ProductDetailOptionController extends Controller
     {
         $request->validate([
             'option_name'     => 'required|string|max:255',
-            'data_type'       => 'required|in:integer,float,small_text,long_text',
             'category_id'     => 'nullable',
             'sub_category_id' => 'nullable',
             'unit_ids'        => 'nullable|array',
@@ -153,7 +193,6 @@ class ProductDetailOptionController extends Controller
 
         $data = [
             'name'              => $request->option_name,
-            'data_type'         => $request->data_type,
             'category_id'       => $request->category_id
                 ? new \MongoDB\BSON\ObjectId($request->category_id)
                 : null,

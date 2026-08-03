@@ -42,6 +42,11 @@ class SubMenu extends Model
         return $this->collection ?? parent::getTable();
     }
 
+    public function scopeAvailableForDropdown($query)
+    {
+        return $query->where('is_active', true);
+    }
+
     public array $translatable = [
         'sub_category_name',
     ];

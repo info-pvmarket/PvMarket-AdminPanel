@@ -29,7 +29,9 @@ class CommissionController extends Controller
 
     public function create()
     {
-        $categories = MainMenu::orderBy('category_name')->get(['_id', 'category_name']);
+        $categories = MainMenu::availableForDropdown()
+            ->orderBy('category_name')
+            ->get(['_id', 'category_name']);
 
         return view('admin.setup.commissions.commissions', [
             'mode'       => 'create',
@@ -65,7 +67,9 @@ class CommissionController extends Controller
     public function edit($id)
     {
         $record     = Commission::findOrFail($id);
-        $categories = MainMenu::orderBy('category_name')->get(['_id', 'category_name']);
+        $categories = MainMenu::availableForDropdown()
+            ->orderBy('category_name')
+            ->get(['_id', 'category_name']);
 
         return view('admin.setup.commissions.commissions', [
             'mode'       => 'edit',

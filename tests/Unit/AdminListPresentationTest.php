@@ -56,6 +56,20 @@ class AdminListPresentationTest extends TestCase
         $this->assertStringContainsString('<label>Created Date</label>', $listings);
     }
 
+    public function test_product_list_filters_by_category_and_subcategory(): void
+    {
+        $controller = file_get_contents($this->projectFile('app/Http/Controllers/Admin/ProductController.php'));
+        $view = file_get_contents($this->projectFile('resources/views/admin/products/products.blade.php'));
+
+        $this->assertStringContainsString("\$query->where('category_id', \$categoryFilterId)", $controller);
+        $this->assertStringContainsString("\$query->where('sub_category_id', \$subCategoryFilterId)", $controller);
+        $this->assertStringContainsString("\$filterSubMenusQuery->where('category_id', \$categoryFilterId)", $controller);
+        $this->assertStringContainsString('name="category_id"', $view);
+        $this->assertStringContainsString('name="sub_category_id"', $view);
+        $this->assertStringContainsString('All Categories', $view);
+        $this->assertStringContainsString('All Subcategories', $view);
+    }
+
     public function test_admin_product_create_and_edit_enforce_unique_names(): void
     {
         $controller = file_get_contents($this->projectFile('app/Http/Controllers/Admin/ProductController.php'));
@@ -157,7 +171,7 @@ class AdminListPresentationTest extends TestCase
 
         $this->assertStringContainsString("'is_active' => \$isActive", $mainController);
         $this->assertStringContainsString("'is_active' => \$isActive", $subController);
-        $this->assertStringContainsString("where('is_active', true)", $subController);
+        $this->assertStringContainsString('MainMenu::availableForDropdown()', $subController);
         $this->assertStringNotContainsString("request->boolean('is_active', true)", $mainController);
         $this->assertStringContainsString('$menu->is_active', $mainView);
         $this->assertStringContainsString('$sub->is_active', $subView);

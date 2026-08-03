@@ -37,6 +37,12 @@ class MainMenu extends Model
         return $this->collection ?? parent::getTable();
     }
 
+    public function scopeAvailableForDropdown($query)
+    {
+        return $query->where('is_active', true)
+            ->where('stock_value', true);
+    }
+
     public array $translatable = [
         'category_name',
     ];

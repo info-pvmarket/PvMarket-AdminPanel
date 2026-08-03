@@ -479,10 +479,20 @@ function handleSubCategoryChange(subCategoryId) {
     const wrapper = document.getElementById('productDetailsWrapper');
     wrapper.innerHTML = '<div class="details-loading">⏳ Loading options...</div>';
 
-    fetch('{{ route("admin.products.options-by-submenu") }}?sub_menu_id=' + subCategoryId, {
-        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+    const query = new URLSearchParams({ sub_menu_id: subCategoryId });
+    fetch('{{ route("admin.products.options-by-submenu") }}?' + query.toString(), {
+        headers: {
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+        }
     })
-    .then(r => r.json())
+    .then(r => {
+        if (!r.ok) {
+            throw new Error('Failed to load product specifications.');
+        }
+
+        return r.json();
+    })
     .then(data => {
         if (!data.options || data.options.length === 0) {
             wrapper.innerHTML = '<div class="details-empty">No options found for this sub category. Add options from the <strong>Product Detail Options</strong> page first.</div>';
@@ -619,6 +629,8 @@ document.addEventListener('DOMContentLoaded', function () {
         letter-spacing: .4px;
     }
     .filter-group-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+    .taxonomy-filter-row { display:flex; gap:8px; flex-wrap:wrap; }
+    .taxonomy-filter-row .entries-select { min-width:180px; }
     .filter-pill {
         padding: 5px 16px;
         border-radius: 20px;
@@ -724,13 +736,41 @@ document.addEventListener('DOMContentLoaded', function () {
 
 {{-- Filter Bar --}}
 <div class="filter-bar">
+    {{-- Category and Subcategory --}}
+    <form method="GET" action="{{ route('admin.products.index') }}" class="filter-group">
+        <span class="filter-group-label">Category / Subcategory</span>
+        @foreach(request()->only(['verification_status', 'listings_filter', 'search', 'entries', 'sort']) as $name => $value)
+            <input type="hidden" name="{{ $name }}" value="{{ $value }}">
+        @endforeach
+        <div class="taxonomy-filter-row">
+            <select name="category_id" class="entries-select" aria-label="Filter products by category"
+                    onchange="this.form.elements['sub_category_id'].value=''; this.form.submit()">
+                <option value="">All Categories</option>
+                @foreach($filterMainMenus as $menu)
+                    <option value="{{ $menu->_id }}" {{ ($categoryFilter ?? '') === (string) $menu->_id ? 'selected' : '' }}>
+                        {{ lang($menu, 'category_name') }}
+                    </option>
+                @endforeach
+            </select>
+            <select name="sub_category_id" class="entries-select" aria-label="Filter products by subcategory"
+                    onchange="this.form.submit()">
+                <option value="">All Subcategories</option>
+                @foreach($filterSubMenus as $menu)
+                    <option value="{{ $menu->_id }}" {{ ($subCategoryFilter ?? '') === (string) $menu->_id ? 'selected' : '' }}>
+                        {{ lang($menu, 'sub_category_name') }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+    </form>
+
     {{-- Verification Status --}}
     <div class="filter-group">
         <span class="filter-group-label">Verification</span>
         <div class="filter-group-pills">
             @foreach(['all' => 'All', 'pending' => 'Pending', 'verified' => 'Verified', 'rejected' => 'Rejected'] as $key => $label)
                 <a href="{{ route('admin.products.index', array_merge(
-                        request()->only(['listings_filter', 'search', 'entries', 'sort']),
+                        request()->only(['listings_filter', 'search', 'entries', 'sort', 'category_id', 'sub_category_id']),
                         ['verification_status' => $key]
                     )) }}"
                    class="filter-pill {{ ($verificationFilter ?? 'all') === $key ? 'active' : '' }}">
@@ -746,7 +786,7 @@ document.addEventListener('DOMContentLoaded', function () {
         <div class="filter-group-pills">
             @foreach(['all' => 'All Listings', 'has_listings' => 'Has Listings', 'no_listings' => 'No Listings'] as $key => $label)
                 <a href="{{ route('admin.products.index', array_merge(
-                        request()->only(['verification_status', 'search', 'entries', 'sort']),
+                        request()->only(['verification_status', 'search', 'entries', 'sort', 'category_id', 'sub_category_id']),
                         ['listings_filter' => $key]
                     )) }}"
                    class="filter-pill {{ ($listingsFilter ?? 'all') === $key ? 'active-purple' : '' }}">
@@ -758,7 +798,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     <form method="GET" action="{{ route('admin.products.index') }}" class="filter-group">
         <span class="filter-group-label">Created Date</span>
-        @foreach(request()->only(['verification_status', 'listings_filter', 'search', 'entries']) as $name => $value)
+        @foreach(request()->only(['verification_status', 'listings_filter', 'search', 'entries', 'category_id', 'sub_category_id']) as $name => $value)
             <input type="hidden" name="{{ $name }}" value="{{ $value }}">
         @endforeach
         <select name="sort" class="entries-select" aria-label="Sort products by created date" onchange="this.form.submit()">
@@ -780,6 +820,12 @@ document.addEventListener('DOMContentLoaded', function () {
             @if(request('entries'))
                 <input type="hidden" name="entries" value="{{ request('entries') }}">
             @endif
+            @if(request('category_id'))
+                <input type="hidden" name="category_id" value="{{ request('category_id') }}">
+            @endif
+            @if(request('sub_category_id'))
+                <input type="hidden" name="sub_category_id" value="{{ request('sub_category_id') }}">
+            @endif
             <input type="hidden" name="sort" value="{{ $sort ?? 'latest' }}">
             <label>Search:</label>
             <div class="search-input-wrap">
@@ -799,6 +845,12 @@ document.addEventListener('DOMContentLoaded', function () {
             @endif
             @if(request('search'))
                 <input type="hidden" name="search" value="{{ request('search') }}">
+            @endif
+            @if(request('category_id'))
+                <input type="hidden" name="category_id" value="{{ request('category_id') }}">
+            @endif
+            @if(request('sub_category_id'))
+                <input type="hidden" name="sub_category_id" value="{{ request('sub_category_id') }}">
             @endif
             <input type="hidden" name="sort" value="{{ $sort ?? 'latest' }}">
             Show

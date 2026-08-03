@@ -15,7 +15,7 @@ class SubMenuController extends Controller
 
     private function availableMainMenus()
     {
-        return MainMenu::where('is_active', true)
+        return MainMenu::availableForDropdown()
             ->orderBy('category_name')
             ->get();
     }
@@ -84,14 +84,6 @@ class SubMenuController extends Controller
     {
         $record    = SubMenu::findOrFail($id);
         $mainMenus = $this->availableMainMenus();
-
-        if ($record->category_id && !$mainMenus->contains('id', (string) $record->category_id)) {
-            $currentMenu = MainMenu::find($record->category_id);
-            if ($currentMenu) {
-                $mainMenus->push($currentMenu);
-                $mainMenus = $mainMenus->sortBy('category_name')->values();
-            }
-        }
 
         return view('admin.setup.sub-menu.sub-menu', [
             'mode'      => 'edit',

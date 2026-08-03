@@ -269,8 +269,8 @@ class ProductListingController extends Controller
 
     public function create()
     {
-        $mainCategories = MainMenu::all();
-        $subCategories  = SubMenu::all();
+        $mainCategories = MainMenu::availableForDropdown()->orderBy('category_name')->get();
+        $subCategories  = SubMenu::availableForDropdown()->orderBy('sub_category_name')->get();
         $products       = Product::all();
         $warehouses     = Warehouse::all();
         $commissions    = Commission::all(['category_id', 'category_name', 'commission_percentage']);
@@ -439,8 +439,8 @@ class ProductListingController extends Controller
         $subCatId     = (string)$listing->sub_category_id;
         $productId    = (string)$listing->product_id;
         $warehouseId  = (string)$listing->warehouse_id;
-        $mainCategories = MainMenu::all();
-        $subCategories  = SubMenu::all();
+        $mainCategories = MainMenu::availableForDropdown()->orderBy('category_name')->get();
+        $subCategories  = SubMenu::availableForDropdown()->orderBy('sub_category_name')->get();
         $products       = Product::all();
         $warehouses     = Warehouse::all();
 
@@ -643,7 +643,10 @@ class ProductListingController extends Controller
     // ── API: Sub-categories by Main Category ────────────────────
     public function getSubCategories(string $mainCategoryId)
     {
-        $subCategories = SubMenu::where('category_id', new \MongoDB\BSON\ObjectId($mainCategoryId))->get();
+        $subCategories = SubMenu::availableForDropdown()
+            ->where('category_id', new \MongoDB\BSON\ObjectId($mainCategoryId))
+            ->orderBy('sub_category_name')
+            ->get();
         return response()->json($subCategories);
     }
 

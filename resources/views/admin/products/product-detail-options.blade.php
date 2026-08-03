@@ -31,13 +31,6 @@
     .form-input::placeholder { color:#CBD5E1; }
     .form-select { appearance:none; background:white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 12px center; cursor:pointer; }
 
-    /* Data type radio row */
-    .data-type-wrap { display:flex; align-items:center; flex-wrap:nowrap; gap:24px; padding:20px 0; border-top:1px solid var(--border); margin-bottom:8px; }
-    .data-type-label { font-size:13px; font-weight:600; color:var(--text); margin-right:8px; white-space:nowrap; }
-    .radio-option { display:flex; align-items:center; gap:8px; cursor:pointer; white-space:nowrap; }
-    .radio-option input[type="radio"] { width:18px; height:18px; accent-color:var(--primary); cursor:pointer; }
-    .radio-option span { font-size:14px; color:var(--text); font-weight:500; }
-
     .form-actions { display:flex; justify-content:flex-end; padding-top:20px; border-top:1px solid var(--border); margin-top:20px; clear:both; }
     .btn-save { display:inline-flex; align-items:center; gap:8px; padding:10px 28px; background:#10B981; color:white; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; transition:background .15s, box-shadow .2s; }
     .btn-save:hover { background:#059669; box-shadow:0 4px 14px rgba(16,185,129,.35); }
@@ -168,23 +161,6 @@
     </div>
 </div>
 
-        {{-- Data Type Radio Row --}}
-        <div class="data-type-wrap">
-            <span class="data-type-label">Data Type:</span>
-
-            @foreach(['integer' => 'Integer', 'float' => 'Float', 'small_text' => 'Small Text', 'long_text' => 'Long Text'] as $value => $label)
-                <label class="radio-option">
-                    <input
-                        type="radio"
-                        name="data_type"
-                        value="{{ $value }}"
-                        {{ old('data_type', $record->data_type ?? 'small_text') === $value ? 'checked' : '' }}
-                    />
-                    <span>{{ $label }}</span>
-                </label>
-            @endforeach
-        </div>
-
         <div class="form-actions">
             <button type="submit" class="btn-save">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -275,6 +251,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     .content-panel { background:white; border:1px solid var(--border); border-radius:12px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.04); }
     .table-toolbar { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; border-bottom:1px solid var(--border); gap:12px; flex-wrap:wrap; background:#FAFBFD; }
+    .filter-form { display:flex; align-items:center; gap:8px; flex:1 1 720px; flex-wrap:wrap; }
     .search-group { display:flex; align-items:center; gap:8px; }
     .search-group label { font-size:13.5px; color:var(--text); font-weight:600; }
     .search-input-wrap { position:relative; }
@@ -285,7 +262,14 @@ document.addEventListener('DOMContentLoaded', function () {
     .entries-group { display:flex; align-items:center; gap:7px; font-size:13.5px; color:var(--muted); font-weight:500; }
     .entries-select { padding:7px 26px 7px 10px; border:1.5px solid var(--border); border-radius:7px; font-family:inherit; font-size:13px; font-weight:600; color:var(--text); background:white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 7px center; -webkit-appearance:none; appearance:none; outline:none; cursor:pointer; }
     .entries-select:hover,.entries-select:focus { border-color:var(--primary); }
+    .filter-select { min-width:180px; padding:8px 30px 8px 11px; border:1.5px solid var(--border); border-radius:7px; font-family:inherit; font-size:13px; color:var(--text); background:white; outline:none; cursor:pointer; }
+    .filter-select:hover,.filter-select:focus { border-color:var(--primary); }
+    .filter-btn,.filter-reset { display:inline-flex; align-items:center; justify-content:center; min-height:35px; padding:7px 14px; border-radius:7px; font-size:13px; font-weight:700; text-decoration:none; cursor:pointer; }
+    .filter-btn { border:1px solid var(--primary); background:var(--primary); color:white; }
+    .filter-reset { border:1px solid var(--border); background:white; color:var(--muted); }
+    .filter-reset:hover { border-color:var(--danger); color:var(--danger); }
 
+    .table-scroll { width:100%; overflow-x:auto; }
     .data-table { width:100%; border-collapse:collapse; }
     .data-table thead { background:#F0F9FF; }
     .data-table th { padding:11px 16px; text-align:left; font-size:12px; font-weight:700; color:var(--primary-d); text-transform:uppercase; letter-spacing:.5px; border-bottom:2px solid #BAE6FD; white-space:nowrap; }
@@ -295,13 +279,6 @@ document.addEventListener('DOMContentLoaded', function () {
     .data-table tbody tr:nth-child(odd) td { background:white; }
     .data-table tbody tr:nth-child(even) td { background:#FAFBFD; }
     .data-table tbody tr:hover td { background:#E0F2FE !important; }
-
-    /* Data type badge */
-    .badge { display:inline-flex; align-items:center; padding:3px 10px; border-radius:5px; font-size:12px; font-weight:600; white-space:nowrap; }
-    .badge-integer   { background:#EFF6FF; color:#1D4ED8; }
-    .badge-float     { background:#F0FDF4; color:#15803D; }
-    .badge-small_text { background:#FFF7ED; color:#C2410C; }
-    .badge-long_text  { background:#FAF5FF; color:#7E22CE; }
 
     .action-btns { display:flex; align-items:center; justify-content:center; gap:8px; }
     .action-icon { width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; border:1.5px solid transparent; background:none; border-radius:7px; transition:all .15s; text-decoration:none; }
@@ -357,15 +334,45 @@ document.addEventListener('DOMContentLoaded', function () {
 <div class="content-panel">
 
     <div class="table-toolbar">
-        <form method="GET" action="{{ route('admin.products.detail-options.index') }}" class="search-group">
-            <label>Search:</label>
-            <div class="search-input-wrap">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                </svg>
-                <input type="text" name="search" value="{{ request('search') }}"
-                       placeholder="Search By Option..." class="search-input"/>
+        <form method="GET" action="{{ route('admin.products.detail-options.index') }}" class="filter-form" id="specificationFilters">
+            <div class="search-group">
+                <label>Search:</label>
+                <div class="search-input-wrap">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    <input type="text" name="search" value="{{ request('search') }}"
+                           placeholder="Search by option..." class="search-input"/>
+                </div>
             </div>
+
+            <select name="category_id" id="specificationCategoryFilter" class="filter-select"
+                    aria-label="Filter by category"
+                    onchange="document.getElementById('specificationSubCategoryFilter').value=''; this.form.submit();">
+                <option value="">All Categories</option>
+                @foreach($mainMenus as $menu)
+                    <option value="{{ (string) $menu->_id }}" @selected(request('category_id') === (string) $menu->_id)>
+                        {{ $menu->category_name }}
+                    </option>
+                @endforeach
+            </select>
+
+            <select name="sub_category_id" id="specificationSubCategoryFilter" class="filter-select"
+                    aria-label="Filter by subcategory" onchange="this.form.submit();">
+                <option value="">All Subcategories</option>
+                @foreach($subMenus as $menu)
+                    <option value="{{ (string) $menu->_id }}" @selected(request('sub_category_id') === (string) $menu->_id)>
+                        {{ $menu->sub_category_name }}
+                    </option>
+                @endforeach
+            </select>
+
+            <input type="hidden" name="entries" value="{{ request('entries', 10) }}">
+            <button type="submit" class="filter-btn">Filter</button>
+
+            @if(request()->filled('search') || request()->filled('category_id') || request()->filled('sub_category_id'))
+                <a href="{{ route('admin.products.detail-options.index', ['entries' => request('entries', 10)]) }}" class="filter-reset">Reset</a>
+            @endif
         </form>
 
         <form method="GET" action="{{ route('admin.products.detail-options.index') }}" class="entries-group">
@@ -376,18 +383,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 @endforeach
             </select>
             entries
-            @if(request('search'))
-                <input type="hidden" name="search" value="{{ request('search') }}">
-            @endif
+            @foreach(['search', 'category_id', 'sub_category_id'] as $filter)
+                @if(request()->filled($filter))
+                    <input type="hidden" name="{{ $filter }}" value="{{ request($filter) }}">
+                @endif
+            @endforeach
         </form>
     </div>
 
+    <div class="table-scroll">
     <table class="data-table">
     <thead>
         <tr>
             <th class="center" style="width:60px;">S.No</th>
 <th class="center">Option Name</th>
-<th class="center" style="width:160px;">Data Type</th>
+<th class="center">Category</th>
+<th class="center">Subcategory</th>
 <th class="center" style="width:90px;">Action</th>
         </tr>
     </thead>
@@ -398,17 +409,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 {{ $options->firstItem() + $index }}
             </td>
             <td class="center" style="font-weight:500;">{{ lang($option, 'name') }}</td>
-<td class="center">
-    <span class="badge badge-{{ $option->data_type }}">
-                    {{ match($option->data_type) {
-                        'integer'    => 'Integer',
-                        'float'      => 'Float',
-                        'small_text' => 'Small Text',
-                        'long_text'  => 'Long Text',
-                        default      => $option->data_type
-                    } }}
-                </span>
-            </td>
+            <td class="center">{{ lang($option, 'category_name') ?: ($categoryNames[(string) ($option->category_id ?? '')] ?? '—') }}</td>
+            <td class="center">{{ lang($option, 'sub_category_name') ?: ($subCategoryNames[(string) ($option->sub_category_id ?? '')] ?? '—') }}</td>
             <td>
                 <div class="action-btns">
                     <a href="{{ route('admin.products.detail-options.edit', $option->id) }}"
@@ -436,7 +438,7 @@ document.addEventListener('DOMContentLoaded', function () {
         </tr>
         @empty
         <tr>
-            <td colspan="4">
+            <td colspan="5">
                 <div class="empty-state">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -449,6 +451,7 @@ document.addEventListener('DOMContentLoaded', function () {
         @endforelse
     </tbody>
 </table>
+    </div>
 
 
     <div class="table-footer">
@@ -483,5 +486,3 @@ document.addEventListener('DOMContentLoaded', function () {
 @endsection
 
 @endif
-
-

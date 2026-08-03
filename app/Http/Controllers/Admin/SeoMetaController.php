@@ -104,7 +104,7 @@ class SeoMetaController extends Controller
     public function create()
     {
         $markets     = Market::where('is_active', true)->orderBy('name')->get();
-        $categories  = MainMenu::where('is_active', true)->orderBy('category_name')->get();
+        $categories  = MainMenu::availableForDropdown()->orderBy('category_name')->get();
         $brands      = Brand::where('is_active', true)->orderBy('name')->get();
 
         return view('admin.seo-meta.seo-meta', [
@@ -253,9 +253,9 @@ class SeoMetaController extends Controller
                              ->findOrFail($id);
 
         $markets       = Market::where('is_active', true)->orderBy('name')->get();
-        $categories    = MainMenu::where('is_active', true)->orderBy('category_name')->get();
+        $categories    = MainMenu::availableForDropdown()->orderBy('category_name')->get();
         $subCategories = $record->category_id
-            ? SubMenu::where('category_id', $record->category_id)->where('is_active', true)->get()
+            ? SubMenu::availableForDropdown()->where('category_id', $record->category_id)->get()
             : collect();
         $brands        = Brand::where('is_active', true)->orderBy('name')->get();
 
@@ -417,8 +417,8 @@ class SeoMetaController extends Controller
 
         try {
             $objectId = new \MongoDB\BSON\ObjectId($categoryId);
-            $subCategories = SubMenu::where('category_id', $objectId)
-                               ->where('is_active', true)
+            $subCategories = SubMenu::availableForDropdown()
+                               ->where('category_id', $objectId)
                                ->orderBy('sub_category_name')
                                ->get(['_id', 'sub_category_name', 'slug'])
                                ->map(function($item) {
