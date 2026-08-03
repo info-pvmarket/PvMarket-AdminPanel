@@ -84,11 +84,102 @@ class ProductController extends Controller
 
     private function toObjectId(mixed $value): ?\MongoDB\BSON\ObjectId
     {
+        if ($value instanceof \MongoDB\BSON\ObjectId) {
+            return $value;
+        }
+
+        if (is_object($value) && method_exists($value, 'getArrayCopy')) {
+            $value = $value->getArrayCopy();
+        }
+
+        if (is_array($value)) {
+            if (array_key_exists('$oid', $value)) {
+                return $this->toObjectId($value['$oid']);
+            }
+
+            return count($value) === 1
+                ? $this->toObjectId(reset($value))
+                : null;
+        }
+
+        if (is_object($value)) {
+            if (isset($value->{'$oid'})) {
+                return $this->toObjectId($value->{'$oid'});
+            }
+
+            if (!$value instanceof \Stringable) {
+                return null;
+            }
+        }
+
+        if (!is_scalar($value) && !$value instanceof \Stringable) {
+            return null;
+        }
+
         $value = trim((string) $value);
+
+        if ($value !== '' && in_array($value[0], ['[', '{'], true)) {
+            $decoded = json_decode($value, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                return $this->toObjectId($decoded);
+            }
+        }
 
         return preg_match('/^[a-f\d]{24}$/i', $value)
             ? new \MongoDB\BSON\ObjectId($value)
             : null;
+    }
+
+    /**
+     * Normalize native BSON arrays and legacy JSON-encoded array fields.
+     */
+    private function normalizeList(mixed $value): array
+    {
+        if ($value === null) {
+            return [];
+        }
+
+        if (is_object($value) && method_exists($value, 'getArrayCopy')) {
+            $value = $value->getArrayCopy();
+        } elseif ($value instanceof \Traversable) {
+            $value = iterator_to_array($value);
+        }
+
+        if (is_string($value)) {
+            $value = trim($value);
+            if ($value === '') {
+                return [];
+            }
+
+            if (in_array($value[0], ['[', '{'], true)) {
+                $decoded = json_decode($value, true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    return $this->normalizeList($decoded);
+                }
+            }
+
+            return [$value];
+        }
+
+        if (is_array($value)) {
+            if (array_key_exists('$oid', $value)) {
+                return [$value];
+            }
+
+            $items = [];
+            foreach ($value as $item) {
+                if (is_string($item) && in_array(substr(ltrim($item), 0, 1), ['[', '{'], true)) {
+                    array_push($items, ...$this->normalizeList($item));
+                    continue;
+                }
+
+                $items[] = $item;
+            }
+
+            return $items;
+        }
+
+        return [$value];
     }
 
     // ── Index ─────────────────────────────────────────
@@ -446,7 +537,7 @@ class ProductController extends Controller
                                       ->get(['_id', 'name', 'unit_ids', 'unit_names']);
 
         $options = $options->map(function ($option) {
-            $unitIds = collect($option->unit_ids ?? [])
+            $unitIds = collect($this->normalizeList($option->unit_ids ?? []))
                 ->map(fn ($id) => $id instanceof \MongoDB\BSON\ObjectId ? $id : $this->toObjectId($id))
                 ->filter()
                 ->values();
@@ -460,7 +551,7 @@ class ProductController extends Controller
             }
 
             if ($units->isEmpty()) {
-                $units = collect($option->unit_names ?? [])
+                $units = collect($this->normalizeList($option->unit_names ?? []))
                     ->filter()
                     ->unique()
                     ->values()

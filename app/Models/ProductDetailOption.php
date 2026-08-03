@@ -16,7 +16,7 @@ class ProductDetailOption extends Model
         return 'specifications';
     }
 
-   protected $fillable = [
+    protected $fillable = [
         'name',
         'category_id',
         'category_name',
@@ -28,10 +28,50 @@ class ProductDetailOption extends Model
         'is_active',
     ];
 
-    protected $casts = [
-        'unit_ids'   => 'array',
-        'unit_names' => 'array',
-    ];
+    public function getUnitIdsAttribute(mixed $value): array
+    {
+        return $this->normalizeArrayAttribute($value);
+    }
+
+    public function setUnitIdsAttribute(mixed $value): void
+    {
+        $this->attributes['unit_ids'] = $this->normalizeArrayAttribute($value);
+    }
+
+    public function getUnitNamesAttribute(mixed $value): array
+    {
+        return $this->normalizeArrayAttribute($value);
+    }
+
+    public function setUnitNamesAttribute(mixed $value): void
+    {
+        $this->attributes['unit_names'] = $this->normalizeArrayAttribute($value);
+    }
+
+    private function normalizeArrayAttribute(mixed $value): array
+    {
+        if ($value === null || $value === '') {
+            return [];
+        }
+
+        if (is_object($value) && method_exists($value, 'getArrayCopy')) {
+            $value = $value->getArrayCopy();
+        } elseif ($value instanceof \Traversable) {
+            $value = iterator_to_array($value);
+        }
+
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                return $decoded;
+            }
+
+            return [$value];
+        }
+
+        return is_array($value) ? $value : [$value];
+    }
+
     public array $translatable = [
         'name',
         'category_name',
