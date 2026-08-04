@@ -56,4 +56,32 @@ class WebsiteTranslationApiTest extends TestCase
                 'Website translation bundle not found.',
             );
     }
+
+    public function test_a_translation_bundle_is_available_to_new_market_locations(): void
+    {
+        $bundle = [
+            'version' => 1,
+            'language' => 'de',
+            'source_language' => 'en',
+            'source_hash' => 'source-hash',
+            'content_hash' => 'market-independent-content-hash',
+            'generated_at' => '2026-08-04T10:00:00+00:00',
+            'sections' => [
+                'topbar' => ['events' => 'Veranstaltungen'],
+            ],
+        ];
+
+        $store = Mockery::mock(WebsiteTranslationStore::class);
+        $store->shouldReceive('find')
+            ->once()
+            ->with('de')
+            ->andReturn($bundle);
+        $this->app->instance(WebsiteTranslationStore::class, $store);
+
+        $this->withHeader('X-Market-Code', 'new-market')
+            ->getJson('/api/website-translations/de')
+            ->assertOk()
+            ->assertJsonPath('language', 'de')
+            ->assertJsonPath('sections.topbar.events', 'Veranstaltungen');
+    }
 }

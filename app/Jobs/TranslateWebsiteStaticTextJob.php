@@ -25,6 +25,19 @@ class TranslateWebsiteStaticTextJob implements ShouldQueue
 
     public int $tries = 3;
 
+    /**
+     * Give AWS Translate time to recover when a complete catalog run is
+     * throttled. Without queue backoff, an immediate retry repeats the same
+     * burst and can fail every value again.
+     *
+     * @var list<int>
+     */
+    public array $backoff = [60, 180];
+
+    private const TRANSLATION_ATTEMPTS = 3;
+
+    private const RETRY_DELAYS_MICROSECONDS = [250000, 750000];
+
     public function __construct(
         public string $language,
         public ?string $requestedBy = null,
@@ -56,6 +69,12 @@ class TranslateWebsiteStaticTextJob implements ShouldQueue
             $translator,
             $stats,
         );
+
+        if ($stats['processed'] > 0 && $stats['updated'] === 0) {
+            throw new RuntimeException(
+                "Website static text translation failed for every text value ({$stats['failed']}/{$stats['processed']})."
+            );
+        }
 
         $sourceHash = hash(
             'sha256',
@@ -180,12 +199,7 @@ class TranslateWebsiteStaticTextJob implements ShouldQueue
 
             $stats['processed']++;
             [$protected, $placeholders] = $this->protectPlaceholders($value);
-            $translated = $translator->translateText(
-                $protected,
-                $this->language,
-                'en',
-                true,
-            );
+            $translated = $this->translateWithRetry($protected, $translator);
 
             if ($translated === null) {
                 $stats['failed']++;
@@ -209,6 +223,34 @@ class TranslateWebsiteStaticTextJob implements ShouldQueue
         }
 
         return $translated;
+    }
+
+    private function translateWithRetry(
+        string $text,
+        TranslationService $translator,
+    ): ?string {
+        for ($attempt = 1; $attempt <= self::TRANSLATION_ATTEMPTS; $attempt++) {
+            $translated = $translator->translateText(
+                $text,
+                $this->language,
+                'en',
+                true,
+            );
+
+            if ($translated !== null) {
+                return $translated;
+            }
+
+            if ($attempt < self::TRANSLATION_ATTEMPTS) {
+                Log::warning('TranslateWebsiteStaticTextJob: retrying failed text value', [
+                    'language' => $this->language,
+                    'attempt' => $attempt + 1,
+                ]);
+                usleep(self::RETRY_DELAYS_MICROSECONDS[$attempt - 1]);
+            }
+        }
+
+        return null;
     }
 
     /**
