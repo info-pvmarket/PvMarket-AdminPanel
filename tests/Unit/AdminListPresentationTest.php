@@ -94,6 +94,19 @@ class AdminListPresentationTest extends TestCase
         $this->assertStringContainsString('class="field-error"', $view);
     }
 
+    public function test_verifying_a_product_also_activates_it(): void
+    {
+        $controller = file_get_contents($this->projectFile('app/Http/Controllers/Admin/ProductController.php'));
+        $model = file_get_contents($this->projectFile('app/Models/Product.php'));
+
+        $this->assertMatchesRegularExpression(
+            '/function verify\(\$id\).*?\'verification_status\'\s*=>\s*\'verified\'.*?\'is_active\'\s*=>\s*true/s',
+            $controller
+        );
+        $this->assertStringContainsString("'is_active',", $model);
+        $this->assertStringContainsString("'is_active'       => 'boolean'", $model);
+    }
+
     public function test_listing_csv_export_includes_brand_sold_off_and_dates(): void
     {
         $controller = file_get_contents($this->projectFile('app/Http/Controllers/Admin/ProductListingController.php'));

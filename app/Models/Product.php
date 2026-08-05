@@ -34,6 +34,7 @@ class Product extends Model
         'measurement_details',
         'datasheet',
         'verification_status',
+        'is_active',
         'updated_by',
         'created_by',
     ];
@@ -41,6 +42,7 @@ class Product extends Model
     protected $casts = [
         'is_popular'      => 'boolean',
         'real_time_price' => 'boolean',
+        'is_active'       => 'boolean',
     ];
 public array $translatable = [
     'product_name',

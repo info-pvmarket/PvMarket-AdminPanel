@@ -583,6 +583,7 @@ class ProductController extends Controller
     {
         Product::findOrFail($id)->update([
             'verification_status' => 'verified',
+            'is_active'            => true,
             'updated_by'          => Auth::user()->name,
         ]);
         return redirect()->route('admin.products.index')->with('success', 'Product verified.');
