@@ -636,7 +636,7 @@ class ProductListingController extends Controller
         $listing = ProductListing::findOrFail($id);
         $listing->update(['is_active' => !$listing->is_active]);
 
-        $msg = $listing->is_active ? 'Listing is now active.' : 'Listing is now on hold.';
+        $msg = $listing->is_active ? 'Listing is now active.' : 'Listing is now inactive.';
         return back()->with('success', $msg);
     }
 

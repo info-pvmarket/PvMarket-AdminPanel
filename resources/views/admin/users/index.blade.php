@@ -452,6 +452,7 @@
                 <th class="center" style="width:70px;">S.No</th>
                 <th>Name</th>
                 <th>Email</th>
+                <th>Phone Number</th>
                 <th class="center">Role</th>
                 <th class="center">Assigned Admin</th>
                 <th class="center" style="width:160px;">Action</th>
@@ -459,6 +460,9 @@
         </thead>
         <tbody>
             @forelse ($users as $index => $user)
+            @php
+                $phoneNumber = trim((string) ($user->mobile ?? $user->phone ?? ''));
+            @endphp
             <tr>
                 <td class="center" style="font-weight:700; color:var(--muted); font-size:13px;">
                     {{ $users->firstItem() + $index }}
@@ -471,6 +475,15 @@
                 </td>
                 <td>
                     <a href="mailto:{{ $user->email }}" class="user-email">{{ $user->email }}</a>
+                </td>
+                <td>
+                    @if($phoneNumber !== '')
+                        <a href="tel:{{ preg_replace('/[^\d+]/', '', $phoneNumber) }}" class="user-email">
+                            {{ $phoneNumber }}
+                        </a>
+                    @else
+                        <span style="color:var(--muted);">—</span>
+                    @endif
                 </td>
                 <td class="center">
                     <span class="badge badge-role">
@@ -546,7 +559,7 @@
             </tr>
             @empty
             <tr>
-                <td colspan="6">
+                <td colspan="7">
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>

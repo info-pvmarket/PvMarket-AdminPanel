@@ -1452,39 +1452,42 @@ document.getElementById('totalQtyInput').addEventListener('input', function () {
     updateStickyLabel();
 });
 
+function syncOfferStatusSummary() {
+    const summStatus = document.getElementById('summStatus');
+    const holdSub = document.getElementById('holdSubLabel');
+    const isOnHold = document.getElementById('toggleIsActive').checked;
+    const isSoldOff = document.getElementById('toggleSoldOff').checked;
+
+    holdSub.textContent = isOnHold
+        ? 'Offer is on hold and hidden from buyers'
+        : 'Offer is active and visible to buyers';
+
+    if (isSoldOff) {
+        summStatus.textContent = 'Sold Off';
+        summStatus.style.color = 'var(--red)';
+    } else if (isOnHold) {
+        summStatus.textContent = 'On Hold';
+        summStatus.style.color = 'var(--muted)';
+    } else {
+        summStatus.textContent = 'Active';
+        summStatus.style.color = 'var(--green)';
+    }
+}
+
 // ── Toggle: Hold this offer → update Status in summary ───────
 document.getElementById('toggleIsActive').addEventListener('change', function () {
-    const el = document.getElementById('summStatus');
-    const holdSub = document.getElementById('holdSubLabel');
-    if (this.checked) {
-        el.textContent = 'On Hold';
-        el.style.color = 'var(--muted)';
-        holdSub.textContent = 'Offer is on hold and hidden from buyers';
-    } else {
-        el.textContent = 'Active';
-        el.style.color = 'var(--green)';
-        holdSub.textContent = 'Offer is active and visible to buyers';
-    }
+    syncOfferStatusSummary();
 });
 
 // ── Toggle: Sold Off ─────────────────────────────────────────
 document.getElementById('toggleSoldOff').addEventListener('change', function () {
-    const holdToggle    = document.getElementById('toggleIsActive');
     const popularToggle = document.getElementById('togglePopular');
-    const summStatus    = document.getElementById('summStatus');
 
     if (this.checked) {
-        holdToggle.checked    = true;
         popularToggle.checked = false;
-        document.getElementById('holdSubLabel').textContent = 'Offer is on hold and hidden from buyers';
-        summStatus.textContent = 'Sold Off';
-        summStatus.style.color = 'var(--red)';
-    } else {
-        holdToggle.checked = false;
-        document.getElementById('holdSubLabel').textContent = 'Offer is active and visible to buyers';
-        summStatus.textContent = 'Active';
-        summStatus.style.color = 'var(--green)';
     }
+
+    syncOfferStatusSummary();
 });
 
 // ── Toggle: Popular ───────────────────────────────────────────
@@ -1492,10 +1495,7 @@ document.getElementById('togglePopular').addEventListener('change', function () 
     if (this.checked) {
         document.getElementById('toggleSoldOff').checked = false;
         document.getElementById('toggleIsActive').checked = false;
-        document.getElementById('holdSubLabel').textContent = 'Offer is active and visible to buyers';
-        const summStatus = document.getElementById('summStatus');
-        summStatus.textContent = 'Active';
-        summStatus.style.color = 'var(--green)';
+        syncOfferStatusSummary();
     }
 });
 

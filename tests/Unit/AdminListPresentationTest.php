@@ -24,6 +24,16 @@ class AdminListPresentationTest extends TestCase
         $this->assertStringContainsString("route('admin.users.destroy'", $view);
     }
 
+    public function test_user_management_list_displays_phone_numbers(): void
+    {
+        $view = file_get_contents($this->projectFile('resources/views/admin/users/index.blade.php'));
+
+        $this->assertStringContainsString('<th>Phone Number</th>', $view);
+        $this->assertStringContainsString("\$user->mobile ?? \$user->phone ?? ''", $view);
+        $this->assertStringContainsString('href="tel:', $view);
+        $this->assertStringContainsString('<td colspan="7">', $view);
+    }
+
     public function test_inventory_uses_cards_for_filters_and_exposes_requested_columns(): void
     {
         $controller = file_get_contents($this->projectFile('app/Http/Controllers/Admin/InventoryController.php'));
@@ -84,13 +94,17 @@ class AdminListPresentationTest extends TestCase
         $this->assertStringContainsString('class="field-error"', $view);
     }
 
-    public function test_listing_csv_export_includes_created_and_updated_dates(): void
+    public function test_listing_csv_export_includes_brand_sold_off_and_dates(): void
     {
         $controller = file_get_contents($this->projectFile('app/Http/Controllers/Admin/ProductListingController.php'));
         $exporter = file_get_contents($this->projectFile('app/Services/ProductListingCsvExporter.php'));
 
+        $this->assertContains('Brand', ProductListingCsvExporter::HEADERS);
+        $this->assertContains('Sold Off', ProductListingCsvExporter::HEADERS);
         $this->assertContains('Created At', ProductListingCsvExporter::HEADERS);
         $this->assertContains('Updated At', ProductListingCsvExporter::HEADERS);
+        $this->assertStringContainsString('$product->brand_name ?? $listing->brand_name ?? \'\',', $exporter);
+        $this->assertStringContainsString("(\$listing->is_sold_off ?? false) ? 'Yes' : 'No',", $exporter);
         $this->assertStringContainsString('$this->formatDate($listing->created_at ?? null),', $exporter);
         $this->assertStringContainsString('$this->formatDate($listing->updated_at ?? null),', $exporter);
         $this->assertStringContainsString('ProductListingCsvExporter $exporter', $controller);
@@ -126,6 +140,55 @@ class AdminListPresentationTest extends TestCase
         $this->assertStringContainsString("->get(['_id'])", $controller);
         $this->assertStringContainsString('->flatMap(fn($product) => $this->mongoIdCandidates($product->_id))', $controller);
         $this->assertStringNotContainsString("->pluck('_id')\n                    ->flatMap(fn(\$id) => \$this->mongoIdCandidates(\$id))", $controller);
+    }
+
+    public function test_sold_off_toggle_does_not_change_hold_state(): void
+    {
+        $createView = file_get_contents($this->projectFile('resources/views/admin/product_listing/create.blade.php'));
+        $editView = file_get_contents($this->projectFile('resources/views/admin/product_listing/edit.blade.php'));
+
+        foreach ([$createView, $editView] as $view) {
+            $this->assertStringContainsString('function syncOfferStatusSummary()', $view);
+            $this->assertStringContainsString("const isSoldOff", $view);
+
+            $soldHandlerStart = strpos($view, "document.getElementById('toggleSoldOff').addEventListener");
+            $popularHandlerStart = strpos($view, "document.getElementById('togglePopular').addEventListener");
+            $this->assertNotFalse($soldHandlerStart);
+            $this->assertNotFalse($popularHandlerStart);
+
+            $soldHandler = substr($view, $soldHandlerStart, $popularHandlerStart - $soldHandlerStart);
+            $this->assertStringNotContainsString("toggleIsActive').checked", $soldHandler);
+        }
+    }
+
+    public function test_listing_edit_uses_a_mark_as_hold_toggle(): void
+    {
+        $controller = file_get_contents($this->projectFile('app/Http/Controllers/Admin/ProductListingController.php'));
+        $view = file_get_contents($this->projectFile('resources/views/admin/product_listing/edit.blade.php'));
+
+        $this->assertStringContainsString('<div class="toggle-info-title">Mark as Hold</div>', $view);
+        $this->assertStringNotContainsString('<div class="toggle-info-title">Status</div>', $view);
+        $this->assertStringContainsString('name="is_on_hold" value="1"', $view);
+        $this->assertStringContainsString("\$isOfferOnHold ? 'checked' : ''", $view);
+        $this->assertStringContainsString("'Inactive' : 'Active'", $view);
+        $this->assertSame(2, substr_count($controller, "'is_on_hold'                       => 'nullable|boolean'"));
+        $this->assertSame(2, substr_count($controller, "! \$request->boolean('is_on_hold', false)"));
+    }
+
+    public function test_manage_listings_has_an_active_inactive_toggle(): void
+    {
+        $routes = file_get_contents($this->projectFile('routes/web.php'));
+        $controller = file_get_contents($this->projectFile('app/Http/Controllers/Admin/ProductListingController.php'));
+        $view = file_get_contents($this->projectFile('resources/views/admin/product_listing/index.blade.php'));
+
+        $this->assertStringContainsString("name('toggle')", $routes);
+        $this->assertStringContainsString("route('product_listing.toggle'", $view);
+        $this->assertStringContainsString("@method('PATCH')", $view);
+        $this->assertStringContainsString("'is-active' : 'is-inactive'", $view);
+        $this->assertStringContainsString('<span class="listing-status-label">Status</span>', $view);
+        $this->assertStringContainsString('class="listing-status-track"', $view);
+        $this->assertStringContainsString("'Active' : 'Inactive'", $view);
+        $this->assertStringContainsString('Listing is now inactive.', $controller);
     }
 
     public function test_super_admin_category_label_matches_main_menu_context(): void

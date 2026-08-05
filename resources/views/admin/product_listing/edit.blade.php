@@ -858,13 +858,14 @@
                 </div>
 
                 @php
-                    $isOfferOnHold = $isOfferOnHold ?? !filter_var($listing->is_active ?? true, FILTER_VALIDATE_BOOLEAN);
+                    $isOfferOnHold = !filter_var($listing->is_active ?? true, FILTER_VALIDATE_BOOLEAN);
+                    $isOfferSoldOff = filter_var($listing->is_sold_off ?? false, FILTER_VALIDATE_BOOLEAN);
                 @endphp
 
                 {{-- ══ Three Toggle Rows ══ --}}
                 <div class="toggle-section">
 
-                    {{-- 1. Hold this offer --}}
+                    {{-- 1. Listing status --}}
                     <div class="toggle-row">
                         <div class="toggle-left">
                             <div class="toggle-icon" style="background:#D1FAE5; color:#059669;">
@@ -873,9 +874,9 @@
                                 </svg>
                             </div>
                             <div>
-                                <div class="toggle-info-title">Hold this offer</div>
-                                <div class="toggle-info-sub" id="holdSubLabel">
-                                    {{ $isOfferOnHold ? 'Offer is on hold and hidden from buyers' : 'Offer is active and visible to buyers' }}
+                                <div class="toggle-info-title">Mark as Hold</div>
+                                <div class="toggle-info-sub" id="statusSubLabel">
+                                    {{ $isOfferOnHold ? 'Listing is on hold and hidden from buyers' : 'Listing is active and visible to buyers' }}
                                 </div>
                             </div>
                         </div>
@@ -902,7 +903,7 @@
                         </div>
                         <label class="toggle-switch sold-off-switch">
                             <input type="checkbox" name="is_sold_off" value="1"
-                                   id="toggleSoldOff" {{ !empty($listing->is_sold_off) ? 'checked' : '' }}>
+                                   id="toggleSoldOff" {{ $isOfferSoldOff ? 'checked' : '' }}>
                             <span class="toggle-track"></span>
                             <span class="toggle-thumb"></span>
                         </label>
@@ -1388,8 +1389,8 @@
                     <div class="summary-row">
                         <span class="summary-key">Status</span>
                         <span class="summary-val" id="summStatus"
-                              style="color:{{ $isOfferOnHold ? 'var(--muted)' : 'var(--green)' }};">
-                            {{ $isOfferOnHold ? 'On Hold' : 'Active' }}
+                              style="color:{{ $isOfferSoldOff ? 'var(--red)' : ($isOfferOnHold ? 'var(--muted)' : 'var(--green)') }};">
+                            {{ $isOfferSoldOff ? 'Sold Off' : ($isOfferOnHold ? 'Inactive' : 'Active') }}
                         </span>
                     </div>
 
@@ -1550,36 +1551,41 @@ document.getElementById('totalQtyInput').addEventListener('input', function () {
         this.value ? Number(this.value).toLocaleString() + ' pcs' : '—';
 });
 
-// ── Toggle: Hold ──────────────────────────────────────────────
-document.getElementById('toggleIsActive').addEventListener('change', function () {
+function syncOfferStatusSummary() {
     const summStatus = document.getElementById('summStatus');
-    const holdSub    = document.getElementById('holdSubLabel');
-    if (this.checked) {
-        summStatus.textContent = 'On Hold';
-        summStatus.style.color = 'var(--muted)';
-        holdSub.textContent    = 'Offer is on hold and hidden from buyers';
-    } else {
+    const statusSub  = document.getElementById('statusSubLabel');
+    const isOnHold   = document.getElementById('toggleIsActive').checked;
+    const isActive   = !isOnHold;
+    const isSoldOff  = document.getElementById('toggleSoldOff').checked;
+
+    statusSub.textContent = isActive
+        ? 'Listing is active and visible to buyers'
+        : 'Listing is on hold and hidden from buyers';
+
+    if (isSoldOff) {
+        summStatus.textContent = 'Sold Off';
+        summStatus.style.color = 'var(--red)';
+    } else if (isActive) {
         summStatus.textContent = 'Active';
         summStatus.style.color = 'var(--green)';
-        holdSub.textContent    = 'Offer is active and visible to buyers';
+    } else {
+        summStatus.textContent = 'Inactive';
+        summStatus.style.color = 'var(--muted)';
     }
+}
+
+// ── Toggle: Hold ──────────────────────────────────────────────
+document.getElementById('toggleIsActive').addEventListener('change', function () {
+    syncOfferStatusSummary();
 });
 
 // ── Toggle: Sold Off ──────────────────────────────────────────
 document.getElementById('toggleSoldOff').addEventListener('change', function () {
-    const summStatus = document.getElementById('summStatus');
     if (this.checked) {
-        document.getElementById('toggleIsActive').checked = true;
         document.getElementById('togglePopular').checked  = false;
-        document.getElementById('holdSubLabel').textContent = 'Offer is on hold and hidden from buyers';
-        summStatus.textContent = 'Sold Off';
-        summStatus.style.color = 'var(--red)';
-    } else {
-        document.getElementById('toggleIsActive').checked = false;
-        document.getElementById('holdSubLabel').textContent = 'Offer is active and visible to buyers';
-        summStatus.textContent = 'Active';
-        summStatus.style.color = 'var(--green)';
     }
+
+    syncOfferStatusSummary();
 });
 
 // ── Toggle: Popular ───────────────────────────────────────────
@@ -1587,10 +1593,7 @@ document.getElementById('togglePopular').addEventListener('change', function () 
     if (this.checked) {
         document.getElementById('toggleSoldOff').checked = false;
         document.getElementById('toggleIsActive').checked = false;
-        document.getElementById('holdSubLabel').textContent = 'Offer is active and visible to buyers';
-        const summStatus = document.getElementById('summStatus');
-        summStatus.textContent = 'Active';
-        summStatus.style.color = 'var(--green)';
+        syncOfferStatusSummary();
     }
 });
 

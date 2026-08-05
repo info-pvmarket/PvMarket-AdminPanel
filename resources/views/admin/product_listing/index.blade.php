@@ -342,6 +342,53 @@
         background: #F1F5F9;
         border-color: #94A3B8;
     }
+    .listing-status-toggle {
+        min-height: 34px;
+        padding: 0 10px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        border: 1px solid var(--border);
+        background: #fff;
+        cursor: pointer;
+        font-family: inherit;
+    }
+    .listing-status-label {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+    }
+    .listing-status-track {
+        position: relative;
+        width: 34px;
+        height: 18px;
+        border-radius: 999px;
+        background: #D1D5DB;
+        transition: background .2s;
+    }
+    .listing-status-thumb {
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
+        transition: transform .2s;
+    }
+    .listing-status-toggle.is-active .listing-status-track { background: #10B981; }
+    .listing-status-toggle.is-active .listing-status-thumb { transform: translateX(16px); }
+    .listing-status-value {
+        min-width: 44px;
+        color: #C2410C;
+        font-size: 11px;
+        font-weight: 800;
+        text-align: left;
+    }
+    .listing-status-toggle.is-active .listing-status-value { color: #047857; }
+    .listing-status-toggle:hover { border-color: #9CA3AF; background: #F9FAFB; }
     .verification-badge {
         min-height: 34px;
         padding: 0 13px;
@@ -1013,6 +1060,21 @@
        rel="noopener noreferrer">
         Preview Page
     </a>
+
+    <form method="POST" action="{{ route('product_listing.toggle', $listing->id) }}" style="margin:0;">
+        @csrf
+        @method('PATCH')
+        <button type="submit"
+                class="listing-status-toggle {{ $listing->is_active ? 'is-active' : 'is-inactive' }}"
+                title="{{ $listing->is_active ? 'Set listing inactive' : 'Set listing active' }}"
+                aria-label="{{ $listing->is_active ? 'Set listing inactive' : 'Set listing active' }}">
+            <span class="listing-status-label">Status</span>
+            <span class="listing-status-track" aria-hidden="true">
+                <span class="listing-status-thumb"></span>
+            </span>
+            <span class="listing-status-value">{{ $listing->is_active ? 'Active' : 'Inactive' }}</span>
+        </button>
+    </form>
 
     <a href="{{ route('product_listing.edit', $listing->id) }}"
        class="icon-btn" title="Edit">
