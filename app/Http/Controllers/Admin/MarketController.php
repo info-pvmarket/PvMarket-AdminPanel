@@ -203,11 +203,12 @@ class MarketController extends Controller
         $record = Market::findOrFail($id);
         $marketId = new ObjectId((string) $record->_id);
 
-        // Delete related domains and settings
-        MarketDomain::where('market_id', $marketId)->delete();
-        MarketSettings::where('market_id', $marketId)->delete();
+        // Permanently remove the market and its owned configuration records.
+        // Include previously soft-deleted children so no orphaned records remain.
+        MarketDomain::withTrashed()->where('market_id', $marketId)->forceDelete();
+        MarketSettings::withTrashed()->where('market_id', $marketId)->forceDelete();
 
-        $record->delete();
+        $record->forceDelete();
 
         return redirect()->route('admin.setup.markets.index')
                          ->with('success', 'Market deleted successfully.');
