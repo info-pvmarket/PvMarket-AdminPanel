@@ -1,7 +1,8 @@
+@extends('layouts.admin')
+
 @if($mode === 'create')
 
 {{-- ═══ CREATE MODE ═══ --}}
-@extends('layouts.admin')
 @section('title', 'Add Commissions')
 
 @section('styles')
@@ -156,7 +157,6 @@ function renumber() {
 @elseif($mode === 'edit')
 
 {{-- ═══ EDIT MODE ═══ --}}
-@extends('layouts.admin')
 @section('title', 'Edit Commission')
 
 @section('styles')
@@ -235,7 +235,6 @@ function renumber() {
 @else
 
 {{-- ═══ INDEX MODE ═══ --}}
-@extends('layouts.admin')
 @section('title', 'Commissions')
 
 @section('styles')
