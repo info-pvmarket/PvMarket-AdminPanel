@@ -191,20 +191,18 @@
         <div class="form-grid-2">
             <div class="form-group">
                 <label class="form-label">
-                    1 Pallet =
-                    <span title="Number of units per pallet" style="cursor:help; color:var(--primary-d); font-weight:400;">ℹ</span>
+                    Pieces per pallets
                 </label>
                 <input type="text" name="pieces_per_pallet" class="form-input"
-                       placeholder="e.g. 36 pcs"
+                       placeholder="e.g. 36 pieces"
                        value="{{ old('pieces_per_pallet', $record->pieces_per_pallet ?? '') }}"/>
             </div>
             <div class="form-group">
                 <label class="form-label">
-                    1 Container =
-                    <span title="Number of units per container" style="cursor:help; color:var(--primary-d); font-weight:400;">ℹ</span>
+                    Pallets per container
                 </label>
                 <input type="text" name="pallets_per_container" class="form-input"
-                       placeholder="e.g. 756 pcs"
+                       placeholder="e.g. 21 pallets"
                        value="{{ old('pallets_per_container', $record->pallets_per_container ?? '') }}"/>
             </div>
         </div>
