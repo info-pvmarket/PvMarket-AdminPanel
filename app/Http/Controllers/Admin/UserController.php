@@ -83,7 +83,19 @@ class UserController extends Controller
     public function toggleStatus(string $id)
     {
         $user = $this->managedUser($id);
-        $user->syncActiveStatus(!$user->isActiveForManagement())->save();
+        $isActive = !$user->isActiveForManagement();
+
+        $user->syncActiveStatus($isActive);
+        $user->is_hold = !$isActive;
+        $user->save();
+
+        if (!$isActive) {
+            ProductListing::where('user_id', new ObjectId((string) $user->_id))
+                ->update([
+                    'is_hold' => true,
+                    'is_active' => false,
+                ]);
+        }
 
         return back()->with(
             'success',

@@ -22,4 +22,33 @@ class ProductListingImage extends Model
         'created_by'         => AsObjectId::class,
         'sort_order'         => 'integer',
     ];
+
+    public function getPublicUrlAttribute(): ?string
+    {
+        return self::resolvePublicUrl(
+            $this->image,
+            config('filesystems.disks.r2.url')
+        );
+    }
+
+    public static function resolvePublicUrl(mixed $image, ?string $r2BaseUrl): ?string
+    {
+        $url = trim((string) data_get($image, 'url', ''));
+        $path = trim((string) data_get($image, 'path', ''));
+        $value = $url !== '' ? $url : $path;
+
+        if ($value === '') {
+            return null;
+        }
+
+        if (preg_match('/^https?:\/\//i', $value)) {
+            return $value;
+        }
+
+        $baseUrl = rtrim(trim((string) $r2BaseUrl), '/');
+
+        return $baseUrl !== ''
+            ? $baseUrl.'/'.ltrim($value, '/')
+            : null;
+    }
 }

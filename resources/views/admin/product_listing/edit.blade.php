@@ -1527,7 +1527,17 @@ function recalcTotalPrice() {
 }
 
 // ── Seed existing slots from PHP ──────────────────────────────
-let slots        = @json($listing->slots ?? []);
+function hasSpecificMaxQuantity(slot) {
+    const maxQuantity = Number(slot?.max_quantity);
+    return Number.isFinite(maxQuantity) && maxQuantity > 0;
+}
+
+// Match the seller dashboard: legacy 0, null, and empty maximum values all
+// represent an open-ended "And More" tier.
+let slots = @json($listing->slots ?? []).map(slot => ({
+    ...slot,
+    max_quantity: hasSpecificMaxQuantity(slot) ? Number(slot.max_quantity) : null,
+}));
 let editingIndex = null;
 
 // Track existing image count for the 5-image cap
@@ -1756,7 +1766,7 @@ function editSlot(idx) {
     document.getElementById('slotPrice').value     = s.price;
     document.getElementById('slotCommission').value = s.commission_percentage ?? '';
     recalcTotalPrice();
-    if (s.max_quantity !== null && s.max_quantity !== undefined) {
+    if (hasSpecificMaxQuantity(s)) {
         document.getElementById('radioSpecific').checked = true;
         document.getElementById('specificMaxWrapper').style.display = 'block';
         document.getElementById('slotMaxQty').disabled = false;
@@ -1787,7 +1797,7 @@ function renderSlots() {
     }
 
     slots.forEach((slot, i) => {
-        const maxLabel = (slot.max_quantity !== null && slot.max_quantity !== undefined && slot.max_quantity !== '')
+        const maxLabel = hasSpecificMaxQuantity(slot)
             ? `${Number(slot.max_quantity).toLocaleString()} pcs`
             : 'And More';
 

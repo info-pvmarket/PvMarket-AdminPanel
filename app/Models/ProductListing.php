@@ -16,6 +16,7 @@ class ProductListing extends Model
         'product_id',
         'total_quantity',
         'is_active',
+        'is_hold',
         'user_id',
         'sell_type',
         'currency_id',
@@ -44,6 +45,7 @@ class ProductListing extends Model
 
     protected $casts = [
     'is_active'      => 'boolean',
+    'is_hold'        => 'boolean',
     'is_paid'        => 'boolean',
     'is_sold_off'    => 'boolean',
     'is_popular'     => 'boolean',

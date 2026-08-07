@@ -24,6 +24,20 @@ class AdminListPresentationTest extends TestCase
         $this->assertStringContainsString("route('admin.users.destroy'", $view);
     }
 
+    public function test_disabling_a_user_places_all_of_their_listings_on_hold(): void
+    {
+        $controller = file_get_contents($this->projectFile('app/Http/Controllers/Admin/UserController.php'));
+
+        $this->assertStringContainsString('$isActive = !$user->isActiveForManagement();', $controller);
+        $this->assertStringContainsString('$user->is_hold = !$isActive;', $controller);
+        $this->assertStringContainsString(
+            "ProductListing::where('user_id', new ObjectId((string) \$user->_id))",
+            $controller
+        );
+        $this->assertStringContainsString("'is_hold' => true", $controller);
+        $this->assertStringContainsString("'is_active' => false", $controller);
+    }
+
     public function test_user_management_list_displays_phone_numbers(): void
     {
         $view = file_get_contents($this->projectFile('resources/views/admin/users/index.blade.php'));

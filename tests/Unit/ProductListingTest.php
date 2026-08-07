@@ -14,6 +14,8 @@ class ProductListingTest extends TestCase
         $this->assertSame('product_listings', $listing->getTable());
         $this->assertContains('incoterms_id', $listing->getFillable());
         $this->assertArrayHasKey('incoterms_id', $listing->getCasts());
+        $this->assertContains('is_hold', $listing->getFillable());
+        $this->assertArrayHasKey('is_hold', $listing->getCasts());
         $this->assertNotContains('incoterm_id', $listing->getFillable());
     }
 
