@@ -203,12 +203,20 @@ class MarketController extends Controller
         $record = Market::findOrFail($id);
         $marketId = new ObjectId((string) $record->_id);
 
-        // Permanently remove the market and its owned configuration records.
-        // Include previously soft-deleted children so no orphaned records remain.
-        MarketDomain::withTrashed()->where('market_id', $marketId)->forceDelete();
-        MarketSettings::withTrashed()->where('market_id', $marketId)->forceDelete();
+        // Delete directly from MongoDB so this action can never be converted into
+        // a soft delete by the models' SoftDeletes trait.
+        MarketDomain::raw(
+            fn ($collection) => $collection->deleteMany(['market_id' => $marketId])
+        );
+        MarketSettings::raw(
+            fn ($collection) => $collection->deleteMany(['market_id' => $marketId])
+        );
 
-        $record->forceDelete();
+        $result = Market::raw(
+            fn ($collection) => $collection->deleteOne(['_id' => $marketId])
+        );
+
+        abort_unless($result->getDeletedCount() === 1, 500, 'Unable to permanently delete market.');
 
         return redirect()->route('admin.setup.markets.index')
                          ->with('success', 'Market deleted successfully.');

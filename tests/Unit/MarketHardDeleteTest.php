@@ -11,15 +11,24 @@ class MarketHardDeleteTest extends TestCase
         $controller = file_get_contents(dirname(__DIR__, 2).'/app/Http/Controllers/Admin/MarketController.php');
 
         $this->assertStringContainsString(
-            "MarketDomain::withTrashed()->where('market_id', \$marketId)->forceDelete()",
+            "MarketDomain::raw(",
             $controller
         );
         $this->assertStringContainsString(
-            "MarketSettings::withTrashed()->where('market_id', \$marketId)->forceDelete()",
+            "MarketSettings::raw(",
             $controller
         );
-        $this->assertStringContainsString('$record->forceDelete()', $controller);
-        $this->assertStringNotContainsString("MarketDomain::where('market_id', \$marketId)->delete()", $controller);
-        $this->assertStringNotContainsString("MarketSettings::where('market_id', \$marketId)->delete()", $controller);
+        $this->assertStringContainsString(
+            "->deleteMany(['market_id' => \$marketId])",
+            $controller
+        );
+        $this->assertStringContainsString("Market::raw(", $controller);
+        $this->assertStringContainsString("->deleteOne(['_id' => \$marketId])", $controller);
+        $this->assertStringContainsString(
+            "abort_unless(\$result->getDeletedCount() === 1",
+            $controller
+        );
+        $this->assertStringNotContainsString('$record->delete()', $controller);
+        $this->assertStringNotContainsString('$record->forceDelete()', $controller);
     }
 }
