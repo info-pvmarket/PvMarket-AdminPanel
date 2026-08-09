@@ -19,12 +19,16 @@ use App\Models\Incoterm;
 use App\Models\Currency;
 use App\Traits\FiltersAssignedUsers;
 use App\Services\ProductListingCsvExporter;
+use App\Services\ListingUpdateService;
 
 class ProductListingController extends Controller
 {
     use FiltersAssignedUsers;
 
-    public function __construct(protected TranslationService $translator) {}
+    public function __construct(
+        protected TranslationService $translator,
+        protected ListingUpdateService $listingUpdateService,
+    ) {}
     // ── Index (My Listings page) ────────────────────────────────────
 
     public function index(Request $request)
@@ -579,6 +583,10 @@ class ProductListingController extends Controller
         // Remove images from validated — stored separately
         unset($validated['images']);
 
+        // Any seller or administrator edit requires a fresh approval. The
+        // dedicated approval action remains responsible for marking it verified.
+        $validated = $this->listingUpdateService->requireReapproval($validated);
+
         if ($request->hasFile('images')) {
             $lastOrder = ProductListingImage::where(
                 'product_listing_id',
@@ -608,6 +616,13 @@ class ProductListingController extends Controller
         }
 
         $listing->update($validated);
+
+        $productName = Product::find($request->product_id)?->product_name
+            ?? $listing->sku_code
+            ?? 'Unknown product';
+        $updatedBy = Auth::user()?->email ?? 'Unknown user';
+        $this->listingUpdateService->notify((string) $productName, (string) $updatedBy);
+
         return redirect()->route('product_listing.index')
             ->with('success', 'Listing updated successfully.');
     }
