@@ -70,14 +70,17 @@ class AdminListPresentationTest extends TestCase
         );
     }
 
-    public function test_product_and_listing_lists_show_created_dates(): void
+    public function test_product_and_listing_lists_show_created_and_updated_dates(): void
     {
         $products = file_get_contents($this->projectFile('resources/views/admin/products/products.blade.php'));
         $listings = file_get_contents($this->projectFile('resources/views/admin/product_listing/index.blade.php'));
+        $listingController = file_get_contents($this->projectFile('app/Http/Controllers/Admin/ProductListingController.php'));
 
         $this->assertStringContainsString('Sort products by created date', $products);
         $this->assertStringContainsString('<th style="width:150px;">Created Date</th>', $products);
         $this->assertStringContainsString('<label>Created Date</label>', $listings);
+        $this->assertStringContainsString('<label>Last Updated At</label>', $listings);
+        $this->assertSame(2, substr_count($listingController, "orderBy('updated_at', 'desc')"));
     }
 
     public function test_product_list_filters_by_category_and_subcategory(): void

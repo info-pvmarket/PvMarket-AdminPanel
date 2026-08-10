@@ -1142,6 +1142,14 @@
                                 : '—' }}
                         </span>
                     </div>
+                    <div class="meta-item">
+                        <label>Last Updated At</label>
+                        <span>
+                            {{ $listing->updated_at
+                                ? \Illuminate\Support\Carbon::parse($listing->updated_at)->format('d M Y, H:i')
+                                : 'â€”' }}
+                        </span>
+                    </div>
                     @if($firstSlotPricing)
                         <div class="meta-item">
                             <label>Price</label>

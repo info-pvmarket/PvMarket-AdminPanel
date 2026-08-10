@@ -103,7 +103,11 @@ class ProductListingController extends Controller
         //$listings = $query->latest()->paginate(10)->withQueryString();
 
 
-        $listings = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
+        $listings = $query
+            ->orderBy('updated_at', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->paginate(10)
+            ->withQueryString();
 
         $unpaidCount = ProductListing::where('user_id', new \MongoDB\BSON\ObjectId(Auth::id()))
             ->where('is_paid', false)
@@ -235,7 +239,10 @@ class ProductListingController extends Controller
         }
 
         return $exporter->download(
-            $query->orderBy('created_at', 'desc')->get()
+            $query
+                ->orderBy('updated_at', 'desc')
+                ->orderBy('created_at', 'desc')
+                ->get()
         );
     }
 
@@ -413,6 +420,12 @@ class ProductListingController extends Controller
             }
         }
 
+        $productName = Product::find($request->product_id)?->product_name
+            ?? $listing->sku_code
+            ?? 'Unknown product';
+        $createdBy = Auth::user()?->email ?? 'Unknown user';
+        $this->listingUpdateService->notifyCreated((string) $productName, (string) $createdBy);
+
         return redirect()->route('product_listing.index')
             ->with('success', 'Your listing has been created and is pending approval.');
     }
@@ -585,7 +598,11 @@ class ProductListingController extends Controller
 
         // Any seller or administrator edit requires a fresh approval. The
         // dedicated approval action remains responsible for marking it verified.
-        $validated = $this->listingUpdateService->requireReapproval($validated);
+        $isSuperAdmin = Auth::user()?->isSuperAdmin() ?? false;
+
+        // Seller and regular-admin edits require fresh approval. A super-admin
+        // edit preserves the listing's existing verification status.
+        $validated = $this->listingUpdateService->requireReapproval($validated, $isSuperAdmin);
 
         if ($request->hasFile('images')) {
             $lastOrder = ProductListingImage::where(
@@ -621,7 +638,11 @@ class ProductListingController extends Controller
             ?? $listing->sku_code
             ?? 'Unknown product';
         $updatedBy = Auth::user()?->email ?? 'Unknown user';
-        $this->listingUpdateService->notify((string) $productName, (string) $updatedBy);
+        $this->listingUpdateService->notify(
+            (string) $productName,
+            (string) $updatedBy,
+            $isSuperAdmin,
+        );
 
         return redirect()->route('product_listing.index')
             ->with('success', 'Listing updated successfully.');
