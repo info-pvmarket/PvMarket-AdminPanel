@@ -124,16 +124,18 @@ class AdminListPresentationTest extends TestCase
         $this->assertStringContainsString("'is_active'       => 'boolean'", $model);
     }
 
-    public function test_listing_csv_export_includes_brand_sold_off_and_dates(): void
+    public function test_listing_csv_export_includes_brand_discount_sold_off_and_dates(): void
     {
         $controller = file_get_contents($this->projectFile('app/Http/Controllers/Admin/ProductListingController.php'));
         $exporter = file_get_contents($this->projectFile('app/Services/ProductListingCsvExporter.php'));
 
         $this->assertContains('Brand', ProductListingCsvExporter::HEADERS);
+        $this->assertContains('Discount Type', ProductListingCsvExporter::HEADERS);
         $this->assertContains('Sold Off', ProductListingCsvExporter::HEADERS);
         $this->assertContains('Created At', ProductListingCsvExporter::HEADERS);
         $this->assertContains('Updated At', ProductListingCsvExporter::HEADERS);
         $this->assertStringContainsString('$product->brand_name ?? $listing->brand_name ?? \'\',', $exporter);
+        $this->assertStringContainsString('$listing->discount_type ?? \'\',', $exporter);
         $this->assertStringContainsString("(\$listing->is_sold_off ?? false) ? 'Yes' : 'No',", $exporter);
         $this->assertStringContainsString('$this->formatDate($listing->created_at ?? null),', $exporter);
         $this->assertStringContainsString('$this->formatDate($listing->updated_at ?? null),', $exporter);
