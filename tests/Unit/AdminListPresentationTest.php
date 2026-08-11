@@ -116,8 +116,37 @@ class AdminListPresentationTest extends TestCase
         $this->assertContains('Brand', ProductCsvExporter::HEADERS);
         $this->assertContains('Category', ProductCsvExporter::HEADERS);
         $this->assertContains('Subcategory', ProductCsvExporter::HEADERS);
+        $this->assertContains('Product Details', ProductCsvExporter::HEADERS);
+        $this->assertContains('Measurement Details', ProductCsvExporter::HEADERS);
+        $this->assertNotContains('Popular', ProductCsvExporter::HEADERS);
+        $this->assertNotContains('Real-Time Price', ProductCsvExporter::HEADERS);
         $this->assertContains('Created At', ProductCsvExporter::HEADERS);
+        $this->assertStringContainsString('$this->formatProductDetails($product->product_details ?? [])', $exporter);
+        $this->assertStringContainsString('$this->formatMeasurementDetails($product->measurement_details ?? [])', $exporter);
+        $this->assertStringContainsString('class="btn-icon-outline"', $view);
         $this->assertStringContainsString('fwrite($handle, "\\xEF\\xBB\\xBF")', $exporter);
+    }
+
+    public function test_product_csv_formats_product_and_measurement_details_readably(): void
+    {
+        $exporter = new ProductCsvExporter();
+        $productDetails = new \ReflectionMethod($exporter, 'formatProductDetails');
+        $measurementDetails = new \ReflectionMethod($exporter, 'formatMeasurementDetails');
+
+        $this->assertSame(
+            'Efficiency: 22.5 % | Warranty: 30 years',
+            $productDetails->invoke($exporter, [
+                ['label' => 'Efficiency', 'value' => '22.5', 'unit' => '%'],
+                ['label' => 'Warranty', 'value' => '30 years', 'unit' => ''],
+            ]),
+        );
+        $this->assertSame(
+            'Height: 2278 mm | Width: 1134 mm | Weight: 32.5 kg',
+            $measurementDetails->invoke(
+                $exporter,
+                '{"height":2278,"height_unit":"mm","width":1134,"width_unit":"mm","weight":32.5,"weight_unit":"kg"}',
+            ),
+        );
     }
 
     public function test_admin_product_create_and_edit_enforce_unique_names(): void

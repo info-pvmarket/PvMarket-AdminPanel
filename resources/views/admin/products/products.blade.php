@@ -703,6 +703,8 @@ document.addEventListener('DOMContentLoaded', function () {
     .empty-state svg { width:42px; height:42px; margin:0 auto 12px; opacity:.2; display:block; }
     .empty-state p { font-size:14px; font-weight:500; }
     .alert-success { padding:12px 16px; background:#D1FAE5; color:#065F46; border:1px solid #A7F3D0; border-radius:8px; font-size:13.5px; font-weight:500; margin-bottom:20px; display:flex; align-items:center; gap:8px; }
+    .btn-icon-outline { display:inline-flex; align-items:center; gap:6px; padding:9px 16px; border:1.5px solid var(--border); border-radius:9px; background:white; font-family:inherit; font-size:13px; font-weight:600; color:var(--text); cursor:pointer; text-decoration:none; transition:background .15s, border-color .15s; white-space:nowrap; }
+    .btn-icon-outline:hover { background:#f3f4f6; }
 </style>
 @endsection
 
@@ -712,8 +714,8 @@ document.addEventListener('DOMContentLoaded', function () {
     <h1 style="font-size:22px; font-weight:800; color:var(--text);">Products</h1>
     <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
         <a href="{{ route('admin.products.export', request()->only(['verification_status', 'listings_filter', 'search', 'sort', 'category_id', 'sub_category_id'])) }}"
-           class="btn-back" style="background:#fff; color:var(--text);">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+           class="btn-icon-outline">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                 <polyline points="7 10 12 15 17 10"/>
                 <line x1="12" y1="15" x2="12" y2="3"/>

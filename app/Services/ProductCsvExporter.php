@@ -17,6 +17,8 @@ class ProductCsvExporter
         'SKU Code',
         'Product Name',
         'Product Description',
+        'Product Details',
+        'Measurement Details',
         'Product Badge',
         'Badge Unit',
         'Badge Unit Code',
@@ -27,8 +29,6 @@ class ProductCsvExporter
         'Pallets Per Container',
         'Verification Status',
         'Active',
-        'Popular',
-        'Real-Time Price',
         'Created User Name',
         'Created User Email',
         'Created User Phone',
@@ -72,6 +72,8 @@ class ProductCsvExporter
                         $product->sku_code ?? '',
                         $product->product_name ?? '',
                         $this->plainText($product->product_description ?? ''),
+                        $this->formatProductDetails($product->product_details ?? []),
+                        $this->formatMeasurementDetails($product->measurement_details ?? []),
                         $product->specific_value ?? '',
                         $product->specific_value_unit_name ?? '',
                         $product->specific_value_unit_code ?? '',
@@ -82,8 +84,6 @@ class ProductCsvExporter
                         $product->pallets_per_container ?? '',
                         $product->verification_status ?? 'pending',
                         $this->yesNo($product->is_active ?? false),
-                        $this->yesNo($product->is_popular ?? false),
-                        $this->yesNo($product->real_time_price ?? false),
                         $creator->name ?? '',
                         $creator->email ?? '',
                         $creator->mobile ?? $creator->phone ?? '',
@@ -115,6 +115,71 @@ class ProductCsvExporter
     private function yesNo(mixed $value): string
     {
         return filter_var($value, FILTER_VALIDATE_BOOL) ? 'Yes' : 'No';
+    }
+
+    private function formatProductDetails(mixed $details): string
+    {
+        return collect($this->normalizeArray($details))
+            ->map(function ($detail) {
+                $detail = $this->normalizeArray($detail);
+                $label = trim((string) ($detail['label'] ?? ''));
+                $value = trim((string) ($detail['value'] ?? ''));
+                $unit = trim((string) ($detail['unit'] ?? ''));
+
+                if ($label === '' && $value === '' && $unit === '') {
+                    return null;
+                }
+
+                $valueWithUnit = trim($value.' '.$unit);
+
+                return $label !== '' && $valueWithUnit !== ''
+                    ? $label.': '.$valueWithUnit
+                    : ($label !== '' ? $label : $valueWithUnit);
+            })
+            ->filter()
+            ->implode(' | ');
+    }
+
+    private function formatMeasurementDetails(mixed $measurements): string
+    {
+        $measurements = $this->normalizeArray($measurements);
+        $labels = [
+            'height' => 'Height',
+            'width' => 'Width',
+            'depth' => 'Depth',
+            'weight' => 'Weight',
+        ];
+
+        return collect($labels)
+            ->map(function ($label, $field) use ($measurements) {
+                $value = $measurements[$field] ?? null;
+
+                if ($value === null || $value === '') {
+                    return null;
+                }
+
+                $unit = trim((string) ($measurements[$field.'_unit'] ?? ''));
+
+                return $label.': '.trim((string) $value.' '.$unit);
+            })
+            ->filter()
+            ->implode(' | ');
+    }
+
+    private function normalizeArray(mixed $value): array
+    {
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            $value = json_last_error() === JSON_ERROR_NONE ? $decoded : [];
+        }
+
+        if ($value instanceof \Traversable) {
+            $value = iterator_to_array($value);
+        } elseif (is_object($value)) {
+            $value = (array) $value;
+        }
+
+        return is_array($value) ? $value : [];
     }
 
     private function formatDate(mixed $value): string
