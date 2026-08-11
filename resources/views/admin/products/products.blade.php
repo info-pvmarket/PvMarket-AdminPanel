@@ -708,19 +708,30 @@ document.addEventListener('DOMContentLoaded', function () {
 
 @section('content')
 
-<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:20px;">
     <h1 style="font-size:22px; font-weight:800; color:var(--text);">Products</h1>
-    <a href="{{ route('admin.products.create') }}"
-       style="display:inline-flex; align-items:center; gap:7px; padding:10px 20px;
-              background:var(--primary); color:white; border-radius:8px; font-size:14px;
-              font-weight:600; text-decoration:none; white-space:nowrap;"
-       onmouseover="this.style.background='var(--primary-d)'"
-       onmouseout="this.style.background='var(--primary)'">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
-        Add +
-    </a>
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <a href="{{ route('admin.products.export', request()->only(['verification_status', 'listings_filter', 'search', 'sort', 'category_id', 'sub_category_id'])) }}"
+           class="btn-back" style="background:#fff; color:var(--text);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Export CSV
+        </a>
+        <a href="{{ route('admin.products.create') }}"
+           style="display:inline-flex; align-items:center; gap:7px; padding:10px 20px;
+                  background:var(--primary); color:white; border-radius:8px; font-size:14px;
+                  font-weight:600; text-decoration:none; white-space:nowrap;"
+           onmouseover="this.style.background='var(--primary-d)'"
+           onmouseout="this.style.background='var(--primary)'">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Add +
+        </a>
+    </div>
 </div>
 
 @if(session('success'))

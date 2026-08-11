@@ -68,6 +68,16 @@ class ProductListingController extends Controller
         $paymentFilter = $request->get('payment_filter', 'all');
         $warehouseFilter = $request->get('warehouse_id');
         $realTimePriceFilter = $request->get('real_time_price', 'all');
+        $categoryFilter = trim((string) $request->get('category_id', ''));
+        $subCategoryFilter = trim((string) $request->get('sub_category_id', ''));
+        $brandFilter = trim((string) $request->get('brand_id', ''));
+
+        $this->applyProductFilters(
+            $query,
+            $categoryFilter,
+            $subCategoryFilter,
+            $brandFilter,
+        );
 
         // Verification status
         if ($filter !== 'all') {
@@ -119,6 +129,59 @@ class ProductListingController extends Controller
         })
             ->orderBy('warehouse_name')
             ->get();
+
+        $filterCategories = MainMenu::availableForDropdown()
+            ->orderBy('category_name')
+            ->get();
+
+        $filterSubCategoriesQuery = SubMenu::availableForDropdown()
+            ->orderBy('sub_category_name');
+
+        if ($categoryFilter !== '') {
+            $filterSubCategoriesQuery->whereIn(
+                'category_id',
+                $this->mongoIdCandidates($categoryFilter),
+            );
+        }
+
+        $filterSubCategories = $filterSubCategoriesQuery->get();
+
+        $filterBrandsQuery = Brand::where('is_active', true)
+            ->orderBy('name');
+
+        if ($categoryFilter !== '' || $subCategoryFilter !== '') {
+            $brandProductQuery = Product::query();
+
+            if ($categoryFilter !== '') {
+                $brandProductQuery->whereIn(
+                    'category_id',
+                    $this->mongoIdCandidates($categoryFilter),
+                );
+            }
+
+            if ($subCategoryFilter !== '') {
+                $brandProductQuery->whereIn(
+                    'sub_category_id',
+                    $this->mongoIdCandidates($subCategoryFilter),
+                );
+            }
+
+            $brandIdCandidates = $brandProductQuery
+                ->get(['brand_id'])
+                ->pluck('brand_id')
+                ->filter()
+                ->flatMap(fn($id) => $this->mongoIdCandidates($id))
+                ->unique(fn($id) => is_object($id) ? get_class($id) . ':' . (string) $id : 'string:' . $id)
+                ->values()
+                ->all();
+
+            $filterBrandsQuery->whereIn(
+                '_id',
+                !empty($brandIdCandidates) ? $brandIdCandidates : ['__no_matching_brand__'],
+            );
+        }
+
+        $filterBrands = $filterBrandsQuery->get();
 
         $productIds   = $listings->pluck('product_id')->filter()->unique()
             ->map(fn($id) => (string)$id)->values();
@@ -180,6 +243,12 @@ class ProductListingController extends Controller
             'incotermsMap',
             'usersMap',
             'imagesMap',
+            'categoryFilter',
+            'subCategoryFilter',
+            'brandFilter',
+            'filterCategories',
+            'filterSubCategories',
+            'filterBrands',
         ));
     }
 
@@ -211,6 +280,16 @@ class ProductListingController extends Controller
         $paymentFilter = $request->get('payment_filter', 'all');
         $warehouseFilter = $request->get('warehouse_id');
         $realTimePriceFilter = $request->get('real_time_price', 'all');
+        $categoryFilter = trim((string) $request->get('category_id', ''));
+        $subCategoryFilter = trim((string) $request->get('sub_category_id', ''));
+        $brandFilter = trim((string) $request->get('brand_id', ''));
+
+        $this->applyProductFilters(
+            $query,
+            $categoryFilter,
+            $subCategoryFilter,
+            $brandFilter,
+        );
 
         if ($filter !== 'all') {
             $query->where('verification_status', $filter);
@@ -276,6 +355,56 @@ class ProductListingController extends Controller
             ->unique(fn($id) => is_object($id) ? get_class($id) . ':' . (string) $id : 'string:' . $id)
             ->values()
             ->all();
+    }
+
+    /**
+     * Restrict listings to products matching the selected catalog filters.
+     * Both ObjectId and string candidates are used for legacy references.
+     */
+    private function applyProductFilters(
+        $listingQuery,
+        string $categoryId,
+        string $subCategoryId,
+        string $brandId,
+    ): void {
+        if ($categoryId === '' && $subCategoryId === '' && $brandId === '') {
+            return;
+        }
+
+        $productQuery = Product::query();
+
+        if ($categoryId !== '') {
+            $productQuery->whereIn(
+                'category_id',
+                $this->mongoIdCandidates($categoryId),
+            );
+        }
+
+        if ($subCategoryId !== '') {
+            $productQuery->whereIn(
+                'sub_category_id',
+                $this->mongoIdCandidates($subCategoryId),
+            );
+        }
+
+        if ($brandId !== '') {
+            $productQuery->whereIn(
+                'brand_id',
+                $this->mongoIdCandidates($brandId),
+            );
+        }
+
+        $productIdCandidates = $productQuery
+            ->get(['_id'])
+            ->flatMap(fn($product) => $this->mongoIdCandidates($product->_id))
+            ->unique(fn($id) => is_object($id) ? get_class($id) . ':' . (string) $id : 'string:' . $id)
+            ->values()
+            ->all();
+
+        $listingQuery->whereIn(
+            'product_id',
+            !empty($productIdCandidates) ? $productIdCandidates : ['__no_matching_product__'],
+        );
     }
 
     public function create()

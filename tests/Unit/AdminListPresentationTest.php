@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Services\ProductCsvExporter;
 use App\Services\ProductListingCsvExporter;
 use PHPUnit\Framework\TestCase;
 
@@ -95,6 +96,28 @@ class AdminListPresentationTest extends TestCase
         $this->assertStringContainsString('name="sub_category_id"', $view);
         $this->assertStringContainsString('All Categories', $view);
         $this->assertStringContainsString('All Subcategories', $view);
+    }
+
+    public function test_product_csv_export_honors_list_filters_and_exposes_catalog_fields(): void
+    {
+        $routes = file_get_contents($this->projectFile('routes/web.php'));
+        $controller = file_get_contents($this->projectFile('app/Http/Controllers/Admin/ProductController.php'));
+        $exporter = file_get_contents($this->projectFile('app/Services/ProductCsvExporter.php'));
+        $view = file_get_contents($this->projectFile('resources/views/admin/products/products.blade.php'));
+
+        $this->assertStringContainsString("[ProductController::class, 'export'])->name('export')", $routes);
+        $this->assertStringContainsString('public function export(Request $request, ProductCsvExporter $exporter)', $controller);
+        $this->assertStringContainsString('$exporter->download($products)', $controller);
+        $this->assertStringContainsString("route('admin.products.export'", $view);
+        $this->assertStringContainsString('Export CSV', $view);
+        $this->assertStringContainsString("'verification_status', 'listings_filter', 'search', 'sort', 'category_id', 'sub_category_id'", $view);
+        $this->assertContains('SKU Code', ProductCsvExporter::HEADERS);
+        $this->assertContains('Product Badge', ProductCsvExporter::HEADERS);
+        $this->assertContains('Brand', ProductCsvExporter::HEADERS);
+        $this->assertContains('Category', ProductCsvExporter::HEADERS);
+        $this->assertContains('Subcategory', ProductCsvExporter::HEADERS);
+        $this->assertContains('Created At', ProductCsvExporter::HEADERS);
+        $this->assertStringContainsString('fwrite($handle, "\\xEF\\xBB\\xBF")', $exporter);
     }
 
     public function test_admin_product_create_and_edit_enforce_unique_names(): void
@@ -430,6 +453,27 @@ class AdminListPresentationTest extends TestCase
         $this->assertStringContainsString("trim(lang(\$incoterm, 'name'))", $view);
         $this->assertStringContainsString('Incoterm: {{ $incotermLabel }}', $view);
         $this->assertStringNotContainsString("Incoterm: {{ \$listing->incoterms_id", $view);
+    }
+
+    public function test_manage_listings_filters_by_category_subcategory_and_brand(): void
+    {
+        $controller = file_get_contents($this->projectFile('app/Http/Controllers/Admin/ProductListingController.php'));
+        $view = file_get_contents($this->projectFile('resources/views/admin/product_listing/index.blade.php'));
+
+        $this->assertStringContainsString("request->get('category_id'", $controller);
+        $this->assertStringContainsString("request->get('sub_category_id'", $controller);
+        $this->assertStringContainsString("request->get('brand_id'", $controller);
+        $this->assertSame(2, substr_count($controller, '$this->applyProductFilters('));
+        $this->assertStringContainsString('MainMenu::availableForDropdown()', $controller);
+        $this->assertStringContainsString('SubMenu::availableForDropdown()', $controller);
+        $this->assertStringContainsString("Brand::where('is_active', true)", $controller);
+        $this->assertStringContainsString("'category_id',", $controller);
+        $this->assertStringContainsString("'sub_category_id',", $controller);
+        $this->assertStringContainsString("'brand_id',", $controller);
+        $this->assertStringContainsString('name="category_id"', $view);
+        $this->assertStringContainsString('name="sub_category_id"', $view);
+        $this->assertStringContainsString('name="brand_id"', $view);
+        $this->assertStringContainsString("'category_id', 'sub_category_id', 'brand_id'", $view);
     }
 
     public function test_product_forms_have_a_database_backed_product_badge_before_details(): void

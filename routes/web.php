@@ -525,6 +525,7 @@ Route::middleware('auth')->group(function () {
     // ══════════════════════════════════════════════════════════════════════
     Route::prefix('admin/products')->name('admin.products.')->middleware('admin.permission:products.index')->group(function () {
         Route::get('/', [ProductController::class, 'index'])->name('index');
+        Route::get('/export/csv', [ProductController::class, 'export'])->name('export');
         Route::get('/create', [ProductController::class, 'create'])->name('create');
         Route::post('/', [ProductController::class, 'store'])->name('store');
         Route::get('/{id}/edit', [ProductController::class, 'edit'])->name('edit');

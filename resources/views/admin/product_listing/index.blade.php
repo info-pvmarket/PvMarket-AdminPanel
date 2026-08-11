@@ -572,6 +572,61 @@
 }
 .search-input:focus { border-color: var(--primary); }
 
+.catalog-filter-bar {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(180px, 1fr)) auto;
+    align-items: end;
+    gap: 14px;
+    margin: 16px 0;
+    padding: 16px 20px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+.catalog-filter-control {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.catalog-filter-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .4px;
+}
+
+.catalog-filter-select {
+    width: 100%;
+    min-height: 40px;
+    padding: 8px 34px 8px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 9px;
+    background: white;
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    outline: none;
+}
+
+.catalog-filter-select:focus { border-color: var(--primary); }
+
+.catalog-filter-clear {
+    min-height: 40px;
+    justify-content: center;
+}
+
+@media (max-width: 960px) {
+    .catalog-filter-bar { grid-template-columns: repeat(2, minmax(180px, 1fr)); }
+}
+
+@media (max-width: 600px) {
+    .catalog-filter-bar { grid-template-columns: 1fr; }
+}
+
 .btn-icon-outline {
     display: inline-flex;
     align-items: center;
@@ -735,6 +790,9 @@
                 <input type="hidden" name="status_filter" value="{{ $statusFilter }}">
                 <input type="hidden" name="payment_filter" value="{{ $paymentFilter }}">
                 <input type="hidden" name="real_time_price" value="{{ $realTimePriceFilter }}">
+                <input type="hidden" name="category_id" value="{{ $categoryFilter }}">
+                <input type="hidden" name="sub_category_id" value="{{ $subCategoryFilter }}">
+                <input type="hidden" name="brand_id" value="{{ $brandFilter }}">
                 @if(request()->filled('search'))
                     <input type="hidden" name="search" value="{{ request('search') }}">
                 @endif
@@ -775,7 +833,7 @@
         </div>
 
         {{-- Refresh --}}
-        <a href="{{ route('product_listing.export', request()->only(['warehouse_id', 'filter', 'status_filter', 'payment_filter', 'real_time_price', 'search'])) }}" class="btn-icon-outline">
+        <a href="{{ route('product_listing.export', request()->only(['warehouse_id', 'filter', 'status_filter', 'payment_filter', 'real_time_price', 'search', 'category_id', 'sub_category_id', 'brand_id'])) }}" class="btn-icon-outline">
             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                 <polyline points="7 10 12 15 17 10"/>
@@ -840,6 +898,55 @@
 </form>
 
 {{-- ── Filter bar ── --}}
+<form method="GET" action="{{ route('product_listing.index') }}" id="catalogFilterForm" class="catalog-filter-bar">
+    @foreach(request()->only(['warehouse_id', 'filter', 'status_filter', 'payment_filter', 'real_time_price', 'search', 'listing_id']) as $name => $value)
+        <input type="hidden" name="{{ $name }}" value="{{ $value }}">
+    @endforeach
+
+    <div class="catalog-filter-control">
+        <label for="categoryFilter" class="catalog-filter-label">Category</label>
+        <select id="categoryFilter" name="category_id" class="catalog-filter-select" onchange="applyCatalogFilter('category')">
+            <option value="">All Categories</option>
+            @foreach($filterCategories as $category)
+                <option value="{{ $category->_id }}" {{ $categoryFilter === (string) $category->_id ? 'selected' : '' }}>
+                    {{ lang($category, 'category_name') }}
+                </option>
+            @endforeach
+        </select>
+    </div>
+
+    <div class="catalog-filter-control">
+        <label for="subCategoryFilter" class="catalog-filter-label">Subcategory</label>
+        <select id="subCategoryFilter" name="sub_category_id" class="catalog-filter-select" onchange="applyCatalogFilter('subcategory')">
+            <option value="">All Subcategories</option>
+            @foreach($filterSubCategories as $subCategory)
+                <option value="{{ $subCategory->_id }}" {{ $subCategoryFilter === (string) $subCategory->_id ? 'selected' : '' }}>
+                    {{ lang($subCategory, 'sub_category_name') }}
+                </option>
+            @endforeach
+        </select>
+    </div>
+
+    <div class="catalog-filter-control">
+        <label for="brandFilter" class="catalog-filter-label">Brand</label>
+        <select id="brandFilter" name="brand_id" class="catalog-filter-select" onchange="applyCatalogFilter('brand')">
+            <option value="">All Brands</option>
+            @foreach($filterBrands as $brand)
+                <option value="{{ $brand->_id }}" {{ $brandFilter === (string) $brand->_id ? 'selected' : '' }}>
+                    {{ lang($brand, 'name') }}
+                </option>
+            @endforeach
+        </select>
+    </div>
+
+    @if($categoryFilter !== '' || $subCategoryFilter !== '' || $brandFilter !== '')
+        <a href="{{ route('product_listing.index', request()->except(['category_id', 'sub_category_id', 'brand_id', 'page'])) }}"
+           class="btn-icon-outline catalog-filter-clear">
+            Clear catalog filters
+        </a>
+    @endif
+</form>
+
 <div class="filter-bar">
 
     {{-- Verification Status --}}
@@ -848,7 +955,7 @@
         <div class="filter-group-pills">
             @foreach(['all' => 'All', 'pending' => 'Pending', 'verified' => 'Verified', 'rejected' => 'Rejected'] as $key => $label)
                 <a href="{{ route('product_listing.index', array_merge(
-                        request()->only(['warehouse_id', 'status_filter', 'payment_filter', 'real_time_price', 'search']),
+                        request()->only(['warehouse_id', 'status_filter', 'payment_filter', 'real_time_price', 'search', 'category_id', 'sub_category_id', 'brand_id']),
                         ['filter' => $key]
                     )) }}"
                    class="filter-pill {{ $filter === $key ? 'active' : '' }}">
@@ -864,7 +971,7 @@
         <div class="filter-group-pills">
             @foreach(['all' => 'All', 'active' => 'Active', 'on_hold' => 'On Hold'] as $key => $label)
                 <a href="{{ route('product_listing.index', array_merge(
-                        request()->only(['warehouse_id', 'filter', 'payment_filter', 'real_time_price', 'search']),
+                        request()->only(['warehouse_id', 'filter', 'payment_filter', 'real_time_price', 'search', 'category_id', 'sub_category_id', 'brand_id']),
                         ['status_filter' => $key]
                     )) }}"
                    class="filter-pill {{ ($statusFilter ?? 'all') === $key ? 'active-green' : '' }}">
@@ -880,7 +987,7 @@
         <div class="filter-group-pills">
             @foreach(['all' => 'All', 'paid' => 'Paid', 'unpaid' => 'Unpaid'] as $key => $label)
                 <a href="{{ route('product_listing.index', array_merge(
-                        request()->only(['warehouse_id', 'filter', 'status_filter', 'real_time_price', 'search']),
+                        request()->only(['warehouse_id', 'filter', 'status_filter', 'real_time_price', 'search', 'category_id', 'sub_category_id', 'brand_id']),
                         ['payment_filter' => $key]
                     )) }}"
                    class="filter-pill {{ ($paymentFilter ?? 'all') === $key ? 'active-blue' : '' }}">
@@ -896,7 +1003,7 @@
         <div class="filter-group-pills">
             @foreach(['all' => 'All', 'yes' => 'Yes', 'no' => 'No'] as $key => $label)
                 <a href="{{ route('product_listing.index', array_merge(
-                        request()->only(['warehouse_id', 'filter', 'status_filter', 'payment_filter', 'search']),
+                        request()->only(['warehouse_id', 'filter', 'status_filter', 'payment_filter', 'search', 'category_id', 'sub_category_id', 'brand_id']),
                         ['real_time_price' => $key]
                     )) }}"
                    class="filter-pill {{ ($realTimePriceFilter ?? 'all') === $key ? 'active-purple' : '' }}">
@@ -1256,6 +1363,23 @@ function debounceSearch(form) {
 }
 
 // ── Grid / List view toggle ───────────────────────────────────
+function applyCatalogFilter(changedFilter) {
+    const form = document.getElementById('catalogFilterForm');
+    const subCategory = document.getElementById('subCategoryFilter');
+    const brand = document.getElementById('brandFilter');
+
+    if (!form) return;
+
+    if (changedFilter === 'category') {
+        if (subCategory) subCategory.value = '';
+        if (brand) brand.value = '';
+    } else if (changedFilter === 'subcategory' && brand) {
+        brand.value = '';
+    }
+
+    form.submit();
+}
+
 function setView(type) {
     const listingsWrap = document.getElementById('listingsWrap');
     const btnList = document.getElementById('btnList');

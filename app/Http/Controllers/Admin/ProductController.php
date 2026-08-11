@@ -13,6 +13,7 @@ use App\Models\SubMenu;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use App\Services\ProductCsvExporter;
 use App\Services\TranslationService;
 
 class ProductController extends Controller
@@ -295,6 +296,69 @@ class ProductController extends Controller
             'filterSubMenus'     => $filterSubMenus,
             'sort'               => $sort,
         ]);
+    }
+
+    // ── Export ────────────────────────────────────────
+    // Export the complete filtered product result set (not just the current page).
+    public function export(Request $request, ProductCsvExporter $exporter)
+    {
+        $query = Product::query();
+        $sort = in_array($request->get('sort'), ['latest', 'oldest'], true)
+            ? $request->get('sort')
+            : 'latest';
+
+        $categoryFilterId = $this->toObjectId($request->get('category_id'));
+        $subCategoryFilterId = $this->toObjectId($request->get('sub_category_id'));
+
+        if ($categoryFilterId) {
+            $query->where('category_id', $categoryFilterId);
+        }
+
+        if ($subCategoryFilterId) {
+            $query->where('sub_category_id', $subCategoryFilterId);
+        }
+
+        $verificationFilter = $request->get('verification_status', 'all');
+        if ($verificationFilter !== 'all') {
+            $query->where('verification_status', $verificationFilter);
+        }
+
+        if ($request->filled('search')) {
+            $search = trim((string) $request->search);
+
+            if ($search !== '') {
+                $query->where(function ($q) use ($search) {
+                    $q->where('product_name', 'like', "%{$search}%")
+                        ->orWhere('brand_name', 'like', "%{$search}%")
+                        ->orWhere('sku_code', 'like', "%{$search}%");
+                });
+            }
+        }
+
+        $listingsFilter = $request->get('listings_filter', 'all');
+        if ($listingsFilter !== 'all') {
+            $productIdsWithListings = ProductListing::whereNull('deleted_at')
+                ->pluck('product_id')
+                ->filter()
+                ->map(fn ($id) => (string) $id)
+                ->filter(fn ($id) => preg_match('/^[a-f\d]{24}$/i', $id))
+                ->unique()
+                ->map(fn ($id) => new \MongoDB\BSON\ObjectId($id))
+                ->values()
+                ->toArray();
+
+            if ($listingsFilter === 'has_listings') {
+                $query->whereIn('_id', $productIdsWithListings);
+            } elseif ($listingsFilter === 'no_listings' && !empty($productIdsWithListings)) {
+                $query->whereNotIn('_id', $productIdsWithListings);
+            }
+        }
+
+        $products = $query
+            ->orderBy('created_at', $sort === 'oldest' ? 'asc' : 'desc')
+            ->get();
+
+        return $exporter->download($products);
     }
 
     // ── Create ────────────────────────────────────────
