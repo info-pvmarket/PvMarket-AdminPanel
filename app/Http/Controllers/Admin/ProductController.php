@@ -14,11 +14,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use App\Services\ProductCsvExporter;
+use App\Services\ProductNotificationService;
 use App\Services\TranslationService;
 
 class ProductController extends Controller
 {
-    public function __construct(protected TranslationService $translator) {}
+    public function __construct(
+        protected TranslationService $translator,
+        protected ProductNotificationService $productNotification,
+    ) {}
     // ── SKU Generator ─────────────────────────────────
     private function generateSku(string $categoryName): string
     {
@@ -468,7 +472,13 @@ class ProductController extends Controller
         ];
 
         $data = $this->attachTranslations($data, new Product());
-        Product::create($data);
+        $product = Product::create($data);
+
+        $this->productNotification->notifyCreated(
+            (string) $product->product_name,
+            (string) (Auth::user()?->email ?? 'Unknown user'),
+            (bool) (Auth::user()?->isSuperAdmin() ?? false),
+        );
 
         return redirect()->route('admin.products.index')
                          ->with('success', 'Product created successfully.');
@@ -579,6 +589,12 @@ class ProductController extends Controller
 
         $data = $this->attachTranslations($data, $product);
         $product->update($data);
+
+        $this->productNotification->notifyUpdated(
+            (string) $product->product_name,
+            (string) (Auth::user()?->email ?? 'Unknown user'),
+            (bool) (Auth::user()?->isSuperAdmin() ?? false),
+        );
 
         return redirect()->route('admin.products.index')
                          ->with('success', 'Product updated.');

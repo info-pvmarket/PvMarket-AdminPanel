@@ -594,7 +594,11 @@ class ProductListingController extends Controller
         $subCategory  = SubMenu::where('_id', new \MongoDB\BSON\ObjectId($subCatId))->first();
         $product      = Product::where('_id', new \MongoDB\BSON\ObjectId($productId))->first();
         $warehouse    = Warehouse::where('_id', new \MongoDB\BSON\ObjectId($warehouseId))->first();
-        $sellTypes     = ['sell by pieces', 'sell by pallets', 'sell by containers', 'sell by weight'];
+        $sellTypes = [
+            'sell by pieces' => 'Sell By Pieces Only',
+            'sell by pallets' => 'Sell By Pallets Only',
+            'sell by containers' => 'Sell By Containers Only',
+        ];
         $currencies    = $this->availableCurrencies();
         $listingCurrency = strtoupper(trim((string) $listing->currency_id));
         if ($listingCurrency !== '' && ! in_array($listingCurrency, $currencies, true)) {
@@ -654,7 +658,7 @@ class ProductListingController extends Controller
         $listing = ProductListing::findOrFail($id);
 
         $validated = $request->validate([
-            'sell_type'                        => 'required|string',
+            'sell_type'                        => 'required|string|in:sell by pieces,sell by pallets,sell by containers',
             'currency_id'                      => 'required|string',
             'discount_type'                    => 'nullable|string',
             'incoterm_id' => 'required|string',

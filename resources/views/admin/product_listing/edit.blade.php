@@ -2,6 +2,17 @@
 
 @section('title', 'Edit Listing')
 
+@php
+    $selectedSellType = old('sell_type', $listing->sell_type);
+    $quantityUnits = [
+        'sell by pieces' => 'pcs',
+        'sell by pallets' => 'pallets',
+        'sell by containers' => 'container',
+    ];
+    $selectedQuantityUnit = $quantityUnits[$selectedSellType] ?? 'pcs';
+    $listingImageCount = $listingImages->count();
+@endphp
+
 @section('styles')
 <style>
     :root {
@@ -819,9 +830,9 @@
                     <div class="form-row cols-3">
                         <div class="form-group">
                             <label class="form-label">Sell Type <span class="req">*</span></label>
-                            <select name="sell_type" class="form-select" id="sellTypeSelect">
-                                @foreach(['sell by pieces' => 'Sell By Pieces Only', 'sell by containers' => 'Sell By Containers', 'sell by weight' => 'Sell By Weight'] as $val => $label)
-                                    <option value="{{ $val }}" {{ $listing->sell_type === $val ? 'selected' : '' }}>
+                            <select name="sell_type" class="form-select" id="sellTypeSelect" required>
+                                @foreach($sellTypes as $val => $label)
+                                    <option value="{{ $val }}" {{ $selectedSellType === $val ? 'selected' : '' }}>
                                         {{ $label }}
                                     </option>
                                 @endforeach
@@ -1074,7 +1085,7 @@
                             <div class="input-suffix">
                                 <input type="number" name="total_quantity" class="form-control"
                                        value="{{ $listing->total_quantity }}" min="1" id="totalQtyInput">
-                                <span class="suffix-label">pcs</span>
+                                <span class="suffix-label" id="totalQtyUnit">{{ $selectedQuantityUnit }}</span>
                             </div>
                         </div>
                         <div class="form-group">
@@ -1279,7 +1290,7 @@
                     <div>
                         <div class="summary-header-title">Product Images</div>
                         <div class="summary-header-sub" id="imgCardSubtitle">
-    {{ $listing->images->count() }} of 5 uploaded
+    {{ $listingImageCount }} of 5 uploaded
 </div>
                     </div>
                 </div>
@@ -1290,9 +1301,9 @@
     <p class="img-section-label">Current Images</p>
     <div class="img-grid" id="existingImagesGrid">
         @foreach($listingImages as $img)
-            @if(!empty($img->image['url']))
+            @if($img->public_url)
             <div class="img-grid-item" id="img-wrapper-{{ $loop->index }}">
-                <img src="{{ $img->image['url'] }}"
+                <img src="{{ $img->public_url }}"
                      alt="{{ $img->image['original_name'] ?? 'image' }}"
                      onerror="this.style.display='none'">
                 <button type="button"
@@ -1372,7 +1383,7 @@
                     </div>
                     <div class="summary-row">
                         <span class="summary-key">Quantity</span>
-                        <span class="summary-val" id="summQty">{{ number_format($listing->total_quantity) }} pcs</span>
+                        <span class="summary-val" id="summQty">{{ number_format($listing->total_quantity) }} {{ $selectedQuantityUnit }}</span>
                     </div>
                     <div class="summary-row">
                         <span class="summary-key">Price Tiers</span>
@@ -1383,7 +1394,7 @@
                     <div class="summary-row">
                         <span class="summary-key">Images</span>
                         <span class="summary-val" id="summImages">
-    {{ $listing->images->count() }} image{{ $listing->images->count() === 1 ? '' : 's' }}
+    {{ $listingImageCount }} image{{ $listingImageCount === 1 ? '' : 's' }}
 </span>
                     </div>
                     <div class="summary-row">
@@ -1541,15 +1552,35 @@ let slots = @json($listing->slots ?? []).map(slot => ({
 let editingIndex = null;
 
 // Track existing image count for the 5-image cap
-let existingImageCount = {{ $listing->images->count() }};
+let existingImageCount = {{ $listingImageCount }};
 
 // Render existing slots immediately on load
 renderSlots();
 
 // ── Live summary ─────────────────────────────────────────────
+function getQuantityUnit(sellType) {
+    return {
+        'sell by pieces': 'pcs',
+        'sell by pallets': 'pallets',
+        'sell by containers': 'container',
+    }[sellType] || 'pcs';
+}
+
+function syncQuantityPresentation() {
+    const sellType = document.getElementById('sellTypeSelect').value;
+    const quantity = document.getElementById('totalQtyInput').value;
+    const unit = getQuantityUnit(sellType);
+
+    document.getElementById('totalQtyUnit').textContent = unit;
+    document.getElementById('summQty').textContent = quantity
+        ? Number(quantity).toLocaleString() + ' ' + unit
+        : '—';
+}
+
 document.getElementById('sellTypeSelect').addEventListener('change', function () {
     document.getElementById('summSellType').textContent =
         this.options[this.selectedIndex].text;
+    syncQuantityPresentation();
 });
 
 document.getElementById('currencySelect').addEventListener('change', function () {
@@ -1557,9 +1588,10 @@ document.getElementById('currencySelect').addEventListener('change', function ()
 });
 
 document.getElementById('totalQtyInput').addEventListener('input', function () {
-    document.getElementById('summQty').textContent =
-        this.value ? Number(this.value).toLocaleString() + ' pcs' : '—';
+    syncQuantityPresentation();
 });
+
+syncQuantityPresentation();
 
 function syncOfferStatusSummary() {
     const summStatus = document.getElementById('summStatus');
