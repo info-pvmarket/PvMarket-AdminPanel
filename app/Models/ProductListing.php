@@ -102,6 +102,25 @@ public function warehouse()
         return $query->where('is_paid', false);
     }
 
+    public static function quantityUnitForSellType(mixed $sellType): string
+    {
+        if (! is_string($sellType) && ! is_int($sellType) && ! is_float($sellType)) {
+            return 'pcs';
+        }
+
+        $normalizedSellType = strtolower(trim((string) $sellType));
+
+        if (str_contains($normalizedSellType, 'pallet')) {
+            return 'pallets';
+        }
+
+        if (str_contains($normalizedSellType, 'container')) {
+            return 'container';
+        }
+
+        return 'pcs';
+    }
+
     // ── Helpers ─────────────────────────────────────────────────────
 
     /** Number of price tiers (slots) */

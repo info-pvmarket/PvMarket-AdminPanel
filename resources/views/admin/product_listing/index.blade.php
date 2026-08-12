@@ -1062,12 +1062,9 @@
         ];
     };
     $firstSlotPricing = count($slots) > 0 ? $slotPricing($slots[0]) : null;
-    $normalizedSellType = strtolower(trim((string) $listing->sell_type));
-    $quantityUnit = match (true) {
-        str_contains($normalizedSellType, 'pallet') => 'pallets',
-        str_contains($normalizedSellType, 'container') => 'container',
-        default => 'pcs',
-    };
+    $quantityUnit = \App\Models\ProductListing::quantityUnitForSellType(
+        $listing->getRawOriginal('sell_type')
+    );
     $verificationStatus = strtolower((string)($listing->verification_status ?? 'pending'));
     $isListingVerified = in_array($verificationStatus, ['verified', 'approved'], true);
     $previewUrl = rtrim(config('services.frontend.url', 'http://localhost:3000'), '/') . '/user/listings/' . $listing->id . '/preview';

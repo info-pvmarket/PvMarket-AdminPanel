@@ -43,4 +43,14 @@ class ProductListingTest extends TestCase
             );
         }
     }
+
+    public function test_quantity_unit_handles_current_and_legacy_sell_type_values(): void
+    {
+        $this->assertSame('pcs', ProductListing::quantityUnitForSellType('sell by pieces'));
+        $this->assertSame('pallets', ProductListing::quantityUnitForSellType('Sell By Pallets Only'));
+        $this->assertSame('container', ProductListing::quantityUnitForSellType('sell by containers'));
+        $this->assertSame('pcs', ProductListing::quantityUnitForSellType(null));
+        $this->assertSame('pcs', ProductListing::quantityUnitForSellType([]));
+        $this->assertSame('pcs', ProductListing::quantityUnitForSellType(new \stdClass()));
+    }
 }

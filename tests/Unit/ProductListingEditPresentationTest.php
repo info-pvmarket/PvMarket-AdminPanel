@@ -59,9 +59,8 @@ class ProductListingEditPresentationTest extends TestCase
             'resources/views/admin/product_listing/index.blade.php'
         ));
 
-        $this->assertStringContainsString("str_contains(\$normalizedSellType, 'pallet') => 'pallets'", $view);
-        $this->assertStringContainsString("str_contains(\$normalizedSellType, 'container') => 'container'", $view);
-        $this->assertStringContainsString("default => 'pcs'", $view);
+        $this->assertStringContainsString('ProductListing::quantityUnitForSellType(', $view);
+        $this->assertStringContainsString("\$listing->getRawOriginal('sell_type')", $view);
         $this->assertStringContainsString(
             '{{ number_format($listing->total_quantity) }} {{ $quantityUnit }}',
             $view
