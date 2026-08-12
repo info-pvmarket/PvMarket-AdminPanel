@@ -76,6 +76,9 @@ Route::middleware('auth')->group(function () {
     Route::put('/admin/profile', [ProfileController::class, 'update'])->name('admin.profile.update');
     Route::put('/admin/profile/password', [ProfileController::class, 'updatePassword'])->name('admin.profile.password');
 
+    Route::get('/admin/diagnostics/listings-error', [ProductListingController::class, 'latestSanitizedError'])
+        ->name('admin.diagnostics.listings-error');
+
     // Logout
     Route::post('/admin/logout', [AuthController::class, 'logout'])->name('admin.logout');
 
