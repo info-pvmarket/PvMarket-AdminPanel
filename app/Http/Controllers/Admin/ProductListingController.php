@@ -33,6 +33,26 @@ class ProductListingController extends Controller
 
     public function index(Request $request)
     {
+        try {
+            return $this->renderIndex($request);
+        } catch (\Throwable $exception) {
+            if (! (Auth::user()?->isSuperAdmin() ?? false)) {
+                throw $exception;
+            }
+
+            $message = str_replace(base_path(), '[app]', $exception->getMessage());
+            $message = preg_replace('/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i', '[email]', $message) ?? '';
+            $message = preg_replace('/\b[a-f0-9]{24}\b/i', '[object-id]', $message) ?? '';
+            $message = preg_replace('/[\x00-\x1F\x7F]+/', ' ', $message) ?? '';
+
+            return response('Server Error', 500)
+                ->header('X-PV-Error-Class', class_basename($exception))
+                ->header('X-PV-Error-Message', rawurlencode(substr($message, 0, 700)));
+        }
+    }
+
+    private function renderIndex(Request $request)
+    {
         $userId = (string) Auth::id();   // ← cast to string to match MongoDB stored value
 
         //$query = ProductListing::where('user_id', new \MongoDB\BSON\ObjectId(Auth::id()));
