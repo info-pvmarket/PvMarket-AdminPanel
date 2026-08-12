@@ -45,7 +45,9 @@ class ProductListingController extends Controller
             $message = preg_replace('/\b[a-f0-9]{24}\b/i', '[object-id]', $message) ?? '';
             $message = preg_replace('/[\x00-\x1F\x7F]+/', ' ', $message) ?? '';
 
-            return response('Server Error', 500)
+            $errorClass = class_basename($exception);
+
+            return response("Server Error\n{$errorClass}\n{$message}", 500)
                 ->header('X-PV-Error-Class', class_basename($exception))
                 ->header('X-PV-Error-Message', rawurlencode(substr($message, 0, 700)));
         }
