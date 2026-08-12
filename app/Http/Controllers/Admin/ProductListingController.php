@@ -34,7 +34,7 @@ class ProductListingController extends Controller
     {
         abort_unless(strtolower((string) Auth::user()?->email) === 'info@pv.market', 404);
 
-        $path = storage_path('logs/laravel.log');
+        $path = storage_path('logs/listings-diagnostic.log');
         if (! is_file($path) || ! is_readable($path)) {
             return response('latest-error=none', 200)->header('Content-Type', 'text/plain');
         }
@@ -54,21 +54,13 @@ class ProductListingController extends Controller
 
         $errorLine = collect(preg_split('/\R/', $contents) ?: [])
             ->reverse()
-            ->first(fn (string $line): bool => str_contains($line, '.ERROR:'));
+            ->first(fn (string $line): bool => trim($line) !== '');
 
         if (! $errorLine) {
             return response('latest-error=none', 200)->header('Content-Type', 'text/plain');
         }
 
-        $message = preg_replace('/^.*\.(production|local)\.ERROR:\s*/', '', $errorLine) ?? '';
-        $message = preg_replace('/\s+\{".*$/', '', $message) ?? '';
-        $message = str_replace(base_path(), '[app]', $message);
-        $message = preg_replace('/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i', '[email]', $message) ?? '';
-        $message = preg_replace('/\b[a-f0-9]{24}\b/i', '[object-id]', $message) ?? '';
-        $message = preg_replace('#(https?|mongodb(?:\+srv)?|redis|smtp)://\S+#i', '[connection]', $message) ?? '';
-        $message = preg_replace('/(password|token|secret|authorization)[=:]\S+/i', '$1=[redacted]', $message) ?? '';
-
-        return response('latest-error='.substr($message, 0, 1000), 200)
+        return response('latest-error='.substr($errorLine, 0, 1000), 200)
             ->header('Content-Type', 'text/plain');
     }
     // ── Index (My Listings page) ────────────────────────────────────

@@ -38,5 +38,23 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->report(function (\Throwable $exception): void {
+            $request = request();
+            if (! $request->is('user/listings')) {
+                return;
+            }
+
+            $message = str_replace(base_path(), '[app]', $exception->getMessage());
+            $message = preg_replace('/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i', '[email]', $message) ?? '';
+            $message = preg_replace('/\b[a-f0-9]{24}\b/i', '[object-id]', $message) ?? '';
+            $message = preg_replace('#(https?|mongodb(?:\+srv)?|redis|smtp)://\S+#i', '[connection]', $message) ?? '';
+            $message = preg_replace('/(password|token|secret|authorization)[=:]\S+/i', '$1=[redacted]', $message) ?? '';
+            $line = class_basename($exception).' '.substr($message, 0, 1000);
+
+            file_put_contents(
+                storage_path('logs/listings-diagnostic.log'),
+                $line.PHP_EOL,
+                LOCK_EX,
+            );
+        });
     })->create();
