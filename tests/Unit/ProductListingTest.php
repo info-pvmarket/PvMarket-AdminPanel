@@ -53,4 +53,13 @@ class ProductListingTest extends TestCase
         $this->assertSame('pcs', ProductListing::quantityUnitForSellType([]));
         $this->assertSame('pcs', ProductListing::quantityUnitForSellType(new \stdClass()));
     }
+
+    public function test_sell_type_label_handles_current_and_legacy_values(): void
+    {
+        $this->assertSame('Sell By Pieces', ProductListing::sellTypeLabel('sell by pieces'));
+        $this->assertSame('Sell By Pallets', ProductListing::sellTypeLabel('sell by pallets'));
+        $this->assertSame('N/A', ProductListing::sellTypeLabel(null));
+        $this->assertSame('N/A', ProductListing::sellTypeLabel([]));
+        $this->assertSame('N/A', ProductListing::sellTypeLabel(new \stdClass()));
+    }
 }

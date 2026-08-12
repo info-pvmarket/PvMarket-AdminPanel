@@ -3,6 +3,10 @@
 if (!function_exists('lang')) {
     function lang($record, string $field, ?string $language = null): string
     {
+        if ($record === null) {
+            return '';
+        }
+
         $lang = $language ?? session('admin_lang', 'en');
 
         // Use the trait's trans() method — handles DB check + API fallback

@@ -1214,7 +1214,7 @@
                 <div class="listing-meta">
                     <div class="meta-item">
                         <label>Warehouse</label>
-                        <span>{{ lang($warehouse, 'warehouse_name') ?? $listing->warehouse_id }}</span>
+                        <span>{{ $warehouse ? lang($warehouse, 'warehouse_name') : $listing->warehouse_id }}</span>
                     </div>
                     <div class="meta-item">
                         <label>Lead Time</label>
@@ -1222,7 +1222,7 @@
                     </div>
                     <div class="meta-item">
                         <label>Sell Type</label>
-                        <span>{{ ucwords($listing->sell_type) }}</span>
+                        <span>{{ \App\Models\ProductListing::sellTypeLabel($listing->getRawOriginal('sell_type')) }}</span>
                     </div>
                     <div class="meta-item">
                         <label>Location</label>

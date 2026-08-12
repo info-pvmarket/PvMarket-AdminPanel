@@ -121,6 +121,17 @@ public function warehouse()
         return 'pcs';
     }
 
+    public static function sellTypeLabel(mixed $sellType): string
+    {
+        if (! is_string($sellType) && ! is_int($sellType) && ! is_float($sellType)) {
+            return 'N/A';
+        }
+
+        $normalizedSellType = trim((string) $sellType);
+
+        return $normalizedSellType === '' ? 'N/A' : ucwords($normalizedSellType);
+    }
+
     // ── Helpers ─────────────────────────────────────────────────────
 
     /** Number of price tiers (slots) */
