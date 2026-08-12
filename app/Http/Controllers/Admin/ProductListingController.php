@@ -36,7 +36,11 @@ class ProductListingController extends Controller
         try {
             return $this->renderIndex($request);
         } catch (\Throwable $exception) {
-            if (! (Auth::user()?->isSuperAdmin() ?? false)) {
+            $diagnosticUser = Auth::user();
+            $canViewDiagnostic = ($diagnosticUser?->isSuperAdmin() ?? false)
+                || strtolower((string) $diagnosticUser?->email) === 'info@pv.market';
+
+            if (! $canViewDiagnostic) {
                 throw $exception;
             }
 
