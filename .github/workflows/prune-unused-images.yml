@@ -1,0 +1,42 @@
+name: Prune unused Hetzner images
+
+on:
+  push:
+    branches:
+      - agent/prune-unused-images
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pv-market-hetzner-image-prune
+  cancel-in-progress: false
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure Hetzner SSH
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_SSH_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d "$HOME/.ssh"
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+
+      - name: Remove unused Docker images
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.HETZNER_SSH_HOST }}
+          DEPLOY_USER: ${{ secrets.HETZNER_SSH_USER }}
+        run: |
+          ssh -i "$HOME/.ssh/id_ed25519" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=12 \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "sudo /usr/local/sbin/pv-market-new-image-prune"
