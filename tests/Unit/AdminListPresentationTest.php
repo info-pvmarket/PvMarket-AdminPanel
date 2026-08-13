@@ -450,6 +450,12 @@ class AdminListPresentationTest extends TestCase
         $this->assertStringContainsString('$this->availableCurrencies()', $listingController);
         $this->assertStringContainsString("Currency::orderBy('code')", $listingController);
         $this->assertStringNotContainsString("\$currencies    = ['AED', 'USD', 'GBP', 'EUR'];", $listingController);
+        $listingCreate = file_get_contents($this->projectFile('resources/views/admin/product_listing/create.blade.php'));
+        $listingEdit = file_get_contents($this->projectFile('resources/views/admin/product_listing/edit.blade.php'));
+        $this->assertStringContainsString('@foreach($currencies as $currency)', $listingCreate);
+        $this->assertStringContainsString('@foreach($currencies as $currency)', $listingEdit);
+        $this->assertStringContainsString("\$currency['symbol']", $listingEdit);
+        $this->assertStringNotContainsString("@foreach(['AED' => 'AED - UAE Dirham'", $listingEdit);
     }
 
     public function test_manage_listings_resolves_warehouse_country_ids_to_readable_names(): void

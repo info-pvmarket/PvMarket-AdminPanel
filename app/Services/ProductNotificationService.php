@@ -12,9 +12,7 @@ final class ProductNotificationService
 
     public function requireReapproval(array $attributes, bool $isSuperAdmin = false): array
     {
-        if (! $isSuperAdmin) {
-            $attributes['verification_status'] = 'pending';
-        }
+        $attributes['verification_status'] = 'pending';
 
         return $attributes;
     }

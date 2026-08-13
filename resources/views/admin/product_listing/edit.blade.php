@@ -840,13 +840,15 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label">Currency <span class="req">*</span></label>
-                            <select name="currency_id" class="form-select" id="currencySelect">
-                                @foreach(['AED' => 'AED - UAE Dirham', 'USD' => 'USD - US Dollar', 'GBP' => 'GBP - British Pound', 'EUR' => 'EUR - Euro'] as $val => $label)
-                                    <option value="{{ $val }}" {{ $listing->currency_id === $val ? 'selected' : '' }}>
-                                        {{ $label }}
+                            <select name="currency_id" class="form-select" id="currencySelect" required>
+                                <option value="">Select currency</option>
+                                @foreach($currencies as $currency)
+                                    <option value="{{ $currency['code'] }}" {{ old('currency_id', strtoupper((string) $listing->currency_id)) === $currency['code'] ? 'selected' : '' }}>
+                                        {{ $currency['code'] }}{{ $currency['symbol'] !== '' ? ' (' . $currency['symbol'] . ')' : '' }}
                                     </option>
                                 @endforeach
                             </select>
+                            @error('currency_id')<div class="error-msg">{{ $message }}</div>@enderror
                         </div>
                         <div class="form-group">
                             <label class="form-label">Promotion</label>
@@ -1134,6 +1136,14 @@
                             @if(count($listing->slots ?? []) === 0)
                                 <div class="slot-item-empty">No tiers added yet. Click "Add Tier" to create one.</div>
                             @endif
+                        </div>
+
+                        @php
+                            $tierQuantityError = $errors->first('slots.*.min_quantity')
+                                ?: $errors->first('slots.*.max_quantity');
+                        @endphp
+                        <div id="tierQuantityError" class="error-msg" style="{{ $tierQuantityError ? '' : 'display:none;' }} margin-top:8px;">
+                            {{ $tierQuantityError }}
                         </div>
 
                         {{-- Add Slot Form --}}
@@ -1654,13 +1664,38 @@ document.querySelectorAll('input[name="maxQtyType"]').forEach(r => {
 });
 
 // ── Submit/Update handler ─────────────────────────────────────
-document.getElementById('editForm').addEventListener('submit', function () {
+document.getElementById('editForm').addEventListener('submit', function (event) {
+    if (!validatePriceTiersAgainstTotalQuantity()) {
+        event.preventDefault();
+        return;
+    }
+
     const spinner = document.getElementById('updateSpinner');
     if (spinner) spinner.style.display = 'inline-block';
     document.querySelectorAll('.btn-update, .btn-update-main').forEach(b => b.disabled = true);
 });
 
 function handleUpdate(btn) {}
+
+function validatePriceTiersAgainstTotalQuantity() {
+    const totalQuantity = Number(document.getElementById('totalQtyInput').value);
+    const errorElement = document.getElementById('tierQuantityError');
+    const hasInvalidTier = Number.isFinite(totalQuantity) && slots.some(slot =>
+        Number(slot.min_quantity) >= totalQuantity ||
+        (hasSpecificMaxQuantity(slot) && Number(slot.max_quantity) >= totalQuantity)
+    );
+
+    if (hasInvalidTier) {
+        errorElement.textContent = 'Each price tier quantity must be less than the total quantity.';
+        errorElement.style.display = 'block';
+        errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return false;
+    }
+
+    errorElement.textContent = '';
+    errorElement.style.display = 'none';
+    return true;
+}
 
 // ── Remove existing image ─────────────────────────────────────
 function removeExistingImage(index) {
@@ -1794,6 +1829,12 @@ function saveSlot() {
     }
     if (maxType === 'specific' && (isNaN(maxQty) || maxQty <= minQty)) {
         errEl.textContent = 'Max quantity must be greater than minimum.';
+        errEl.style.display = 'block'; return;
+    }
+    const totalQuantity = Number(document.getElementById('totalQtyInput').value);
+    if (Number.isFinite(totalQuantity) &&
+        (minQty >= totalQuantity || (maxQty !== null && maxQty >= totalQuantity))) {
+        errEl.textContent = 'Each price tier quantity must be less than the total quantity.';
         errEl.style.display = 'block'; return;
     }
 

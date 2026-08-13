@@ -21,6 +21,7 @@ use App\Traits\FiltersAssignedUsers;
 use App\Services\ProductListingCsvExporter;
 use App\Services\ListingUpdateService;
 use App\Services\ListingImageService;
+use App\Rules\PriceTierQuantityBelowTotal;
 
 class ProductListingController extends Controller
 {
@@ -446,6 +447,8 @@ class ProductListingController extends Controller
 
     public function store(Request $request)
     {
+        $priceTierQuantityRule = new PriceTierQuantityBelowTotal((int) $request->input('total_quantity'));
+
         $validated = $request->validate([
             'product_id'                       => 'required|string',
             'main_category_id'                 => 'required|string',
@@ -468,8 +471,8 @@ class ProductListingController extends Controller
             'images.*'                         => 'nullable|image|mimes:jpeg,png,webp|max:5120',
             'images'                           => 'nullable|array|max:5',
             'slots'                            => 'required|array|min:1',
-            'slots.*.min_quantity'             => 'required|integer|min:0',
-            'slots.*.max_quantity'             => 'nullable|integer|min:1',
+            'slots.*.min_quantity'             => ['required', 'integer', 'min:0', $priceTierQuantityRule],
+            'slots.*.max_quantity'             => ['nullable', 'integer', 'min:1', $priceTierQuantityRule],
             'slots.*.price'                    => 'required|numeric|min:0',
             'slots.*.commission_percentage'    => 'nullable|numeric|min:0',  // ← new
             'slots.*.total_price'              => 'nullable|numeric|min:0',  // ← new
@@ -581,9 +584,14 @@ class ProductListingController extends Controller
         ];
         $currencies    = $this->availableCurrencies();
         $listingCurrency = strtoupper(trim((string) $listing->currency_id));
-        if ($listingCurrency !== '' && ! in_array($listingCurrency, $currencies, true)) {
-            $currencies[] = $listingCurrency;
-            sort($currencies);
+        if ($listingCurrency !== '' && ! in_array($listingCurrency, array_column($currencies, 'code'), true)) {
+            // Preserve a legacy listing currency without silently replacing it
+            // when that code is no longer present in the common currency table.
+            $currencies[] = [
+                'code' => $listingCurrency,
+                'symbol' => '',
+            ];
+            usort($currencies, static fn (array $left, array $right): int => $left['code'] <=> $right['code']);
         }
         $discountTypes = ['No Promotion', 'fixed', 'percentage'];
         $incoterms = Incoterm::orderBy('name')->get();
@@ -636,6 +644,7 @@ class ProductListingController extends Controller
     public function update(Request $request, string $id)
     {
         $listing = ProductListing::findOrFail($id);
+        $priceTierQuantityRule = new PriceTierQuantityBelowTotal((int) $request->input('total_quantity'));
 
         $validated = $request->validate([
             'sell_type'                        => 'required|string|in:sell by pieces,sell by pallets,sell by containers',
@@ -653,8 +662,8 @@ class ProductListingController extends Controller
             'solar_phase_types'                => 'nullable|required_if:is_solar_listing,1|array|min:1',
             'solar_phase_types.*'              => 'in:single,three',
             'slots'                            => 'required|array|min:1',
-            'slots.*.min_quantity'             => 'required|integer|min:0',
-            'slots.*.max_quantity'             => 'nullable|integer|min:1',
+            'slots.*.min_quantity'             => ['required', 'integer', 'min:0', $priceTierQuantityRule],
+            'slots.*.max_quantity'             => ['nullable', 'integer', 'min:1', $priceTierQuantityRule],
             'slots.*.price'                    => 'required|numeric|min:0',
             'slots.*.commission_percentage'    => 'nullable|numeric|min:0',  // ← new
             'slots.*.total_price'              => 'nullable|numeric|min:0',  // ← new
@@ -717,8 +726,7 @@ class ProductListingController extends Controller
         // dedicated approval action remains responsible for marking it verified.
         $isSuperAdmin = Auth::user()?->isSuperAdmin() ?? false;
 
-        // Seller and regular-admin edits require fresh approval. A super-admin
-        // edit preserves the listing's existing verification status.
+        // Every edit, including a super-admin edit, requires fresh approval.
         $validated = $this->listingUpdateService->requireReapproval($validated, $isSuperAdmin);
 
         $this->syncListingImages($request, $listing);
@@ -869,14 +877,18 @@ class ProductListingController extends Controller
     /**
      * Return the common currency list for admin listing forms.
      *
-     * @return array<int, string>
+     * @return array<int, array{code: string, symbol: string}>
      */
     private function availableCurrencies(): array
     {
         return Currency::orderBy('code')
-            ->pluck('code')
-            ->map(static fn ($code) => strtoupper(trim((string) $code)))
-            ->filter()
+            ->get(['code', 'symbol'])
+            ->map(static fn (Currency $currency): array => [
+                'code' => strtoupper(trim((string) $currency->code)),
+                'symbol' => trim((string) $currency->symbol),
+            ])
+            ->filter(static fn (array $currency): bool => $currency['code'] !== '')
+            ->unique('code')
             ->values()
             ->all();
     }

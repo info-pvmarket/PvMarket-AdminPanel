@@ -851,9 +851,9 @@
                             <label class="form-label">Currency <span class="req">*</span></label>
                             <select name="currency_id" class="form-select" id="currencySelect" required>
                                 <option value="">Select currency</option>
-                                @foreach($currencies as $cur)
-                                    <option value="{{ $cur }}" {{ old('currency_id') == $cur ? 'selected' : '' }}>
-                                        {{ $cur }}
+                                @foreach($currencies as $currency)
+                                    <option value="{{ $currency['code'] }}" {{ old('currency_id') == $currency['code'] ? 'selected' : '' }}>
+                                        {{ $currency['code'] }}{{ $currency['symbol'] !== '' ? ' (' . $currency['symbol'] . ')' : '' }}
                                     </option>
                                 @endforeach
                             </select>
@@ -1108,6 +1108,14 @@
 
                         <div class="slot-list-box" id="slotList">
                             <div class="slot-item-empty" id="slotEmptyMsg">No tiers added yet. Click "Add Tier" to create one.</div>
+                        </div>
+
+                        @php
+                            $tierQuantityError = $errors->first('slots.*.min_quantity')
+                                ?: $errors->first('slots.*.max_quantity');
+                        @endphp
+                        <div id="tierQuantityError" class="error-msg" style="{{ $tierQuantityError ? '' : 'display:none;' }} margin-top:8px;">
+                            {{ $tierQuantityError }}
                         </div>
 
                         {{-- Add Slot Form --}}
@@ -1563,13 +1571,38 @@ document.getElementById('productSelect').addEventListener('change', updateSticky
 document.getElementById('totalQtyInput').addEventListener('input', updateStickyLabel);
 
 // ── Submit handler (shows spinner) ───────────────────────────
-document.getElementById('listingForm').addEventListener('submit', function () {
+document.getElementById('listingForm').addEventListener('submit', function (event) {
+    if (!validatePriceTiersAgainstTotalQuantity()) {
+        event.preventDefault();
+        return;
+    }
+
     const spinner = document.getElementById('submitSpinner');
     if (spinner) spinner.style.display = 'inline-block';
     document.querySelectorAll('.btn-publish, .btn-submit-main').forEach(b => b.disabled = true);
 });
 
 function handleSubmit(btn) {}
+
+function validatePriceTiersAgainstTotalQuantity() {
+    const totalQuantity = Number(document.getElementById('totalQtyInput').value);
+    const errorElement = document.getElementById('tierQuantityError');
+    const hasInvalidTier = Number.isFinite(totalQuantity) && slots.some(slot =>
+        Number(slot.min_quantity) >= totalQuantity ||
+        (slot.max_quantity !== null && Number(slot.max_quantity) >= totalQuantity)
+    );
+
+    if (hasInvalidTier) {
+        errorElement.textContent = 'Each price tier quantity must be less than the total quantity.';
+        errorElement.style.display = 'block';
+        errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return false;
+    }
+
+    errorElement.textContent = '';
+    errorElement.style.display = 'none';
+    return true;
+}
 
 // ── Slot form ─────────────────────────────────────────────────
 function setSlotEditorInputsEnabled(enabled) {
@@ -1641,6 +1674,12 @@ function saveSlot() {
     }
     if (maxType === 'specific' && (isNaN(maxQty) || maxQty <= minQty)) {
         errEl.textContent = 'Max quantity must be greater than minimum.';
+        errEl.style.display = 'block'; return;
+    }
+    const totalQuantity = Number(document.getElementById('totalQtyInput').value);
+    if (Number.isFinite(totalQuantity) &&
+        (minQty >= totalQuantity || (maxQty !== null && maxQty >= totalQuantity))) {
+        errEl.textContent = 'Each price tier quantity must be less than the total quantity.';
         errEl.style.display = 'block'; return;
     }
 

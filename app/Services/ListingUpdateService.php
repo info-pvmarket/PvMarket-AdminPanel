@@ -12,10 +12,6 @@ final class ListingUpdateService
 
     public function requireReapproval(array $attributes, bool $isSuperAdmin = false): array
     {
-        if ($isSuperAdmin) {
-            return $attributes;
-        }
-
         $attributes['verification_status'] = 'pending';
 
         return $attributes;

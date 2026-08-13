@@ -38,7 +38,7 @@ class ListingUpdateServiceTest extends TestCase
         Mail::assertQueuedCount(1);
     }
 
-    public function test_super_admin_listing_update_preserves_verification_status(): void
+    public function test_super_admin_listing_update_requires_reapproval(): void
     {
         $service = app(ListingUpdateService::class);
 
@@ -47,7 +47,7 @@ class ListingUpdateServiceTest extends TestCase
             'total_quantity' => 100,
         ], true);
 
-        $this->assertSame('verified', $attributes['verification_status']);
+        $this->assertSame('pending', $attributes['verification_status']);
         $this->assertSame(100, $attributes['total_quantity']);
     }
 
