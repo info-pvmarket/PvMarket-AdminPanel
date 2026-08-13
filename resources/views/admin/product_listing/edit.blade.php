@@ -1297,6 +1297,7 @@
                 <div style="padding:16px 18px;">
 
                     {{-- Existing images --}}
+                    <input type="hidden" name="image_manifest_present" value="1">
                     @if($listingImages->count() > 0)
     <p class="img-section-label">Current Images</p>
     <div class="img-grid" id="existingImagesGrid">
@@ -1675,13 +1676,26 @@ function removeExistingImage(index) {
 // ── Preview newly selected images ─────────────────────────────
 function previewNewImages(input) {
     const maxAllowed = 5 - existingImageCount;
-    const files      = Array.from(input.files).slice(0, maxAllowed);
+    const uniqueFiles = Array.from(input.files).filter((file, index, allFiles) =>
+        allFiles.findIndex(candidate =>
+            candidate.name === file.name &&
+            candidate.size === file.size &&
+            candidate.lastModified === file.lastModified
+        ) === index
+    );
+    const files      = uniqueFiles.slice(0, maxAllowed);
     const grid       = document.getElementById('newImagesGrid');
     const label      = document.getElementById('newImagesLabel');
     const countNote  = document.getElementById('imgCountNote');
     const zoneTitle  = document.getElementById('uploadZoneTitle');
 
     grid.innerHTML = '';
+
+    // Submit exactly the same unique files shown in the preview. Previously,
+    // files beyond the visible limit remained in the native FileList.
+    const selectedFiles = new DataTransfer();
+    files.forEach(file => selectedFiles.items.add(file));
+    input.files = selectedFiles.files;
 
     if (files.length === 0) {
         grid.style.display  = 'none';
@@ -1712,8 +1726,8 @@ function previewNewImages(input) {
     grid.style.display = 'grid';
     zoneTitle.textContent = 'Change new images';
 
-    if (maxAllowed < input.files.length) {
-        countNote.textContent  = `Showing ${files.length} of ${input.files.length} selected (max 5 total).`;
+    if (files.length < uniqueFiles.length) {
+        countNote.textContent  = `Showing ${files.length} of ${uniqueFiles.length} unique files selected (max 5 total).`;
         countNote.style.display = 'block';
     } else {
         countNote.style.display = 'none';

@@ -10,6 +10,27 @@ use Tests\TestCase;
 
 class ProductCreationNotificationServiceTest extends TestCase
 {
+    public function test_seller_and_admin_product_updates_require_reapproval(): void
+    {
+        $attributes = app(ProductNotificationService::class)->requireReapproval([
+            'verification_status' => 'verified',
+            'product_name' => 'Updated product',
+        ]);
+
+        $this->assertSame('pending', $attributes['verification_status']);
+        $this->assertSame('Updated product', $attributes['product_name']);
+    }
+
+    public function test_super_admin_product_updates_preserve_verification_status(): void
+    {
+        $attributes = app(ProductNotificationService::class)->requireReapproval([
+            'verification_status' => 'verified',
+            'product_name' => 'Updated product',
+        ], true);
+
+        $this->assertSame('verified', $attributes['verification_status']);
+    }
+
     public function test_product_creation_email_is_only_queued_to_pv_market(): void
     {
         Mail::fake();

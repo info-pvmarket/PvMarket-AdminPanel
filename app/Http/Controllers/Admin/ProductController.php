@@ -587,13 +587,15 @@ class ProductController extends Controller
             
         ];
 
+        $isSuperAdmin = Auth::user()?->isSuperAdmin() ?? false;
         $data = $this->attachTranslations($data, $product);
+        $data = $this->productNotification->requireReapproval($data, $isSuperAdmin);
         $product->update($data);
 
         $this->productNotification->notifyUpdated(
             (string) $product->product_name,
             (string) (Auth::user()?->email ?? 'Unknown user'),
-            (bool) (Auth::user()?->isSuperAdmin() ?? false),
+            $isSuperAdmin,
         );
 
         return redirect()->route('admin.products.index')

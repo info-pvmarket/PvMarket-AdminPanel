@@ -38,4 +38,19 @@ class ProductListingImageTest extends TestCase
             $view
         );
     }
+
+    public function test_listing_edit_reconciles_existing_images_and_uses_the_r2_uploader(): void
+    {
+        $controller = file_get_contents(
+            dirname(__DIR__, 2).'/app/Http/Controllers/Admin/ProductListingController.php'
+        );
+        $view = file_get_contents(
+            dirname(__DIR__, 2).'/resources/views/admin/product_listing/edit.blade.php'
+        );
+
+        $this->assertStringContainsString('syncListingImages($request, $listing)', $controller);
+        $this->assertStringContainsString('listingImageService->store($file)', $controller);
+        $this->assertStringNotContainsString("storeAs('product-listings', \$filename, 'public')", $controller);
+        $this->assertStringContainsString('name="image_manifest_present"', $view);
+    }
 }

@@ -20,6 +20,7 @@ use App\Models\Currency;
 use App\Traits\FiltersAssignedUsers;
 use App\Services\ProductListingCsvExporter;
 use App\Services\ListingUpdateService;
+use App\Services\ListingImageService;
 
 class ProductListingController extends Controller
 {
@@ -28,6 +29,7 @@ class ProductListingController extends Controller
     public function __construct(
         protected TranslationService $translator,
         protected ListingUpdateService $listingUpdateService,
+        protected ListingImageService $listingImageService,
     ) {}
     // ── Index (My Listings page) ────────────────────────────────────
 
@@ -464,6 +466,7 @@ class ProductListingController extends Controller
             'solar_phase_types'                => 'nullable|required_if:is_solar_listing,1|array|min:1',
             'solar_phase_types.*'              => 'in:single,three',
             'images.*'                         => 'nullable|image|mimes:jpeg,png,webp|max:5120',
+            'images'                           => 'nullable|array|max:5',
             'slots'                            => 'required|array|min:1',
             'slots.*.min_quantity'             => 'required|integer|min:0',
             'slots.*.max_quantity'             => 'nullable|integer|min:1',
@@ -524,30 +527,7 @@ class ProductListingController extends Controller
 
         $listing = ProductListing::create($validated);
 
-        // Store images in separate collection
-        if ($request->hasFile('images')) {
-            $sortOrder = 1;
-            foreach ($request->file('images') as $file) {
-                $filename     = time() . '_' . rand(1000, 9999) . '_' . $file->getClientOriginalName();
-                $path         = 'product-listings/' . $filename;
-                $file->storeAs('product-listings', $filename, 'public');
-
-                ProductListingImage::create([
-                    'product_listing_id' => new \MongoDB\BSON\ObjectId((string)$listing->_id),
-                    'image'              => [
-                        'size'          => $file->getSize(),
-                        'uploaded_at'   => now()->toISOString(),
-                        'filename'      => $filename,
-                        'original_name' => $file->getClientOriginalName(),
-                        'path'          => $path,
-                        'url'           => $path,
-                        'mime_type'     => $file->getMimeType(),
-                    ],
-                    'sort_order'  => $sortOrder++,
-                    'created_by'  => new \MongoDB\BSON\ObjectId(Auth::id()),
-                ]);
-            }
-        }
+        $this->storeNewListingImages($listing, $request->file('images', []));
 
         $productName = Product::find($request->product_id)?->product_name
             ?? $listing->sku_code
@@ -683,6 +663,10 @@ class ProductListingController extends Controller
             'product_id'       => 'required|string',
             'warehouse_id'     => 'required|string',
             'images.*'                         => 'nullable|image|mimes:jpeg,png,webp|max:5120',
+            'images'                           => 'nullable|array|max:5',
+            'existing_image_ids'               => 'nullable|array|max:5',
+            'existing_image_ids.*'             => ['string', 'regex:/^[a-fA-F0-9]{24}$/'],
+            'image_manifest_present'            => 'nullable|boolean',
         ]);
         $validated['warehouse_id'] = new \MongoDB\BSON\ObjectId($listing->warehouse_id);
         $validated['is_active']   = ! $request->boolean('is_on_hold', false);
@@ -737,33 +721,7 @@ class ProductListingController extends Controller
         // edit preserves the listing's existing verification status.
         $validated = $this->listingUpdateService->requireReapproval($validated, $isSuperAdmin);
 
-        if ($request->hasFile('images')) {
-            $lastOrder = ProductListingImage::where(
-                'product_listing_id',
-                new \MongoDB\BSON\ObjectId((string)$listing->_id)
-            )->max('sort_order') ?? 0;
-
-            foreach ($request->file('images') as $file) {
-                $filename = time() . '_' . rand(1000, 9999) . '_' . $file->getClientOriginalName();
-                $path     = 'product-listings/' . $filename;
-                $file->storeAs('product-listings', $filename, 'public');
-
-                ProductListingImage::create([
-                    'product_listing_id' => new \MongoDB\BSON\ObjectId((string)$listing->_id),
-                    'image'              => [
-                        'size'          => $file->getSize(),
-                        'uploaded_at'   => now()->toISOString(),
-                        'filename'      => $filename,
-                        'original_name' => $file->getClientOriginalName(),
-                        'path'          => $path,
-                        'url'           => $path,
-                        'mime_type'     => $file->getMimeType(),
-                    ],
-                    'sort_order'  => ++$lastOrder,
-                    'created_by'  => new \MongoDB\BSON\ObjectId(Auth::id()),
-                ]);
-            }
-        }
+        $this->syncListingImages($request, $listing);
 
         $listing->update($validated);
 
@@ -803,7 +761,11 @@ class ProductListingController extends Controller
     public function toggleActive(string $id)
     {
         $listing = ProductListing::findOrFail($id);
-        $listing->update(['is_active' => !$listing->is_active]);
+        $attributes = $this->listingUpdateService->requireReapproval(
+            ['is_active' => ! $listing->is_active],
+            Auth::user()?->isSuperAdmin() ?? false,
+        );
+        $listing->update($attributes);
 
         $msg = $listing->is_active ? 'Listing is now active.' : 'Listing is now inactive.';
         return back()->with('success', $msg);
@@ -935,5 +897,101 @@ class ProductListingController extends Controller
             array_map(static fn($item) => (string) $item, $value),
             static fn($item) => $item !== ''
         ));
+    }
+
+    private function storeNewListingImages(ProductListing $listing, mixed $files, int $startingOrder = 0): void
+    {
+        $files = is_array($files) ? $files : array_filter([$files]);
+        $seenChecksums = [];
+        $seenMetadata = [];
+        $sortOrder = $startingOrder;
+
+        foreach ($files as $file) {
+            $checksum = $this->listingImageService->uploadedFileChecksum($file);
+            $metadata = $this->listingImageService->uploadedFileMetadataSignature($file);
+            if (isset($seenChecksums[$checksum]) || isset($seenMetadata[$metadata])) {
+                continue;
+            }
+
+            $seenChecksums[$checksum] = true;
+            $seenMetadata[$metadata] = true;
+            ProductListingImage::create([
+                'product_listing_id' => new \MongoDB\BSON\ObjectId((string) $listing->_id),
+                'image' => $this->listingImageService->store($file),
+                'sort_order' => ++$sortOrder,
+                'created_by' => new \MongoDB\BSON\ObjectId(Auth::id()),
+            ]);
+        }
+    }
+
+    private function syncListingImages(Request $request, ProductListing $listing): void
+    {
+        $listingObjectId = new \MongoDB\BSON\ObjectId((string) $listing->_id);
+        $existing = ProductListingImage::where('product_listing_id', $listingObjectId)
+            ->orderBy('sort_order')
+            ->get();
+        $manifestWasSubmitted = $request->boolean('image_manifest_present');
+        $requestedIds = $manifestWasSubmitted
+            ? collect($request->input('existing_image_ids', []))->map(fn ($id) => (string) $id)->flip()
+            : $existing->mapWithKeys(fn ($image) => [(string) $image->_id => true]);
+        $retained = [];
+        $seenChecksums = [];
+        $seenMetadata = [];
+
+        foreach ($existing as $image) {
+            if (! $requestedIds->has((string) $image->_id)) {
+                continue;
+            }
+
+            $checksum = trim((string) data_get($image->image, 'checksum_sha256', ''));
+            $metadata = $this->listingImageService->metadataSignature($image->image);
+            if (($checksum !== '' && isset($seenChecksums[$checksum])) || isset($seenMetadata[$metadata])) {
+                continue;
+            }
+
+            if ($checksum !== '') {
+                $seenChecksums[$checksum] = true;
+            }
+            $seenMetadata[$metadata] = true;
+            $retained[] = $image;
+        }
+
+        $newFiles = [];
+        foreach ((array) $request->file('images', []) as $file) {
+            $checksum = $this->listingImageService->uploadedFileChecksum($file);
+            $metadata = $this->listingImageService->uploadedFileMetadataSignature($file);
+            if (isset($seenChecksums[$checksum]) || isset($seenMetadata[$metadata])) {
+                continue;
+            }
+
+            $seenChecksums[$checksum] = true;
+            $seenMetadata[$metadata] = true;
+            $newFiles[] = $file;
+        }
+
+        if (count($retained) + count($newFiles) > 5) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'images' => 'A listing can contain a maximum of 5 unique images.',
+            ]);
+        }
+
+        $retainedIds = collect($retained)->mapWithKeys(fn ($image) => [(string) $image->_id => true]);
+        foreach ($existing as $image) {
+            if ($retainedIds->has((string) $image->_id)) {
+                continue;
+            }
+
+            $this->listingImageService->delete($image->image);
+            $image->delete();
+        }
+
+        foreach ($retained as $index => $image) {
+            $expectedOrder = $index + 1;
+            if ((int) $image->sort_order !== $expectedOrder) {
+                $image->update(['sort_order' => $expectedOrder]);
+            }
+        }
+
+        $this->storeNewListingImages($listing, $newFiles, count($retained));
     }
 }

@@ -10,6 +10,15 @@ final class ProductNotificationService
 {
     public const RECIPIENT = 'info@pv.market';
 
+    public function requireReapproval(array $attributes, bool $isSuperAdmin = false): array
+    {
+        if (! $isSuperAdmin) {
+            $attributes['verification_status'] = 'pending';
+        }
+
+        return $attributes;
+    }
+
     public function notifyCreated(string $productName, string $createdBy, bool $isSuperAdmin = false): void
     {
         if ($isSuperAdmin) {

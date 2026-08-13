@@ -17,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Services\AdminSubscriptionService;
 use App\Services\ProductListingCsvExporter;
+use App\Services\ListingUpdateService;
 use App\Services\TranslationService;
 use App\Traits\FiltersAssignedUsers;
 use MongoDB\BSON\ObjectId;
@@ -25,7 +26,10 @@ class UserController extends Controller
 {
     use FiltersAssignedUsers;
 
-    public function __construct(protected TranslationService $translator) {}
+    public function __construct(
+        protected TranslationService $translator,
+        protected ListingUpdateService $listingUpdateService,
+    ) {}
 
     public function index(Request $request)
     {
@@ -704,7 +708,11 @@ public function assignAdmin(Request $request, $userId)
     public function toggleListingActive(Request $request, $userId, $listingId)
     {
         $listing = ProductListing::findOrFail($listingId);
-        $listing->update(['is_active' => !$listing->is_active]);
+        $attributes = $this->listingUpdateService->requireReapproval(
+            ['is_active' => ! $listing->is_active],
+            Auth::user()?->isSuperAdmin() ?? false,
+        );
+        $listing->update($attributes);
 
         $msg = $listing->is_active ? 'Listing is now active.' : 'Listing is now on hold.';
 
