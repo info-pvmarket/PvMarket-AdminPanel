@@ -1681,12 +1681,12 @@ function validatePriceTiersAgainstTotalQuantity() {
     const totalQuantity = Number(document.getElementById('totalQtyInput').value);
     const errorElement = document.getElementById('tierQuantityError');
     const hasInvalidTier = Number.isFinite(totalQuantity) && slots.some(slot =>
-        Number(slot.min_quantity) >= totalQuantity ||
-        (hasSpecificMaxQuantity(slot) && Number(slot.max_quantity) >= totalQuantity)
+        Number(slot.min_quantity) > totalQuantity ||
+        (hasSpecificMaxQuantity(slot) && Number(slot.max_quantity) > totalQuantity)
     );
 
     if (hasInvalidTier) {
-        errorElement.textContent = 'Each price tier quantity must be less than the total quantity.';
+        errorElement.textContent = 'Each price tier quantity must be less than or equal to the total quantity.';
         errorElement.style.display = 'block';
         errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return false;
@@ -1833,8 +1833,8 @@ function saveSlot() {
     }
     const totalQuantity = Number(document.getElementById('totalQtyInput').value);
     if (Number.isFinite(totalQuantity) &&
-        (minQty >= totalQuantity || (maxQty !== null && maxQty >= totalQuantity))) {
-        errEl.textContent = 'Each price tier quantity must be less than the total quantity.';
+        (minQty > totalQuantity || (maxQty !== null && maxQty > totalQuantity))) {
+        errEl.textContent = 'Each price tier quantity must be less than or equal to the total quantity.';
         errEl.style.display = 'block'; return;
     }
 

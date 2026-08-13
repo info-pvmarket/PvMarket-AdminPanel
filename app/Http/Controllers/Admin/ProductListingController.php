@@ -21,7 +21,7 @@ use App\Traits\FiltersAssignedUsers;
 use App\Services\ProductListingCsvExporter;
 use App\Services\ListingUpdateService;
 use App\Services\ListingImageService;
-use App\Rules\PriceTierQuantityBelowTotal;
+use App\Rules\PriceTierQuantityAtMostTotal;
 
 class ProductListingController extends Controller
 {
@@ -447,7 +447,7 @@ class ProductListingController extends Controller
 
     public function store(Request $request)
     {
-        $priceTierQuantityRule = new PriceTierQuantityBelowTotal((int) $request->input('total_quantity'));
+        $priceTierQuantityRule = new PriceTierQuantityAtMostTotal((int) $request->input('total_quantity'));
 
         $validated = $request->validate([
             'product_id'                       => 'required|string',
@@ -644,7 +644,7 @@ class ProductListingController extends Controller
     public function update(Request $request, string $id)
     {
         $listing = ProductListing::findOrFail($id);
-        $priceTierQuantityRule = new PriceTierQuantityBelowTotal((int) $request->input('total_quantity'));
+        $priceTierQuantityRule = new PriceTierQuantityAtMostTotal((int) $request->input('total_quantity'));
 
         $validated = $request->validate([
             'sell_type'                        => 'required|string|in:sell by pieces,sell by pallets,sell by containers',
