@@ -70,4 +70,48 @@ class ProductListingEditPresentationTest extends TestCase
             $view
         );
     }
+
+    public function test_admin_listing_edit_records_and_displays_price_history(): void
+    {
+        $routes = file_get_contents($this->projectFile('routes/web.php'));
+        $controller = file_get_contents($this->projectFile(
+            'app/Http/Controllers/Admin/ProductListingController.php'
+        ));
+        $view = file_get_contents($this->projectFile(
+            'resources/views/admin/product_listing/edit.blade.php'
+        ));
+
+        $this->assertStringContainsString("Route::prefix('user/listings')", $routes);
+        $this->assertStringContainsString(
+            "Route::put('/{id}', [ProductListingController::class, 'update'])",
+            $routes
+        );
+        $this->assertStringContainsString('PriceTransaction::forListing($id)', $controller);
+        $this->assertStringContainsString('$this->priceHistoryService->record(', $controller);
+        $this->assertStringContainsString('Price History', $view);
+        $this->assertStringContainsString('$tx->transaction_label', $view);
+    }
+
+    public function test_total_quantity_changes_replace_the_adjust_stock_modal(): void
+    {
+        $controller = file_get_contents($this->projectFile(
+            'app/Http/Controllers/Admin/ProductListingController.php'
+        ));
+        $view = file_get_contents($this->projectFile(
+            'resources/views/admin/product_listing/edit.blade.php'
+        ));
+
+        $this->assertStringContainsString('name="inventory_notes"', $view);
+        $this->assertStringContainsString('syncInventoryNotesVisibility()', $view);
+        $this->assertStringNotContainsString('onclick="openAdjust(this)"', $view);
+        $this->assertStringNotContainsString('id="adjustModal"', $view);
+        $this->assertStringContainsString(
+            "'inventory_notes.required' => 'Please enter notes explaining the total quantity change.'",
+            $controller
+        );
+        $this->assertStringContainsString(
+            '$this->inventoryHistoryService->recordTotalQuantityChange(',
+            $controller
+        );
+    }
 }

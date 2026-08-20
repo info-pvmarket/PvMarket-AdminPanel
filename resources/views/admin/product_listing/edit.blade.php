@@ -620,27 +620,6 @@
 .modal-subtitle { font-size: 12px; color: #9ca3af; margin-bottom: 20px; }
 .modal-form-group { margin-bottom: 18px; }
 .modal-label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 7px; }
-.modal-qty-input, .modal-reason-input {
-    width: 100%; padding: 11px 13px;
-    border: 1.5px solid var(--border); border-radius: 9px;
-    font-size: 14px; color: var(--text); outline: none;
-    transition: border-color .15s; box-sizing: border-box; font-family: inherit;
-}
-.modal-qty-input:focus, .modal-reason-input:focus { border-color: var(--blue); }
-.modal-reason-input { min-height: 85px; resize: vertical; }
-.adjust-tabs {
-    display: flex; margin-bottom: 22px;
-    border-radius: 10px; overflow: hidden; border: 1.5px solid var(--border);
-}
-.adjust-tab {
-    flex: 1; padding: 11px 10px; border: none; background: #fff;
-    font-size: 13px; font-weight: 600; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; gap: 6px;
-    transition: background .15s, color .15s; font-family: inherit; color: var(--muted);
-}
-.adjust-tab:first-child { border-right: 1.5px solid var(--border); }
-.adjust-tab.active.add    { background: var(--green); color: #fff; }
-.adjust-tab.active.reduce { background: var(--red);   color: #fff; }
 .modal-btn-primary {
     display: inline-flex; align-items: center; gap: 6px;
     padding: 9px 20px; border-radius: 9px; border: none;
@@ -648,10 +627,6 @@
     font-weight: 700; cursor: pointer; font-family: inherit; transition: background .12s;
 }
 .modal-btn-primary:hover { background: var(--blue-d); }
-.modal-btn-add    { background: var(--green) !important; }
-.modal-btn-add:hover { background: #15803d !important; }
-.modal-btn-remove { background: var(--red) !important; }
-.modal-btn-remove:hover { background: #b91c1c !important; }
 .modal-btn-cancel {
     padding: 9px 18px; border-radius: 9px;
     border: 1.5px solid var(--border); background: #fff;
@@ -1044,17 +1019,6 @@
                         <p class="section-subtitle">Set quantity, lead time, and price tiers</p>
                     </div>
                     <div class="inventory-actions">
-                        <button type="button" class="btn-sm-outline"
-    data-id="{{ (string)$listing->_id }}"
-    data-sku="{{ $listing->sku_code }}"
-    data-stock="{{ $currentStock }}"
-    data-unit="pieces"
-    onclick="openAdjust(this)">
-    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-    </svg>
-    Adjust Stock
-</button>
 <button type="button" class="btn-sm-outline"
     data-id="{{ (string)$listing->_id }}"
     data-sku="{{ $listing->sku_code }}"
@@ -1086,7 +1050,7 @@
                             <label class="form-label">Total Quantity <span class="req">*</span></label>
                             <div class="input-suffix">
                                 <input type="number" name="total_quantity" class="form-control"
-                                       value="{{ $listing->total_quantity }}" min="1" id="totalQtyInput">
+                                       value="{{ old('total_quantity', $listing->total_quantity) }}" min="1" id="totalQtyInput">
                                 <span class="suffix-label" id="totalQtyUnit">{{ $selectedQuantityUnit }}</span>
                             </div>
                         </div>
@@ -1110,6 +1074,22 @@
     @endforeach
 </select>
                         </div>
+                    </div>
+
+                    <div id="inventoryNotesGroup"
+                         class="form-group"
+                         style="margin-top:16px; {{ (int) old('total_quantity', $listing->total_quantity) !== (int) $listing->total_quantity ? '' : 'display:none;' }}">
+                        <label class="form-label" for="inventoryNotes">
+                            Quantity Change Notes <span class="req">*</span>
+                        </label>
+                        <textarea name="inventory_notes"
+                                  id="inventoryNotes"
+                                  class="form-control"
+                                  rows="3"
+                                  maxlength="500"
+                                  placeholder="Explain why the total quantity was increased or reduced">{{ old('inventory_notes') }}</textarea>
+                        <span id="quantityChangeSummary" style="font-size:.75rem; color:var(--muted);"></span>
+                        @error('inventory_notes')<div class="error-msg">{{ $message }}</div>@enderror
                     </div>
 
                     {{-- Price Tiers --}}
@@ -1266,6 +1246,60 @@
                     </span>
                 </div>
             @endforeach
+        </div>
+    @endif
+</div>
+
+{{-- Price History --}}
+<div style="margin-top:32px;">
+    <div style="font-size:.9rem; font-weight:700; color:var(--text); margin-bottom:4px;">Price History</div>
+    <div style="font-size:.78rem; color:var(--muted); margin-bottom:16px;">Tier 1–3 price changes, recorded whenever this offer is updated</div>
+
+    @if($priceHistory->isEmpty())
+        <div class="inv-history-empty">
+            <svg width="30" height="30" fill="none" stroke="#D1D5DB" stroke-width="1.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-2.21 0-4 .9-4 2s1.79 2 4 2 4 .9 4 2-1.79 2-4 2m0-8v10m9-5a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <div style="margin-top:8px;">No price history yet</div>
+        </div>
+    @else
+        <div style="border:1px solid var(--border); border-radius:10px; overflow-x:auto;">
+            <div style="min-width:760px;">
+                <div style="display:grid; grid-template-columns:.65fr .8fr 1.45fr 1.45fr 1.25fr; padding:10px 16px; background:#F9FAFB; border-bottom:1px solid var(--border); font-size:.75rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;">
+                    <span>Tier</span>
+                    <span>Change</span>
+                    <span>Base Price</span>
+                    <span>Total / Unit</span>
+                    <span>Date</span>
+                </div>
+                @foreach($priceHistory as $tx)
+                    @php
+                        $beforeCurrency = $tx->currency_before ?: $listing->currency_id;
+                        $afterCurrency = $tx->currency_after ?: $listing->currency_id;
+                    @endphp
+                    <div style="display:grid; grid-template-columns:.65fr .8fr 1.45fr 1.45fr 1.25fr; padding:11px 16px; border-bottom:1px solid #F3F4F6; font-size:.82rem; align-items:center;">
+                        <span style="font-weight:700; color:var(--text);">Tier {{ $tx->tier_number }}</span>
+                        <span>
+                            <span style="display:inline-flex; background:{{ $tx->transaction_type === 'price_removed' ? '#FEE2E2' : ($tx->transaction_type === 'price_added' ? '#D1FAE5' : '#EFF6FF') }}; color:{{ $tx->transaction_type === 'price_removed' ? '#991B1B' : ($tx->transaction_type === 'price_added' ? '#065F46' : 'var(--blue)') }}; padding:2px 9px; border-radius:20px; font-size:.72rem; font-weight:600; text-transform:capitalize;">
+                                {{ $tx->transaction_label }}
+                            </span>
+                        </span>
+                        <span style="font-weight:600; color:var(--text);">
+                            {{ $tx->price_before !== null ? $beforeCurrency.' '.number_format($tx->price_before, 2) : '—' }}
+                            <span style="color:var(--muted); margin:0 4px;">→</span>
+                            {{ $tx->price_after !== null ? $afterCurrency.' '.number_format($tx->price_after, 2) : '—' }}
+                        </span>
+                        <span style="font-weight:600; color:var(--text);">
+                            {{ $tx->total_price_before !== null ? $beforeCurrency.' '.number_format($tx->total_price_before, 2) : '—' }}
+                            <span style="color:var(--muted); margin:0 4px;">→</span>
+                            {{ $tx->total_price_after !== null ? $afterCurrency.' '.number_format($tx->total_price_after, 2) : '—' }}
+                        </span>
+                        <span style="color:var(--muted); font-size:.75rem;">
+                            {{ \Carbon\Carbon::parse($tx->created_at)->format('d M Y, h:i A') }}
+                        </span>
+                    </div>
+                @endforeach
+            </div>
         </div>
     @endif
 </div>
@@ -1430,37 +1464,6 @@
         </div>
 
     </form>
-    {{-- ══ Adjust Stock Modal ══ --}}
-<div class="modal-backdrop" id="adjustModal" onclick="backdropClose('adjustModal',event)">
-    <div class="modal-box">
-        <button class="modal-close" onclick="closeModal('adjustModal')">×</button>
-        <div class="modal-title">Adjust Stock</div>
-        <div class="modal-subtitle" id="adjustSku"></div>
-        <div class="adjust-tabs">
-            <button class="adjust-tab active add" id="tabAdd" onclick="switchAdjustTab('add')">
-                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                Add Stock
-            </button>
-            <button class="adjust-tab" id="tabReduce" onclick="switchAdjustTab('reduce')">
-                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                Reduce Stock
-            </button>
-        </div>
-        <div class="modal-form-group">
-            <label class="modal-label">Quantity</label>
-            <input type="number" class="modal-qty-input" id="adjustQty" min="1" placeholder="Enter quantity" oninput="updateAdjustBtn()">
-        </div>
-        <div class="modal-form-group">
-            <label class="modal-label">Reason <span style="color:#9ca3af;font-weight:400;">(optional)</span></label>
-            <textarea class="modal-reason-input" id="adjustReason" placeholder="e.g., Restocked from supplier…"></textarea>
-        </div>
-        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;">
-            <button class="modal-btn-cancel" onclick="closeModal('adjustModal')">Cancel</button>
-            <button class="modal-btn-primary modal-btn-add" id="adjustSubmitBtn" onclick="submitAdjust()">+ Add 0</button>
-        </div>
-    </div>
-</div>
-
 {{-- ══ Alert Modal ══ --}}
 <div class="modal-backdrop" id="alertModal" onclick="backdropClose('alertModal',event)">
     <div class="modal-box">
@@ -1592,6 +1595,7 @@ document.getElementById('sellTypeSelect').addEventListener('change', function ()
     document.getElementById('summSellType').textContent =
         this.options[this.selectedIndex].text;
     syncQuantityPresentation();
+    syncInventoryNotesVisibility();
 });
 
 document.getElementById('currencySelect').addEventListener('change', function () {
@@ -1600,9 +1604,36 @@ document.getElementById('currencySelect').addEventListener('change', function ()
 
 document.getElementById('totalQtyInput').addEventListener('input', function () {
     syncQuantityPresentation();
+    syncInventoryNotesVisibility();
 });
 
 syncQuantityPresentation();
+
+const originalTotalQuantity = {{ (int) $listing->total_quantity }};
+
+function syncInventoryNotesVisibility() {
+    const currentQuantity = Number(document.getElementById('totalQtyInput').value);
+    const notesGroup = document.getElementById('inventoryNotesGroup');
+    const notesInput = document.getElementById('inventoryNotes');
+    const summary = document.getElementById('quantityChangeSummary');
+    const quantityChanged = Number.isFinite(currentQuantity) && currentQuantity !== originalTotalQuantity;
+
+    notesGroup.style.display = quantityChanged ? 'flex' : 'none';
+    notesInput.required = quantityChanged;
+
+    if (!quantityChanged) {
+        summary.textContent = '';
+        return;
+    }
+
+    const difference = currentQuantity - originalTotalQuantity;
+    const unit = getQuantityUnit(document.getElementById('sellTypeSelect').value);
+    summary.textContent = difference > 0
+        ? `Inventory will increase by ${difference.toLocaleString()} ${unit}.`
+        : `Inventory will reduce by ${Math.abs(difference).toLocaleString()} ${unit}.`;
+}
+
+syncInventoryNotesVisibility();
 
 function syncOfferStatusSummary() {
     const summStatus = document.getElementById('summStatus');
@@ -1924,8 +1955,6 @@ function renderSlots() {
 }
 // ── Modal state ───────────────────────────────────────────────
 let currentAlertListingId  = null;
-let currentAdjustListingId = null;
-let currentAdjustType      = 'add';
 
 function showToast(msg, type = '') {
     const t = document.getElementById('invToast');
@@ -1941,53 +1970,6 @@ document.getElementById('alertEmailToggle').addEventListener('change', function 
     document.getElementById('alertEmailTrack').style.background = this.checked ? 'var(--blue)' : '#d1d5db';
     document.getElementById('alertEmailThumb').style.transform  = this.checked ? 'translateX(18px)' : 'translateX(0)';
 });
-
-// ── Adjust Modal ──────────────────────────────────────────────
-function openAdjust(el) {
-    currentAdjustListingId = el.dataset.id;
-    currentAdjustType      = 'add';
-    document.getElementById('adjustSku').textContent  = `${el.dataset.sku} — Current stock: ${el.dataset.stock} ${el.dataset.unit}`;
-    document.getElementById('adjustQty').value        = '';
-    document.getElementById('adjustReason').value     = '';
-    switchAdjustTab('add');
-    document.getElementById('adjustModal').classList.add('open');
-}
-function switchAdjustTab(type) {
-    currentAdjustType = type;
-    const addSvg   = `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
-    const minusSvg = `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
-    document.getElementById('tabAdd').className    = 'adjust-tab' + (type === 'add'    ? ' active add'    : '');
-    document.getElementById('tabAdd').innerHTML    = addSvg + ' Add Stock';
-    document.getElementById('tabReduce').className = 'adjust-tab' + (type === 'reduce' ? ' active reduce' : '');
-    document.getElementById('tabReduce').innerHTML = minusSvg + ' Reduce Stock';
-    updateAdjustBtn();
-}
-function updateAdjustBtn() {
-    const qty = parseInt(document.getElementById('adjustQty').value) || 0;
-    const btn = document.getElementById('adjustSubmitBtn');
-    if (currentAdjustType === 'add') {
-        btn.textContent = `+ Add ${qty}`;
-        btn.className   = 'modal-btn-primary modal-btn-add';
-    } else {
-        btn.textContent = `− Remove ${qty}`;
-        btn.className   = 'modal-btn-primary modal-btn-remove';
-    }
-}
-function submitAdjust() {
-    const qty = parseInt(document.getElementById('adjustQty').value);
-    if (!qty || qty < 1) { showToast('Enter a valid quantity.', 'error'); return; }
-    fetch(`/admin/inventory/${currentAdjustListingId}/adjust`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
-        body: JSON.stringify({ type: currentAdjustType, quantity: qty, notes: document.getElementById('adjustReason').value }),
-    })
-    .then(r => r.json())
-    .then(d => {
-        if (d.success) { showToast(`Stock updated. New stock: ${d.new_stock}`, 'success'); closeModal('adjustModal'); }
-        else           { showToast(d.message || 'Error.', 'error'); }
-    })
-    .catch(() => showToast('Network error.', 'error'));
-}
 
 // ── Toggle: Solar Listing → show/hide tier dropdown ──────────
 (function() {

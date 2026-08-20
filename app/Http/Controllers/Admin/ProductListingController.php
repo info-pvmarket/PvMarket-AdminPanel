@@ -21,6 +21,8 @@ use App\Traits\FiltersAssignedUsers;
 use App\Services\ProductListingCsvExporter;
 use App\Services\ListingUpdateService;
 use App\Services\ListingImageService;
+use App\Services\PriceHistoryService;
+use App\Services\InventoryHistoryService;
 use App\Rules\PriceTierQuantityAtMostTotal;
 
 class ProductListingController extends Controller
@@ -31,6 +33,8 @@ class ProductListingController extends Controller
         protected TranslationService $translator,
         protected ListingUpdateService $listingUpdateService,
         protected ListingImageService $listingImageService,
+        protected PriceHistoryService $priceHistoryService,
+        protected InventoryHistoryService $inventoryHistoryService,
     ) {}
     // ── Index (My Listings page) ────────────────────────────────────
 
@@ -604,6 +608,11 @@ class ProductListingController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
+        $priceHistory = \App\Models\PriceTransaction::forListing($id)
+            ->orderBy('created_at', 'desc')
+            ->orderBy('tier_number')
+            ->get();
+
         $currentStock = \App\Models\InventoryTransaction::currentStock($id);
 
         // Fetch images explicitly
@@ -632,6 +641,7 @@ class ProductListingController extends Controller
             'products',
             'warehouses',
             'inventoryHistory',
+            'priceHistory',
             'currentStock',
             'listingImages',
             'selectedSolarGridTypes',
@@ -644,6 +654,9 @@ class ProductListingController extends Controller
     public function update(Request $request, string $id)
     {
         $listing = ProductListing::findOrFail($id);
+        $oldSlots = $listing->slots ?? [];
+        $oldCurrency = (string) $listing->currency_id;
+        $oldTotalQuantity = (int) $listing->total_quantity;
         $priceTierQuantityRule = new PriceTierQuantityAtMostTotal((int) $request->input('total_quantity'));
 
         $validated = $request->validate([
@@ -653,6 +666,7 @@ class ProductListingController extends Controller
             'incoterm_id' => 'required|string',
             'slug'        => 'nullable|string|max:255',
             'total_quantity'                   => 'required|integer|min:1',
+            'inventory_notes'                  => 'nullable|string|max:500',
             'lead_time'                        => 'required|integer|min:0',
             'is_on_hold'                       => 'nullable|boolean',
             'is_solar_listing'                 => 'nullable|boolean',
@@ -677,6 +691,17 @@ class ProductListingController extends Controller
             'existing_image_ids.*'             => ['string', 'regex:/^[a-fA-F0-9]{24}$/'],
             'image_manifest_present'            => 'nullable|boolean',
         ]);
+
+        $newTotalQuantity = (int) $validated['total_quantity'];
+        if ($newTotalQuantity !== $oldTotalQuantity) {
+            $request->validate([
+                'inventory_notes' => 'required|string|max:500',
+            ], [
+                'inventory_notes.required' => 'Please enter notes explaining the total quantity change.',
+            ]);
+        }
+        $inventoryNotes = trim((string) ($validated['inventory_notes'] ?? ''));
+        unset($validated['inventory_notes']);
         $validated['warehouse_id'] = new \MongoDB\BSON\ObjectId($listing->warehouse_id);
         $validated['is_active']   = ! $request->boolean('is_on_hold', false);
         unset($validated['is_on_hold']);
@@ -732,6 +757,26 @@ class ProductListingController extends Controller
         $this->syncListingImages($request, $listing);
 
         $listing->update($validated);
+
+        if ($newTotalQuantity !== $oldTotalQuantity) {
+            $this->inventoryHistoryService->recordTotalQuantityChange(
+                $listing,
+                $oldTotalQuantity,
+                $newTotalQuantity,
+                $inventoryNotes,
+                (string) Auth::id(),
+            );
+        }
+
+        $this->priceHistoryService->record(
+            $listing,
+            $oldSlots,
+            $slotsAsObjects,
+            $oldCurrency,
+            (string) $validated['currency_id'],
+            Auth::id() ? (string) Auth::id() : null,
+            'admin',
+        );
 
         $productName = Product::find($request->product_id)?->product_name
             ?? $listing->sku_code
