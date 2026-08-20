@@ -44,7 +44,7 @@ class ProductListingController extends Controller
 
         //$query = ProductListing::where('user_id', new \MongoDB\BSON\ObjectId(Auth::id()));
 
-        $query = ProductListing::query();
+        $query = ProductListing::notDeleted();
 
         // Filter by assigned users
         $this->filterByAssignedUsers($query, 'user_id');
@@ -126,7 +126,8 @@ class ProductListingController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        $unpaidCount = ProductListing::where('user_id', new \MongoDB\BSON\ObjectId(Auth::id()))
+        $unpaidCount = ProductListing::notDeleted()
+            ->where('user_id', new \MongoDB\BSON\ObjectId(Auth::id()))
             ->where('is_paid', false)
             ->count();
 
@@ -263,7 +264,7 @@ class ProductListingController extends Controller
 
     public function export(Request $request, ProductListingCsvExporter $exporter)
     {
-        $query = ProductListing::query();
+        $query = ProductListing::notDeleted();
         $this->filterByAssignedUsers($query, 'user_id');
 
         if ($request->filled('search')) {

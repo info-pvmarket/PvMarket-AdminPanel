@@ -87,6 +87,11 @@ public function warehouse()
         return $query->where('is_active', true);
     }
 
+    public function scopeNotDeleted($query)
+    {
+        return $query->whereNull('deleted_at');
+    }
+
     public function scopeByVerification($query, string $status)
     {
         return $query->where('verification_status', $status);

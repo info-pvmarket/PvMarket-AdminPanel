@@ -71,6 +71,20 @@ class ProductListingEditPresentationTest extends TestCase
         );
     }
 
+    public function test_manage_listings_and_export_exclude_soft_deleted_records(): void
+    {
+        $model = file_get_contents($this->projectFile(
+            'app/Models/ProductListing.php'
+        ));
+        $controller = file_get_contents($this->projectFile(
+            'app/Http/Controllers/Admin/ProductListingController.php'
+        ));
+
+        $this->assertStringContainsString('function scopeNotDeleted($query)', $model);
+        $this->assertStringContainsString("return \$query->whereNull('deleted_at');", $model);
+        $this->assertSame(3, substr_count($controller, 'ProductListing::notDeleted()'));
+    }
+
     public function test_admin_listing_edit_records_and_displays_price_history(): void
     {
         $routes = file_get_contents($this->projectFile('routes/web.php'));
