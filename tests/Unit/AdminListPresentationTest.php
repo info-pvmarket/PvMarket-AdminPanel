@@ -163,6 +163,16 @@ class AdminListPresentationTest extends TestCase
         $this->assertStringContainsString('class="field-error"', $view);
     }
 
+    public function test_product_edit_displays_the_existing_datasheet_below_the_upload(): void
+    {
+        $view = file_get_contents($this->projectFile('resources/views/admin/products/products.blade.php'));
+
+        $this->assertStringContainsString('Current datasheet:', $view);
+        $this->assertStringContainsString('$record->datasheet_display_name', $view);
+        $this->assertStringContainsString('$record->datasheet_display_url', $view);
+        $this->assertStringContainsString('target="_blank" rel="noopener noreferrer"', $view);
+    }
+
     public function test_verifying_a_product_also_activates_it(): void
     {
         $controller = file_get_contents($this->projectFile('app/Http/Controllers/Admin/ProductController.php'));
@@ -257,6 +267,34 @@ class AdminListPresentationTest extends TestCase
         $this->assertStringContainsString("'Inactive' : 'Active'", $view);
         $this->assertSame(2, substr_count($controller, "'is_on_hold'                       => 'nullable|boolean'"));
         $this->assertSame(2, substr_count($controller, "! \$request->boolean('is_on_hold', false)"));
+    }
+
+    public function test_verifying_a_listing_preserves_its_active_or_hold_state(): void
+    {
+        $listingController = file_get_contents($this->projectFile('app/Http/Controllers/Admin/ProductListingController.php'));
+        $userController = file_get_contents($this->projectFile('app/Http/Controllers/Admin/UserController.php'));
+
+        preg_match(
+            '/public function approveListing\(string \$id\)(.*?)return back\(\)->with/s',
+            $listingController,
+            $manageListingApproval,
+        );
+        preg_match(
+            '/public function approveListing\(Request \$request, \$userId, \$listingId\)(.*?)\/\/ Preserve listing filters/s',
+            $userController,
+            $userListingApproval,
+        );
+
+        $this->assertArrayHasKey(1, $manageListingApproval);
+        $this->assertArrayHasKey(1, $userListingApproval);
+
+        foreach ([$manageListingApproval[1], $userListingApproval[1]] as $approvalAction) {
+            $this->assertStringContainsString("'verification_status' => 'verified'", $approvalAction);
+            $this->assertStringContainsString("'approved_at'", $approvalAction);
+            $this->assertStringContainsString("'approved_by'", $approvalAction);
+            $this->assertStringNotContainsString("'is_active'", $approvalAction);
+            $this->assertStringNotContainsString("'is_hold'", $approvalAction);
+        }
     }
 
     public function test_manage_listings_has_an_active_inactive_toggle(): void

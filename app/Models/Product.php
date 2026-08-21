@@ -5,6 +5,7 @@ namespace App\Models;
 use MongoDB\Laravel\Eloquent\Model;
 use MongoDB\Laravel\Casts\AsArrayObject;
 use App\Traits\HasTranslations;
+use Illuminate\Support\Facades\Storage;
 
 class Product extends Model
 {
@@ -58,5 +59,27 @@ public array $translatable = [
     public function listings()
     {
         return $this->hasMany(ProductListing::class, 'product_id', '_id');
+    }
+
+    public function getDatasheetDisplayNameAttribute(): ?string
+    {
+        $name = data_get($this->datasheet, 'original_name')
+            ?: data_get($this->datasheet, 'filename');
+
+        return is_string($name) && trim($name) !== '' ? trim($name) : null;
+    }
+
+    public function getDatasheetDisplayUrlAttribute(): ?string
+    {
+        $url = data_get($this->datasheet, 'url');
+        if (is_string($url) && trim($url) !== '') {
+            return trim($url);
+        }
+
+        $path = data_get($this->datasheet, 'path');
+
+        return is_string($path) && trim($path) !== ''
+            ? Storage::disk('public')->url(trim($path))
+            : null;
     }
 }

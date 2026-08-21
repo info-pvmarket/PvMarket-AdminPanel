@@ -863,7 +863,8 @@ class ProductListingController extends Controller
         $listing = ProductListing::findOrFail($id);
         $listing->update([
             'verification_status' => 'verified',
-            'is_active'           => true,
+            'approved_at'         => now(),
+            'approved_by'         => new \MongoDB\BSON\ObjectId(Auth::id()),
         ]);
 
         return back()->with('success', 'Listing verified successfully.');

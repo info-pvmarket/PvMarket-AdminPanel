@@ -752,7 +752,6 @@ public function assignAdmin(Request $request, $userId)
         $listing = ProductListing::findOrFail($listingId);
         $listing->update([
             'verification_status' => 'verified',
-            'is_active' => true,
             'approved_at' => now(),
             'approved_by' => new \MongoDB\BSON\ObjectId(Auth::id()),
         ]);

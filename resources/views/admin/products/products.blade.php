@@ -37,6 +37,10 @@
     .form-file-wrap { border:1.5px solid var(--border); border-radius:8px; overflow:hidden; display:flex; align-items:center; background:white; }
     .form-file-wrap input[type="file"] { flex:1; padding:8px 12px; border:none; outline:none; font-family:inherit; font-size:13px; background:transparent; cursor:pointer; }
     .form-file-wrap input[type="file"]::-webkit-file-upload-button { padding:6px 14px; background:var(--light); border:none; border-right:1px solid var(--border); font-family:inherit; font-size:12.5px; font-weight:600; cursor:pointer; margin-right:8px; }
+    .current-datasheet { display:flex; align-items:center; gap:7px; margin-top:4px; font-size:12px; color:var(--muted); min-width:0; }
+    .current-datasheet-label { flex-shrink:0; font-weight:600; color:var(--text); }
+    .current-datasheet a { color:var(--primary-d); font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-decoration:underline; text-underline-offset:2px; }
+    .current-datasheet a:hover { color:var(--primary); }
     .section-header { display:flex; align-items:center; justify-content:space-between; margin:24px 0 16px; cursor:pointer; }
     .section-title { font-size:18px; font-weight:800; color:var(--primary-d); }
     .section-toggle { width:24px; height:24px; display:flex; align-items:center; justify-content:center; font-size:18px; color:var(--muted); font-weight:300; }
@@ -135,8 +139,17 @@
                 <div class="form-file-wrap">
                     <input type="file" name="datasheet" accept=".pdf,.jpg,.png,.webp"/>
                 </div>
-                @if(isset($record) && !empty($record->datasheet))
-                    <span class="form-hint">{{ $record->datasheet->original_name ?? 'File uploaded' }}</span>
+                @if($mode === 'edit' && ($record->datasheet_display_name || $record->datasheet_display_url))
+                    <div class="current-datasheet">
+                        <span class="current-datasheet-label">Current datasheet:</span>
+                        @if($record->datasheet_display_url)
+                            <a href="{{ $record->datasheet_display_url }}" target="_blank" rel="noopener noreferrer">
+                                {{ $record->datasheet_display_name ?? 'View uploaded file' }}
+                            </a>
+                        @else
+                            <span>{{ $record->datasheet_display_name }}</span>
+                        @endif
+                    </div>
                 @endif
             </div>
             <div class="form-group">
