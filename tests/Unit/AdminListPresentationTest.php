@@ -77,7 +77,10 @@ class AdminListPresentationTest extends TestCase
         $listings = file_get_contents($this->projectFile('resources/views/admin/product_listing/index.blade.php'));
         $listingController = file_get_contents($this->projectFile('app/Http/Controllers/Admin/ProductListingController.php'));
 
-        $this->assertStringContainsString('Sort products by created date', $products);
+        $productController = file_get_contents($this->projectFile('app/Http/Controllers/Admin/ProductController.php'));
+
+        $this->assertStringContainsString('Sort products by updated date', $products);
+        $this->assertStringContainsString("orderBy('updated_at', \$sort === 'oldest' ? 'asc' : 'desc')", $productController);
         $this->assertStringContainsString('<th style="width:150px;">Created Date</th>', $products);
         $this->assertStringContainsString('<label>Created Date</label>', $listings);
         $this->assertStringContainsString('<label>Last Updated At</label>', $listings);

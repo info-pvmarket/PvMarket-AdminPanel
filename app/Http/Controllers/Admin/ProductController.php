@@ -247,7 +247,7 @@ class ProductController extends Controller
        
 
         $products = $query
-                  ->orderBy('created_at', $sort === 'oldest' ? 'asc' : 'desc')
+                  ->orderBy('updated_at', $sort === 'oldest' ? 'asc' : 'desc')
                   ->paginate($request->get('entries', 10))
                   ->withQueryString();
 

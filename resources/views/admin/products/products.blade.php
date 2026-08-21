@@ -825,7 +825,7 @@ document.addEventListener('DOMContentLoaded', function () {
         @foreach(request()->only(['verification_status', 'listings_filter', 'search', 'entries', 'category_id', 'sub_category_id']) as $name => $value)
             <input type="hidden" name="{{ $name }}" value="{{ $value }}">
         @endforeach
-        <select name="sort" class="entries-select" aria-label="Sort products by created date" onchange="this.form.submit()">
+        <select name="sort" class="entries-select" aria-label="Sort products by updated date" onchange="this.form.submit()">
             <option value="latest" {{ ($sort ?? 'latest') === 'latest' ? 'selected' : '' }}>Latest first</option>
             <option value="oldest" {{ ($sort ?? 'latest') === 'oldest' ? 'selected' : '' }}>Oldest first</option>
         </select>
