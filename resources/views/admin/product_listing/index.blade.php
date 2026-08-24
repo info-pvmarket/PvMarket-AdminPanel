@@ -1065,6 +1065,11 @@
     $quantityUnit = \App\Models\ProductListing::quantityUnitForSellType(
         $listing->getRawOriginal('sell_type')
     );
+    $displayQuantity = \App\Models\ProductListing::quantityForDisplay(
+        (int) $listing->total_quantity,
+        $listing->getRawOriginal('sell_type'),
+        $product
+    );
     $verificationStatus = strtolower((string)($listing->verification_status ?? 'pending'));
     $isListingVerified = in_array($verificationStatus, ['verified', 'approved'], true);
     $previewUrl = rtrim(config('services.frontend.url', 'http://localhost:3000'), '/') . '/user/listings/' . $listing->id . '/preview';
@@ -1238,7 +1243,7 @@
                     </div>
                     <div class="meta-item">
                         <label>Total Available</label>
-                        <span>{{ number_format($listing->total_quantity) }} {{ $quantityUnit }}</span>
+                        <span>{{ number_format($displayQuantity) }} {{ $quantityUnit }}</span>
                     </div>
                     <div class="meta-item">
                         <label>Currency</label>

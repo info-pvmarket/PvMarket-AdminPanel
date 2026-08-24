@@ -24,6 +24,7 @@ use App\Services\ListingImageService;
 use App\Services\PriceHistoryService;
 use App\Services\InventoryHistoryService;
 use App\Rules\PriceTierQuantityAtMostTotal;
+use Illuminate\Validation\ValidationException;
 
 class ProductListingController extends Controller
 {
@@ -423,7 +424,11 @@ class ProductListingController extends Controller
         $warehouses     = Warehouse::all();
         $commissions    = Commission::all(['category_id', 'category_name', 'commission_percentage']);
 
-        $sellTypes     = ['sell by pieces', 'sell by containers', 'sell by weight'];
+        $sellTypes = [
+            'sell by pieces' => 'Sell By Pieces Only',
+            'sell by pallets' => 'Sell By Pallets Only',
+            'sell by container' => 'Sell By Containers Only',
+        ];
         $currencies    = $this->availableCurrencies();
         $discountTypes = ['No Promotion', 'fixed', 'percentage'];
         $incoterms = Incoterm::orderBy('name')->get();
@@ -459,7 +464,7 @@ class ProductListingController extends Controller
             'main_category_id'                 => 'required|string',
             'sub_category_id'                  => 'required|string',
             'warehouse_id'                     => 'required|string',
-            'sell_type'                        => 'required|string',
+            'sell_type'                        => 'required|string|in:sell by pieces,sell by pallets,sell by container',
             'currency_id'                      => 'required|string',
             'discount_type'                    => 'nullable|string',
             'incoterm_id'                      => 'required|string',
@@ -482,6 +487,26 @@ class ProductListingController extends Controller
             'slots.*.commission_percentage'    => 'nullable|numeric|min:0',  // ← new
             'slots.*.total_price'              => 'nullable|numeric|min:0',  // ← new
         ]);
+
+        $product = Product::find($validated['product_id']);
+        if ($product === null) {
+            throw ValidationException::withMessages([
+                'product_id' => 'The selected product is invalid.',
+            ]);
+        }
+
+        $validated['sell_type'] = ProductListing::normalizeSellType($validated['sell_type']);
+        $quantityInPieces = ProductListing::quantityInPieces(
+            (int) $validated['total_quantity'],
+            $validated['sell_type'],
+            $product,
+        );
+        if ($quantityInPieces === null) {
+            throw ValidationException::withMessages([
+                'total_quantity' => 'The selected product is missing its pieces-per-pallet or pallets-per-container configuration.',
+            ]);
+        }
+        $validated['total_quantity'] = $quantityInPieces;
 
         $validated['product_id']       = new \MongoDB\BSON\ObjectId($validated['product_id']);
         $validated['main_category_id'] = new \MongoDB\BSON\ObjectId($validated['main_category_id']);
@@ -585,7 +610,7 @@ class ProductListingController extends Controller
         $sellTypes = [
             'sell by pieces' => 'Sell By Pieces Only',
             'sell by pallets' => 'Sell By Pallets Only',
-            'sell by containers' => 'Sell By Containers Only',
+            'sell by container' => 'Sell By Containers Only',
         ];
         $currencies    = $this->availableCurrencies();
         $listingCurrency = strtoupper(trim((string) $listing->currency_id));
@@ -624,6 +649,17 @@ class ProductListingController extends Controller
         $selectedSolarGridTypes = $this->normalizeStringArray(old('solar_grid_types', $listing->solar_grid_types ?? []));
         $selectedSolarPhaseTypes = $this->normalizeStringArray(old('solar_phase_types', $listing->solar_phase_types ?? []));
         $isOfferOnHold = ! filter_var($listing->is_active ?? true, FILTER_VALIDATE_BOOLEAN);
+        $selectedSellType = ProductListing::normalizeSellType($listing->getRawOriginal('sell_type'));
+        $displayTotalQuantity = ProductListing::quantityForDisplay(
+            (int) $listing->total_quantity,
+            $selectedSellType,
+            $product,
+        );
+        $displayCurrentStock = ProductListing::quantityForDisplay(
+            (int) $currentStock,
+            $selectedSellType,
+            $product,
+        );
 
         return view('admin.product_listing.edit', compact(
             'listing',
@@ -648,6 +684,9 @@ class ProductListingController extends Controller
             'selectedSolarGridTypes',
             'selectedSolarPhaseTypes',
             'isOfferOnHold',
+            'selectedSellType',
+            'displayTotalQuantity',
+            'displayCurrentStock',
         ));
     }
     // ── Update ──────────────────────────────────────────────────────
@@ -661,7 +700,7 @@ class ProductListingController extends Controller
         $priceTierQuantityRule = new PriceTierQuantityAtMostTotal((int) $request->input('total_quantity'));
 
         $validated = $request->validate([
-            'sell_type'                        => 'required|string|in:sell by pieces,sell by pallets,sell by containers',
+            'sell_type'                        => 'required|string|in:sell by pieces,sell by pallets,sell by container',
             'currency_id'                      => 'required|string',
             'discount_type'                    => 'nullable|string',
             'incoterm_id' => 'required|string',
@@ -693,7 +732,26 @@ class ProductListingController extends Controller
             'image_manifest_present'            => 'nullable|boolean',
         ]);
 
-        $newTotalQuantity = (int) $validated['total_quantity'];
+        $product = Product::find($validated['product_id']);
+        if ($product === null) {
+            throw ValidationException::withMessages([
+                'product_id' => 'The selected product is invalid.',
+            ]);
+        }
+
+        $validated['sell_type'] = ProductListing::normalizeSellType($validated['sell_type']);
+        $newTotalQuantity = ProductListing::quantityInPieces(
+            (int) $validated['total_quantity'],
+            $validated['sell_type'],
+            $product,
+        );
+        if ($newTotalQuantity === null) {
+            throw ValidationException::withMessages([
+                'total_quantity' => 'The selected product is missing its pieces-per-pallet or pallets-per-container configuration.',
+            ]);
+        }
+        $validated['total_quantity'] = $newTotalQuantity;
+
         if ($newTotalQuantity !== $oldTotalQuantity) {
             $request->validate([
                 'inventory_notes' => 'required|string|max:500',

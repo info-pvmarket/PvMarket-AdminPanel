@@ -109,21 +109,53 @@ public function warehouse()
 
     public static function quantityUnitForSellType(mixed $sellType): string
     {
+        return match (self::normalizeSellType($sellType)) {
+            'sell by pallets' => 'pallets',
+            'sell by container' => 'container',
+            default => 'pcs',
+        };
+    }
+
+    public static function normalizeSellType(mixed $sellType): string
+    {
         if (! is_string($sellType) && ! is_int($sellType) && ! is_float($sellType)) {
-            return 'pcs';
+            return 'sell by pieces';
         }
 
         $normalizedSellType = strtolower(trim((string) $sellType));
 
         if (str_contains($normalizedSellType, 'pallet')) {
-            return 'pallets';
+            return 'sell by pallets';
         }
 
         if (str_contains($normalizedSellType, 'container')) {
-            return 'container';
+            return 'sell by container';
         }
 
-        return 'pcs';
+        return 'sell by pieces';
+    }
+
+    public static function quantityMultiplier(mixed $sellType, ?Product $product): ?int
+    {
+        return match (self::normalizeSellType($sellType)) {
+            'sell by pallets' => self::positivePackagingValue($product?->pieces_per_pallet),
+            'sell by container' => self::containerQuantityMultiplier($product),
+            default => 1,
+        };
+    }
+
+    public static function quantityForDisplay(int $quantityInPieces, mixed $sellType, ?Product $product): int
+    {
+        $multiplier = self::quantityMultiplier($sellType, $product);
+
+        return $multiplier === null ? $quantityInPieces : intdiv($quantityInPieces, $multiplier);
+    }
+
+    public static function quantityInPieces(int $displayQuantity, mixed $sellType, ?Product $product): ?int
+    {
+        $multiplier = self::quantityMultiplier($sellType, $product);
+
+        return $multiplier === null ? null : $displayQuantity * $multiplier;
     }
 
     public static function sellTypeLabel(mixed $sellType): string
@@ -132,9 +164,32 @@ public function warehouse()
             return 'N/A';
         }
 
-        $normalizedSellType = trim((string) $sellType);
+        if (trim((string) $sellType) === '') {
+            return 'N/A';
+        }
 
-        return $normalizedSellType === '' ? 'N/A' : ucwords($normalizedSellType);
+        return match (self::normalizeSellType($sellType)) {
+            'sell by pallets' => 'Sell By Pallets',
+            'sell by container' => 'Sell By Container',
+            default => 'Sell By Pieces',
+        };
+    }
+
+    private static function positivePackagingValue(mixed $value): ?int
+    {
+        $value = (int) $value;
+
+        return $value > 0 ? $value : null;
+    }
+
+    private static function containerQuantityMultiplier(?Product $product): ?int
+    {
+        $piecesPerPallet = self::positivePackagingValue($product?->pieces_per_pallet);
+        $palletsPerContainer = self::positivePackagingValue($product?->pallets_per_container);
+
+        return $piecesPerPallet !== null && $palletsPerContainer !== null
+            ? $piecesPerPallet * $palletsPerContainer
+            : null;
     }
 
     // ── Helpers ─────────────────────────────────────────────────────

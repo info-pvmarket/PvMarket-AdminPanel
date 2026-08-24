@@ -22,7 +22,7 @@ class ProductListingEditPresentationTest extends TestCase
 
         $this->assertStringContainsString("'sell by pieces' => 'Sell By Pieces Only'", $controller);
         $this->assertStringContainsString("'sell by pallets' => 'Sell By Pallets Only'", $controller);
-        $this->assertStringContainsString("'sell by containers' => 'Sell By Containers Only'", $controller);
+        $this->assertStringContainsString("'sell by container' => 'Sell By Containers Only'", $controller);
         $this->assertStringContainsString('@foreach($sellTypes as $val => $label)', $view);
         $this->assertStringNotContainsString('Sell By Weight', $view);
     }
@@ -37,8 +37,10 @@ class ProductListingEditPresentationTest extends TestCase
         $this->assertStringContainsString('function getQuantityUnit(sellType)', $view);
         $this->assertStringContainsString("'sell by pieces': 'pcs'", $view);
         $this->assertStringContainsString("'sell by pallets': 'pallets'", $view);
-        $this->assertStringContainsString("'sell by containers': 'container'", $view);
+        $this->assertStringContainsString("'sell by container': 'container'", $view);
         $this->assertStringContainsString('syncQuantityPresentation();', $view);
+        $this->assertStringContainsString('Current Stock: {{ number_format($displayCurrentStock) }} {{ $selectedQuantityUnit }}', $view);
+        $this->assertStringContainsString('number_format($displayTransactionQuantity)', $view);
     }
 
     public function test_image_count_uses_the_explicit_listing_image_query(): void
@@ -62,9 +64,10 @@ class ProductListingEditPresentationTest extends TestCase
         $this->assertStringContainsString('ProductListing::quantityUnitForSellType(', $view);
         $this->assertStringContainsString("\$listing->getRawOriginal('sell_type')", $view);
         $this->assertStringContainsString(
-            '{{ number_format($listing->total_quantity) }} {{ $quantityUnit }}',
+            '{{ number_format($displayQuantity) }} {{ $quantityUnit }}',
             $view
         );
+        $this->assertStringContainsString('ProductListing::quantityForDisplay(', $view);
         $this->assertStringNotContainsString(
             '{{ number_format($listing->total_quantity) }} pcs',
             $view

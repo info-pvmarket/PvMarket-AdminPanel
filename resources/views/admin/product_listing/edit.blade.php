@@ -3,11 +3,13 @@
 @section('title', 'Edit Listing')
 
 @php
-    $selectedSellType = old('sell_type', $listing->sell_type);
+    $selectedSellType = \App\Models\ProductListing::normalizeSellType(old('sell_type', $selectedSellType));
+    $originalDisplayTotalQuantity = (int) $displayTotalQuantity;
+    $displayTotalQuantity = (int) old('total_quantity', $originalDisplayTotalQuantity);
     $quantityUnits = [
         'sell by pieces' => 'pcs',
         'sell by pallets' => 'pallets',
-        'sell by containers' => 'container',
+        'sell by container' => 'container',
     ];
     $selectedQuantityUnit = $quantityUnits[$selectedSellType] ?? 'pcs';
     $listingImageCount = $listingImages->count();
@@ -1050,7 +1052,7 @@
                             <label class="form-label">Total Quantity <span class="req">*</span></label>
                             <div class="input-suffix">
                                 <input type="number" name="total_quantity" class="form-control"
-                                       value="{{ old('total_quantity', $listing->total_quantity) }}" min="1" id="totalQtyInput">
+                                       value="{{ $displayTotalQuantity }}" min="1" id="totalQtyInput">
                                 <span class="suffix-label" id="totalQtyUnit">{{ $selectedQuantityUnit }}</span>
                             </div>
                         </div>
@@ -1078,7 +1080,7 @@
 
                     <div id="inventoryNotesGroup"
                          class="form-group"
-                         style="margin-top:16px; {{ (int) old('total_quantity', $listing->total_quantity) !== (int) $listing->total_quantity ? '' : 'display:none;' }}">
+                         style="margin-top:16px; {{ $displayTotalQuantity !== $originalDisplayTotalQuantity ? '' : 'display:none;' }}">
                         <label class="form-label" for="inventoryNotes">
                             Quantity Change Notes <span class="req">*</span>
                         </label>
@@ -1198,7 +1200,7 @@
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
         <div style="font-size:.9rem; font-weight:700; color:var(--text);">Inventory History</div>
         <span style="font-size:.78rem; font-weight:600; background:#EFF6FF; color:var(--blue); padding:3px 10px; border-radius:20px; border:1px solid #BFDBFE;">
-            Current Stock: {{ number_format($currentStock) }} pcs
+            Current Stock: {{ number_format($displayCurrentStock) }} {{ $selectedQuantityUnit }}
         </span>
     </div>
     <div style="font-size:.78rem; color:var(--muted); margin-bottom:16px;">Recent stock movements and adjustments</div>
@@ -1221,6 +1223,13 @@
             </div>
             {{-- Rows --}}
             @foreach($inventoryHistory as $tx)
+                @php
+                    $displayTransactionQuantity = \App\Models\ProductListing::quantityForDisplay(
+                        (int) $tx->quantity,
+                        $selectedSellType,
+                        $product,
+                    );
+                @endphp
                 <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; padding:11px 16px; border-bottom:1px solid #F9FAFB; font-size:.82rem; align-items:center;">
                     {{-- Type badge --}}
                     <span>
@@ -1236,7 +1245,7 @@
                     </span>
                     {{-- Quantity --}}
                     <span style="font-weight:700; color:{{ $tx->is_addition ? 'var(--green)' : 'var(--red)' }};">
-                        {{ $tx->is_addition ? '+' : '-' }}{{ number_format($tx->quantity) }}
+                        {{ $tx->is_addition ? '+' : '-' }}{{ number_format($displayTransactionQuantity) }} {{ $selectedQuantityUnit }}
                     </span>
                     {{-- Notes --}}
                     <span style="color:var(--muted);">{{ $tx->notes ?? '—' }}</span>
@@ -1428,7 +1437,7 @@
                     </div>
                     <div class="summary-row">
                         <span class="summary-key">Quantity</span>
-                        <span class="summary-val" id="summQty">{{ number_format($listing->total_quantity) }} {{ $selectedQuantityUnit }}</span>
+                        <span class="summary-val" id="summQty">{{ number_format($displayTotalQuantity) }} {{ $selectedQuantityUnit }}</span>
                     </div>
                     <div class="summary-row">
                         <span class="summary-key">Price Tiers</span>
@@ -1576,7 +1585,7 @@ function getQuantityUnit(sellType) {
     return {
         'sell by pieces': 'pcs',
         'sell by pallets': 'pallets',
-        'sell by containers': 'container',
+        'sell by container': 'container',
     }[sellType] || 'pcs';
 }
 
@@ -1609,7 +1618,7 @@ document.getElementById('totalQtyInput').addEventListener('input', function () {
 
 syncQuantityPresentation();
 
-const originalTotalQuantity = {{ (int) $listing->total_quantity }};
+const originalTotalQuantity = {{ $originalDisplayTotalQuantity }};
 
 function syncInventoryNotesVisibility() {
     const currentQuantity = Number(document.getElementById('totalQtyInput').value);

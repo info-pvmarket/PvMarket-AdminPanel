@@ -839,9 +839,9 @@
                             <label class="form-label">Sell Type <span class="req">*</span></label>
                             <select name="sell_type" class="form-select" id="sellTypeSelect" required>
                                 <option value="">Select sell type</option>
-                                @foreach($sellTypes as $type)
-                                    <option value="{{ $type }}" {{ old('sell_type') == $type ? 'selected' : '' }}>
-                                        {{ ucwords($type) }}
+                                @foreach($sellTypes as $value => $label)
+                                    <option value="{{ $value }}" {{ old('sell_type') == $value ? 'selected' : '' }}>
+                                        {{ $label }}
                                     </option>
                                 @endforeach
                             </select>
@@ -1061,7 +1061,7 @@
                                 <input type="number" name="total_quantity" class="form-control"
                                        value="{{ old('total_quantity') }}" min="1" required placeholder="e.g. 4500"
                                        id="totalQtyInput">
-                                <span class="suffix-label">pcs</span>
+                                <span class="suffix-label" id="totalQtyUnit">pcs</span>
                             </div>
                             @error('total_quantity')<div class="error-msg">{{ $message }}</div>@enderror
                         </div>
@@ -1448,7 +1448,14 @@ document.getElementById('productSelect').addEventListener('change', function () 
 document.getElementById('sellTypeSelect').addEventListener('change', function () {
     document.getElementById('summSellType').textContent =
         this.value ? this.options[this.selectedIndex].text : 'Not set';
+    document.getElementById('totalQtyUnit').textContent = {
+        'sell by pieces': 'pcs',
+        'sell by pallets': 'pallets',
+        'sell by container': 'container',
+    }[this.value] || 'pcs';
 });
+
+document.getElementById('sellTypeSelect').dispatchEvent(new Event('change'));
 
 document.getElementById('currencySelect').addEventListener('change', function () {
     document.getElementById('summCurrency').textContent = this.value || 'Not set';

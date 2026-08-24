@@ -54,10 +54,40 @@ class ProductListingTest extends TestCase
         $this->assertSame('pcs', ProductListing::quantityUnitForSellType(new \stdClass()));
     }
 
+    public function test_sell_type_normalization_uses_the_api_canonical_values(): void
+    {
+        $this->assertSame('sell by pieces', ProductListing::normalizeSellType('Sell By Pieces Only'));
+        $this->assertSame('sell by pallets', ProductListing::normalizeSellType('Sell By Pallets Only'));
+        $this->assertSame('sell by container', ProductListing::normalizeSellType('sell by containers'));
+        $this->assertSame('sell by container', ProductListing::normalizeSellType('sell by container'));
+    }
+
+    public function test_container_quantities_convert_between_display_units_and_canonical_pieces(): void
+    {
+        $product = new \App\Models\Product([
+            'pieces_per_pallet' => 36,
+            'pallets_per_container' => 20,
+        ]);
+
+        $this->assertSame(2160, ProductListing::quantityInPieces(3, 'sell by container', $product));
+        $this->assertSame(3, ProductListing::quantityForDisplay(2160, 'sell by container', $product));
+        $this->assertSame(3, ProductListing::quantityForDisplay(2160, 'sell by containers', $product));
+    }
+
+    public function test_packaging_conversion_requires_product_packaging_values(): void
+    {
+        $product = new \App\Models\Product();
+
+        $this->assertNull(ProductListing::quantityInPieces(3, 'sell by container', $product));
+        $this->assertSame(2160, ProductListing::quantityForDisplay(2160, 'sell by container', $product));
+        $this->assertSame(3, ProductListing::quantityInPieces(3, 'sell by pieces', $product));
+    }
+
     public function test_sell_type_label_handles_current_and_legacy_values(): void
     {
         $this->assertSame('Sell By Pieces', ProductListing::sellTypeLabel('sell by pieces'));
         $this->assertSame('Sell By Pallets', ProductListing::sellTypeLabel('sell by pallets'));
+        $this->assertSame('Sell By Container', ProductListing::sellTypeLabel('sell by containers'));
         $this->assertSame('N/A', ProductListing::sellTypeLabel(null));
         $this->assertSame('N/A', ProductListing::sellTypeLabel([]));
         $this->assertSame('N/A', ProductListing::sellTypeLabel(new \stdClass()));
