@@ -565,6 +565,7 @@ class AdminListPresentationTest extends TestCase
         $this->assertStringContainsString('<label class="form-label">Unit</label>', $view);
         $this->assertStringContainsString("Unit::where('is_active', true)->orderBy('unit_name')->get()", $controller);
         $this->assertStringContainsString("'specific_value' => 'required|string|max:255'", $controller);
+        $this->assertSame(2, substr_count($controller, "'specific_value' => trim((string) \$request->input('specific_value'))"));
         $this->assertStringContainsString("'specific_value_unit_id' => ['nullable'", $controller);
         $this->assertStringContainsString("'specific_value'", $model);
         $this->assertStringContainsString("'specific_value_unit_id'", $model);

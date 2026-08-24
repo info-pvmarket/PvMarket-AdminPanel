@@ -1069,7 +1069,7 @@
                             <label class="form-label">Lead Time <span class="req">*</span></label>
                             <div class="input-suffix">
                                 <input type="number" name="lead_time" class="form-control"
-                                       value="{{ old('lead_time') }}" min="0" required placeholder="e.g. 10">
+                                       value="{{ old('lead_time') }}" min="1" required placeholder="e.g. 10">
                                 <span class="suffix-label">weeks</span>
                             </div>
                             @error('lead_time')<div class="error-msg">{{ $message }}</div>@enderror

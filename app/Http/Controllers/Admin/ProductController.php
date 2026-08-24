@@ -379,6 +379,7 @@ class ProductController extends Controller
     {
         $request->merge([
             'product_name' => trim((string) $request->input('product_name')),
+            'specific_value' => trim((string) $request->input('specific_value')),
         ]);
 
         $request->validate([
@@ -502,6 +503,7 @@ class ProductController extends Controller
 
         $request->merge([
             'product_name' => trim((string) $request->input('product_name')),
+            'specific_value' => trim((string) $request->input('specific_value')),
         ]);
 
         $request->validate([

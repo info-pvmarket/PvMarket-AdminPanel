@@ -1058,7 +1058,7 @@
                             <label class="form-label">Lead Time <span class="req">*</span></label>
                             <div class="input-suffix">
                                 <input type="number" name="lead_time" class="form-control"
-                                       value="{{ $listing->lead_time }}" min="0">
+                                       value="{{ $listing->lead_time }}" min="1" required>
                                 <span class="suffix-label">weeks</span>
                             </div>
                         </div>
