@@ -50,8 +50,10 @@ class BlogController extends Controller
             'alt_tag'         => 'nullable|string|max:255',
             'slug'            => 'nullable|string|max:255',
             'related_blog_id' => 'nullable|string',
-            'image'           => 'nullable|image|mimes:jpeg,png,jpg,webp|max:3072',
+            'image'           => 'nullable|image|mimes:jpeg,png,jpg,webp|max:614400',
             'data'            => 'nullable|string',
+        ], [
+            'image.max' => 'The blog image must not be larger than 600 MB.',
         ]);
 
         $data = [
@@ -112,8 +114,10 @@ class BlogController extends Controller
             'alt_tag'         => 'nullable|string|max:255',
             'slug'            => 'nullable|string|max:255',
             'related_blog_id' => 'nullable|string',
-            'image'           => 'nullable|image|mimes:jpeg,png,jpg,webp|max:3072',
+            'image'           => 'nullable|image|mimes:jpeg,png,jpg,webp|max:614400',
             'data'            => 'nullable|string',
+        ], [
+            'image.max' => 'The blog image must not be larger than 600 MB.',
         ]);
 
         $data = [

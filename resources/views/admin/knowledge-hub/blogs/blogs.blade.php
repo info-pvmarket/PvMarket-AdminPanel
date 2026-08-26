@@ -24,8 +24,18 @@
     .btn-save { display:inline-flex; align-items:center; gap:8px; padding:10px 28px; background:#10B981; color:white; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; transition:background .15s, box-shadow .2s; }
     .btn-save:hover { background:#059669; box-shadow:0 4px 14px rgba(16,185,129,.35); }
     .alert-error { padding:12px 16px; background:#FEE2E2; color:#991B1B; border:1px solid #FECACA; border-radius:8px; font-size:13.5px; margin-bottom:20px; }
+    .form-file-wrap { border:1.5px solid var(--border); border-radius:8px; overflow:hidden; display:flex; align-items:center; background:white; transition:border-color .2s; }
+    .form-file-wrap:focus-within { border-color:var(--primary); box-shadow:0 0 0 3px rgba(14,165,233,.1); }
+    .form-file-wrap input[type="file"] { width:100%; min-width:0; padding:8px 12px; border:none; outline:none; font-family:inherit; font-size:13px; background:transparent; cursor:pointer; }
+    .form-file-wrap input[type="file"]::-webkit-file-upload-button { padding:6px 14px; background:var(--light); border:none; border-right:1px solid var(--border); font-family:inherit; font-size:12.5px; font-weight:600; cursor:pointer; margin-right:8px; }
+    .img-preview { width:160px; height:100px; max-width:100%; border-radius:8px; border:1px solid var(--border); object-fit:cover; display:block; margin-bottom:8px; background:#F8FAFC; }
+    .form-hint { font-size:11px; color:var(--muted); margin-top:3px; }
+    .image-size-error { display:none; font-size:12px; color:var(--danger); margin-top:4px; }
     .quill-wrapper { border:1.5px solid #CBD5E1; border-radius:8px; overflow:hidden; background:white; }
     .quill-wrapper:focus-within { border-color:#0EA5E9; box-shadow:0 0 0 3px rgba(14,165,233,.1); }
+    @media (max-width: 900px) {
+        .form-main-grid { grid-template-columns:1fr; }
+    }
 </style>
 @endsection
 
@@ -111,6 +121,8 @@
                     label="Blog Image:"
                     :current-image="$currentImageUrl"
                 />
+                <span class="form-hint">JPEG, PNG or WebP. Maximum file size: 600 MB.</span>
+                <span class="image-size-error" id="imageSizeError" role="alert"></span>
 
                 <div class="form-group">
                     <label class="form-label">Alt Tag</label>
@@ -231,6 +243,25 @@
     var headingInput = document.getElementById('headingInput');
     var slugInput    = document.getElementById('slugInput');
     var slugPreview  = document.getElementById('slugPreview');
+    var imageInput   = document.querySelector('#blogForm input[name="image"]');
+    var imageError   = document.getElementById('imageSizeError');
+    var maxImageSize = 600 * 1024 * 1024;
+
+    if (imageInput) {
+        imageInput.addEventListener('change', function () {
+            var file = this.files && this.files[0];
+            var isTooLarge = file && file.size > maxImageSize;
+            var message = isTooLarge ? 'The blog image must not be larger than 600 MB.' : '';
+
+            this.setCustomValidity(message);
+            imageError.textContent = message;
+            imageError.style.display = message ? 'block' : 'none';
+
+            if (message) {
+                this.reportValidity();
+            }
+        });
+    }
 
     function toSlug(str) {
         return str.toLowerCase().trim()
