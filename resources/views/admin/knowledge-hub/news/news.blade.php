@@ -104,14 +104,14 @@
 
                 <div class="form-group">
                     <label class="form-label">News Image:</label>
-                    @if(!empty($record->image ?? null))
-                        <img src="{{ asset('storage/' . $record->image) }}"
+                    @if($record->image_display_url ?? null)
+                        <img src="{{ $record->image_display_url }}"
                              class="img-preview" alt="{{ $record->alt_tag ?? '' }}"/>
                     @endif
                     <div class="form-file-wrap">
                         <input type="file" name="image" accept="image/*"/>
                     </div>
-                    @if(!empty($record->image ?? null))
+                    @if($record->image_display_url ?? null)
                         <span class="form-hint">Leave blank to keep current image</span>
                     @endif
                 </div>
@@ -355,8 +355,8 @@
 </span>
                 </td>
                 <td class="center">
-                    @if(!empty($item->image['path']))
-                        <img src="{{ asset('storage/' . $item->image['path']) }}"
+                    @if($item->image_display_url)
+                        <img src="{{ $item->image_display_url }}"
                              class="news-thumb" alt="{{ $item->alt_tag ?? $item->heading }}"/>
                     @else
                         <span style="font-size:12px; color:#CBD5E1;">—</span>
