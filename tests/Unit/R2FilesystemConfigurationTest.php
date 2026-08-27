@@ -22,7 +22,7 @@ class R2FilesystemConfigurationTest extends TestCase
         $this->assertStringContainsString("env('R2_BUCKET')", $r2Config);
         $this->assertStringContainsString("env('R2_ENDPOINT')", $r2Config);
         $this->assertStringContainsString("env('R2_URL')", $r2Config);
-        $this->assertStringContainsString("env('R2_USE_PATH_STYLE_ENDPOINT', false)", $r2Config);
+        $this->assertStringContainsString("'use_path_style_endpoint' => true", $r2Config);
         $this->assertStringNotContainsString("env('AWS_ACCESS_KEY_ID')", $r2Config);
         $this->assertStringNotContainsString("env('AWS_SECRET_ACCESS_KEY')", $r2Config);
     }
@@ -38,7 +38,7 @@ class R2FilesystemConfigurationTest extends TestCase
             'R2_BUCKET=',
             'R2_ENDPOINT=',
             'R2_URL=',
-            'R2_USE_PATH_STYLE_ENDPOINT=false',
+            'R2_USE_PATH_STYLE_ENDPOINT=true',
         ] as $setting) {
             $this->assertStringContainsString($setting, $environment);
         }

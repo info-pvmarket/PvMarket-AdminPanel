@@ -402,7 +402,8 @@ Route::middleware('auth')->group(function () {
         Route::get('users/export', [UserController::class, 'export'])->name('admin.users.export');
         Route::post('/admin/users/{userId}/assign-admin', [UserController::class, 'assignAdmin'])->name('admin.users.assign-admin');
 
-        // Document verification
+        // Company document upload and verification
+        Route::post('/admin/users/{userId}/documents', [UserController::class, 'uploadDocuments'])->name('admin.users.documents.upload');
         Route::post('/admin/users/{userId}/documents/{docIndex}/verify', [UserController::class, 'verifyDocument'])->name('admin.users.verify-document');
 
         // Listing management from user edit page

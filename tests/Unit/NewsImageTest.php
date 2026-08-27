@@ -46,4 +46,17 @@ class NewsImageTest extends TestCase
         $this->assertStringContainsString('$record->image_display_url', $view);
         $this->assertStringNotContainsString("asset('storage/' . \$item->image['path'])", $view);
     }
+
+    public function test_edit_preview_shows_the_complete_image_in_a_compact_frame(): void
+    {
+        $view = file_get_contents(
+            dirname(__DIR__, 2).'/resources/views/admin/knowledge-hub/news/news.blade.php'
+        );
+
+        $this->assertStringContainsString(
+            '.img-preview { width:140px; height:90px; max-width:100%;',
+            $view
+        );
+        $this->assertStringContainsString('object-fit:contain;', $view);
+    }
 }

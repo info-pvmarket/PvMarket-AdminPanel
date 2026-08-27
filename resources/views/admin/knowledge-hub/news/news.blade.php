@@ -26,7 +26,7 @@
     .form-file-wrap input[type="file"]::-webkit-file-upload-button { padding:6px 14px; background:var(--light); border:none; border-right:1px solid var(--border); font-family:inherit; font-size:12.5px; font-weight:600; cursor:pointer; margin-right:8px; }
     .form-hint { font-size:11px; color:var(--muted); margin-top:2px; }
     .slug-hint { font-size:11px; color:var(--primary-d); margin-top:3px; font-weight:500; }
-    .img-preview { height:50px; border-radius:6px; border:1px solid var(--border); margin-bottom:8px; display:block; object-fit:cover; }
+    .img-preview { width:140px; height:90px; max-width:100%; padding:4px; border-radius:6px; border:1px solid var(--border); margin-bottom:8px; display:block; object-fit:contain; background:#F8FAFC; }
     .section-divider { border:none; border-top:1px solid var(--border); margin:20px 0; }
     .form-actions { display:flex; justify-content:flex-end; padding-top:20px; border-top:1px solid var(--border); margin-top:20px; }
     .btn-save { display:inline-flex; align-items:center; gap:8px; padding:10px 28px; background:#10B981; color:white; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; transition:background .15s, box-shadow .2s; }

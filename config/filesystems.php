@@ -68,7 +68,9 @@ return [
             'bucket' => env('R2_BUCKET'),
             'endpoint' => env('R2_ENDPOINT'),
             'url' => env('R2_URL'),
-            'use_path_style_endpoint' => env('R2_USE_PATH_STYLE_ENDPOINT', false),
+            // Cloudflare R2 uses the account endpoint with the bucket in the
+            // request path. Virtual-hosted bucket URLs do not resolve.
+            'use_path_style_endpoint' => true,
             'throw' => false,
             'report' => false,
         ],

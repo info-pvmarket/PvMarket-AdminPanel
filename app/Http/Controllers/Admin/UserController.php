@@ -15,7 +15,9 @@ use App\Models\Role;
 use App\Models\Subscription;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use App\Services\AdminSubscriptionService;
+use App\Services\CompanyDocumentStorageService;
 use App\Services\ProductListingCsvExporter;
 use App\Services\ListingUpdateService;
 use App\Services\TranslationService;
@@ -662,6 +664,89 @@ public function assignAdmin(Request $request, $userId)
         }
 
         return $data;
+    }
+
+    /**
+     * Upload company documents on behalf of a managed user.
+     */
+    public function uploadDocuments(
+        Request $request,
+        string $userId,
+        CompanyDocumentStorageService $documentStorage,
+    )
+    {
+        $user = $this->managedUser($userId);
+        $company = Company::where(
+            'user_id',
+            new ObjectId((string) $user->_id)
+        )->first();
+
+        if (! $company) {
+            return redirect()->route('admin.users.edit', [
+                'id' => $userId,
+                'active_tab' => 'documents',
+            ])->with('error', 'Company details must be created before uploading documents.');
+        }
+
+        $validated = $request->validate([
+            'document_type' => [
+                'required',
+                Rule::in(['Company License', 'VAT/TAX ID']),
+            ],
+            'documents' => ['required', 'array', 'min:1'],
+            'documents.*' => [
+                'required',
+                'file',
+                'mimes:jpg,jpeg,png,pdf,docx',
+                'max:10240',
+            ],
+        ], [
+            'document_type.required' => 'Please select a document type.',
+            'document_type.in' => 'The selected document type is invalid.',
+            'documents.required' => 'Please select at least one document.',
+            'documents.*.mimes' => 'Documents must be JPG, PNG, PDF, or DOCX files.',
+            'documents.*.max' => 'Each document must not exceed 10 MB.',
+        ]);
+
+        $storedPaths = [];
+        $storedDocuments = [];
+
+        try {
+            foreach ($request->file('documents', []) as $file) {
+                $metadata = $documentStorage->store(
+                    $file,
+                    (string) $company->_id,
+                );
+                $storedPaths[] = $metadata['path'];
+                $storedDocuments[] = CompanyDocument::create([
+                    'company_id' => new ObjectId((string) $company->_id),
+                    'document_type' => $validated['document_type'],
+                    ...$metadata,
+                    'is_verified' => false,
+                ]);
+            }
+        } catch (\Throwable $exception) {
+            foreach ($storedDocuments as $document) {
+                $document->delete();
+            }
+            foreach ($storedPaths as $path) {
+                $documentStorage->delete($path);
+            }
+
+            report($exception);
+
+            return redirect()->route('admin.users.edit', [
+                'id' => $userId,
+                'active_tab' => 'documents',
+            ])->withInput()->with('error', 'The documents could not be uploaded. Please try again.');
+        }
+
+        $count = count($storedDocuments);
+
+        return redirect()->route('admin.users.edit', [
+            'id' => $userId,
+            'active_tab' => 'documents',
+        ])->with('success', "Successfully uploaded {$count} document(s).");
     }
 
     /**

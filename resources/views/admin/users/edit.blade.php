@@ -836,6 +836,48 @@
         gap: 10px;
     }
 
+    .document-upload-card {
+        padding: 20px;
+        margin-bottom: 24px;
+        background: #F8FAFC;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+    }
+
+    .document-upload-title {
+        margin: 0 0 4px;
+        color: var(--text);
+        font-size: 15px;
+        font-weight: 800;
+    }
+
+    .document-upload-description {
+        margin: 0 0 18px;
+        color: var(--muted);
+        font-size: 12.5px;
+    }
+
+    .document-type-help {
+        min-height: 18px;
+        color: var(--muted);
+        font-size: 12px;
+    }
+
+    .document-file-input {
+        padding: 7px;
+    }
+
+    .document-file-input::file-selector-button {
+        padding: 7px 12px;
+        margin-right: 10px;
+        color: #1E40AF;
+        background: #DBEAFE;
+        border: 0;
+        border-radius: 6px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
     /* Slots accordion */
     .slots-container {
         margin-top: 8px;
@@ -1315,6 +1357,64 @@
     <div class="tab-content {{ $activeTab === 'documents' ? 'active' : '' }}" id="tab-documents">
 
         <div class="section-title">Documents</div>
+
+        @if($company)
+            <form method="POST"
+                  action="{{ route('admin.users.documents.upload', ['userId' => $user->id]) }}"
+                  enctype="multipart/form-data"
+                  class="document-upload-card">
+                @csrf
+                <h3 class="document-upload-title">Upload company documents</h3>
+                <p class="document-upload-description">
+                    Add the same verification documents available from the seller account.
+                </p>
+
+                <div class="form-row" style="margin-bottom:14px;">
+                    <div class="form-col">
+                        <label class="form-label" for="document_type">Document Type <span style="color:#EF4444;">*</span></label>
+                        <select id="document_type" name="document_type" class="form-input" required>
+                            <option value="">Select document type</option>
+                            <option value="Company License" {{ old('document_type') === 'Company License' ? 'selected' : '' }}>
+                                Company License
+                            </option>
+                            <option value="VAT/TAX ID" {{ old('document_type') === 'VAT/TAX ID' ? 'selected' : '' }}>
+                                VAT/TAX ID
+                            </option>
+                        </select>
+                        <div class="document-type-help" id="documentTypeHelp">
+                            Company License: soft copy for verification. VAT/TAX ID: soft copy of the certificate.
+                        </div>
+                        @error('document_type')
+                            <div class="field-error">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="form-col">
+                        <label class="form-label" for="company_documents">Documents <span style="color:#EF4444;">*</span></label>
+                        <input id="company_documents"
+                               type="file"
+                               name="documents[]"
+                               class="form-input document-file-input"
+                               accept=".jpg,.jpeg,.png,.pdf,.docx"
+                               multiple
+                               required>
+                        <div class="document-type-help">JPG, PNG, PDF, or DOCX. Maximum 10 MB per file.</div>
+                        @error('documents')
+                            <div class="field-error">{{ $message }}</div>
+                        @enderror
+                        @error('documents.*')
+                            <div class="field-error">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-save">Upload Documents</button>
+            </form>
+        @else
+            <div class="alert-error" style="margin-bottom:20px;">
+                Add company details before uploading verification documents.
+            </div>
+        @endif
 
         @if(count($documents) > 0)
             @foreach($documents as $doc)

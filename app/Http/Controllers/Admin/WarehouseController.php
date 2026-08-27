@@ -28,7 +28,8 @@ class WarehouseController extends Controller
             $query->where('name', 'like', '%' . $request->search . '%');
         }
 
-        $warehouses = $query->orderBy('created_at', 'desc')
+        $warehouses = $query->orderBy('is_paid', 'asc')
+                            ->orderBy('created_at', 'desc')
                             ->paginate($request->get('entries', 10));
 
         $userIds = $warehouses->getCollection()
