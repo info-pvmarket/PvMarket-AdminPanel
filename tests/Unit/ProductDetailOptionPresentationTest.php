@@ -59,7 +59,51 @@ class ProductDetailOptionPresentationTest extends TestCase
 
         $this->assertStringContainsString('onchange="handleSubCategoryChange(this.value)"', $view);
         $this->assertStringContainsString("route(\"admin.products.options-by-submenu\")", $view);
-        $this->assertStringContainsString('renderDetailsTable(data.options, savedDetails)', $view);
+        $this->assertStringContainsString('renderDetailsTable(options, savedDetails)', $view);
+    }
+
+    public function test_sub_categories_are_scoped_to_the_selected_category(): void
+    {
+        $controller = file_get_contents($this->projectFile(
+            'app/Http/Controllers/Admin/ProductController.php'
+        ));
+        $view = file_get_contents($this->projectFile(
+            'resources/views/admin/products/products.blade.php'
+        ));
+
+        // The sub category dropdown is built from the selected category only.
+        $this->assertStringContainsString("->where('category_id', \$categoryObjectId)", $controller);
+        $this->assertStringContainsString('$this->getDropdowns(', $controller);
+        $this->assertStringContainsString("old('category_id', \$record->category_id)", $controller);
+
+        // ...and the edit form asks for the category-scoped list.
+        $this->assertStringContainsString('onchange="handleCategoryChange(this.value)"', $view);
+        $this->assertStringContainsString("route(\"admin.products.sub-menus-by-main\")", $view);
+        $this->assertStringContainsString('Select a category first', $view);
+    }
+
+    public function test_product_details_are_server_rendered_with_saved_values_merged(): void
+    {
+        $controller = file_get_contents($this->projectFile(
+            'app/Http/Controllers/Admin/ProductController.php'
+        ));
+        $view = file_get_contents($this->projectFile(
+            'resources/views/admin/products/products.blade.php'
+        ));
+
+        // Rows come from the sub category specifications, merged with what is saved.
+        $this->assertStringContainsString('private function buildDetailRows(', $controller);
+        $this->assertStringContainsString("'detailRows' =>", $controller);
+        $this->assertStringContainsString('@foreach($detailRows as $i => $detail)', $view);
+        $this->assertStringContainsString('name="product_details[{{ $i }}][value]"', $view);
+
+        // The saved-values map must be emitted as raw JSON: the escaped echo
+        // syntax would HTML-escape the quotes and break the whole script block.
+        $this->assertStringContainsString('@json($detailRows ?? [])', $view);
+        $this->assertStringNotContainsString('map[{{ json_encode(', $view);
+
+        // Blank rows are not persisted.
+        $this->assertStringContainsString('private function collectSubmittedDetails(', $controller);
     }
 
     public function test_product_form_accepts_extended_json_unit_ids_from_existing_records(): void

@@ -172,12 +172,13 @@
                 <label class="form-label">Category <span>*</span></label>
                 <select name="category_id" id="categorySelect" class="form-select" required
                         onchange="handleCategoryChange(this.value)">
-                    <option value="" disabled {{ old('category_id', $record->category_id ?? '') == '' ? 'selected' : '' }}>
+                    @php $selectedCategory = (string) old('category_id', $record->category_id ?? ''); @endphp
+                    <option value="" disabled {{ $selectedCategory === '' ? 'selected' : '' }}>
                         Select Category
                     </option>
                     @foreach($mainMenus as $menu)
                         <option value="{{ $menu->id }}"
-                            {{ old('category_id', $record->category_id ?? '') == $menu->id ? 'selected' : '' }}>
+                            {{ $selectedCategory === (string) $menu->id ? 'selected' : '' }}>
                             {{ $menu->category_name }}
                         </option>
                     @endforeach
@@ -185,14 +186,15 @@
             </div>
             <div class="form-group">
                 <label class="form-label">Sub Category <span>*</span></label>
+                @php $selectedSubCategory = (string) old('sub_category_id', $record->sub_category_id ?? ''); @endphp
                 <select name="sub_category_id" id="subCategorySelect" class="form-select" required
                         onchange="handleSubCategoryChange(this.value)">
-                    <option value="" disabled {{ old('sub_category_id', $record->sub_category_id ?? '') == '' ? 'selected' : '' }}>
-                        Select Sub Category
+                    <option value="" disabled {{ $selectedSubCategory === '' ? 'selected' : '' }}>
+                        {{ $subMenus->isEmpty() ? 'Select a category first' : 'Select Sub Category' }}
                     </option>
                     @foreach($subMenus as $menu)
                         <option value="{{ $menu->id }}"
-                            {{ old('sub_category_id', $record->sub_category_id ?? '') == $menu->id ? 'selected' : '' }}>
+                            {{ $selectedSubCategory === (string) $menu->id ? 'selected' : '' }}>
                             {{ $menu->sub_category_name }}
                         </option>
                     @endforeach
@@ -306,8 +308,9 @@
         </div>
         <div id="section-details">
             <div id="productDetailsWrapper">
-                @if($mode === 'edit' && isset($record) && !empty($record->product_details))
-                    {{-- Edit mode: render saved {label, value, unit} rows --}}
+                @if(!empty($detailRows))
+                    {{-- Every specification of the sub category is listed; only the
+                         ones already filled in on the product carry a value. --}}
                     <table class="details-table">
                         <thead>
                             <tr>
@@ -318,31 +321,48 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($record->product_details as $i => $detail)
+                            @foreach($detailRows as $i => $detail)
                             <tr>
                                 <td class="sno">{{ $i + 1 }}.</td>
                                 <td>
                                     <input type="text"
                                            name="product_details[{{ $i }}][label]"
-                                           value="{{ $detail['label'] ?? '' }}"
+                                           value="{{ $detail['label'] }}"
                                            placeholder="Label"/>
                                 </td>
                                 <td>
                                     <input type="text"
                                            name="product_details[{{ $i }}][value]"
-                                           value="{{ $detail['value'] ?? '' }}"
+                                           value="{{ $detail['value'] }}"
                                            placeholder="Enter value"/>
                                 </td>
                                 <td>
-                                    <input type="text"
-                                           name="product_details[{{ $i }}][unit]"
-                                           value="{{ $detail['unit'] ?? '' }}"
-                                           placeholder="e.g. W, kg, mm"/>
+                                    @if(!empty($detail['units']))
+                                        <select name="product_details[{{ $i }}][unit]">
+                                            <option value="">Select</option>
+                                            @foreach($detail['units'] as $unitName)
+                                                <option value="{{ $unitName }}"
+                                                    {{ $detail['unit'] === $unitName ? 'selected' : '' }}>
+                                                    {{ $unitName }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    @else
+                                        <input type="text"
+                                               name="product_details[{{ $i }}][unit]"
+                                               value="{{ $detail['unit'] }}"
+                                               placeholder="e.g. W, kg, mm"/>
+                                    @endif
                                 </td>
                             </tr>
                             @endforeach
                         </tbody>
                     </table>
+                @elseif($subMenus->isNotEmpty() && (string) old('sub_category_id', $record->sub_category_id ?? '') !== '')
+                    <div class="details-empty">
+                        No specifications defined for this sub category yet. Add them on the
+                        <strong>Product Detail Options</strong> page first.
+                    </div>
                 @else
                     <div class="details-empty" id="detailsEmptyMsg">
                         ← Please select a <strong>Sub Category</strong> above to load product detail options.
@@ -459,59 +479,144 @@ function toggleSection(name) {
     toggle.textContent    = isHidden ? '−' : '+';
 }
 
+// Product Details rows already on screen, keyed by label, so re-rendering after a
+// sub category change keeps whatever the admin has typed or the product had saved.
+// NOTE: the JSON below is emitted with the raw json directive on purpose. Using
+// the escaped echo syntax here HTML-escapes the quotes and breaks this script.
+var savedDetails = (function () {
+    var map = {};
+    (@json($detailRows ?? [])).forEach(function (row) {
+        if (row && row.label) {
+            map[row.label] = { value: row.value || '', unit: row.unit || '' };
+        }
+    });
+    return map;
+})();
+
+var currentSubCategoryId = @json((string) old('sub_category_id', $record->sub_category_id ?? ''));
+
+function escapeHtml(value) {
+    return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// Snapshot what is currently typed in the table so it survives a re-render.
+function captureCurrentDetails() {
+    document.querySelectorAll('#productDetailsWrapper tbody tr').forEach(function (row) {
+        var label = row.querySelector('input[name*="[label]"]');
+        var value = row.querySelector('input[name*="[value]"]');
+        var unit  = row.querySelector('[name*="[unit]"]');
+
+        if (label && label.value) {
+            savedDetails[label.value] = {
+                value: value ? value.value : '',
+                unit:  unit  ? unit.value  : ''
+            };
+        }
+    });
+}
+
 // ── Category change: reload sub categories ────────────
 function handleCategoryChange(categoryId) {
-    if (!categoryId) return;
+    var subSelect = document.getElementById('subCategorySelect');
 
-    const subSelect = document.getElementById('subCategorySelect');
-
-    fetch('{{ route("admin.products.sub-menus-by-main") }}?main_menu_id=' + categoryId, {
-        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
-    })
-    .then(r => r.json())
-    .then(data => {
-        subSelect.innerHTML = '<option value="" disabled selected>Select Sub Category</option>';
-        data.subMenus.forEach(sm => {
-    const id = sm._id?.$oid || sm._id || sm.id;
-    subSelect.innerHTML += `<option value="${id}">${sm.sub_category_name}</option>`;
-});
+    if (!categoryId) {
+        subSelect.innerHTML = '<option value="" disabled selected>Select a category first</option>';
+        currentSubCategoryId = '';
         clearProductDetails();
+        return;
+    }
+
+    captureCurrentDetails();
+    subSelect.disabled = true;
+    subSelect.innerHTML = '<option value="" disabled selected>Loading sub categories...</option>';
+
+    fetch('{{ route("admin.products.sub-menus-by-main") }}?main_menu_id=' + encodeURIComponent(categoryId), {
+        headers: {
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+        }
     })
-    .catch(() => clearProductDetails());
+    .then(function (r) {
+        if (!r.ok) throw new Error('Failed to load sub categories.');
+        return r.json();
+    })
+    .then(function (data) {
+        var subMenus = data.subMenus || [];
+        var html = '<option value="" disabled selected>'
+                 + (subMenus.length ? 'Select Sub Category' : 'No sub categories for this category')
+                 + '</option>';
+
+        var stillValid = false;
+        subMenus.forEach(function (sm) {
+            var id = (sm._id && sm._id.$oid) || sm._id || sm.id;
+            if (String(id) === String(currentSubCategoryId)) stillValid = true;
+            html += '<option value="' + escapeHtml(id) + '">'
+                  + escapeHtml(sm.sub_category_name) + '</option>';
+        });
+
+        subSelect.innerHTML = html;
+        subSelect.disabled = false;
+
+        // Keep the sub category when it still belongs to the newly picked
+        // category; otherwise the details table no longer applies.
+        if (stillValid) {
+            subSelect.value = currentSubCategoryId;
+        } else {
+            currentSubCategoryId = '';
+            clearProductDetails();
+        }
+    })
+    .catch(function () {
+        subSelect.innerHTML = '<option value="" disabled selected>Failed to load sub categories</option>';
+        subSelect.disabled = false;
+        currentSubCategoryId = '';
+        clearProductDetails();
+    });
 }
 
 // ── Sub Category change: load product detail options ──
 function handleSubCategoryChange(subCategoryId) {
+    if (String(subCategoryId) === String(currentSubCategoryId)) {
+        return;
+    }
+
+    captureCurrentDetails();
+    currentSubCategoryId = subCategoryId || '';
+
     if (!subCategoryId) {
         clearProductDetails();
         return;
     }
 
-    const wrapper = document.getElementById('productDetailsWrapper');
+    var wrapper = document.getElementById('productDetailsWrapper');
     wrapper.innerHTML = '<div class="details-loading">⏳ Loading options...</div>';
 
-    const query = new URLSearchParams({ sub_menu_id: subCategoryId });
+    var query = new URLSearchParams({ sub_menu_id: subCategoryId });
     fetch('{{ route("admin.products.options-by-submenu") }}?' + query.toString(), {
         headers: {
             'Accept': 'application/json',
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
         }
     })
-    .then(r => {
-        if (!r.ok) {
-            throw new Error('Failed to load product specifications.');
-        }
-
+    .then(function (r) {
+        if (!r.ok) throw new Error('Failed to load product specifications.');
         return r.json();
     })
-    .then(data => {
-        if (!data.options || data.options.length === 0) {
-            wrapper.innerHTML = '<div class="details-empty">No options found for this sub category. Add options from the <strong>Product Detail Options</strong> page first.</div>';
+    .then(function (data) {
+        var options = data.options || [];
+        if (options.length === 0) {
+            wrapper.innerHTML = '<div class="details-empty">No specifications defined for this sub category yet. '
+                              + 'Add them on the <strong>Product Detail Options</strong> page first.</div>';
             return;
         }
-        renderDetailsTable(data.options, savedDetails);
+        renderDetailsTable(options, savedDetails);
     })
-    .catch(() => {
+    .catch(function () {
         wrapper.innerHTML = '<div class="details-empty">Failed to load options. Please try again.</div>';
     });
 }
@@ -521,90 +626,53 @@ function clearProductDetails() {
         '<div class="details-empty" id="detailsEmptyMsg">← Please select a <strong>Sub Category</strong> above to load product detail options.</div>';
 }
 
-// Renders {label, value, unit} rows from AJAX options.
-// label is pre-filled from option_name.
-// If the option has attached units, shows a dropdown; otherwise a free-text input.
-// Saved edit-mode values keyed by label — populated by Blade below
-var savedDetails = @if($mode === 'edit' && isset($record) && !empty($record->product_details))
-    (function() {
-        var map = {};
-        @foreach($record->product_details as $detail)
-            map[{{ json_encode($detail['label'] ?? '') }}] = {
-                value : {{ json_encode($detail['value'] ?? '') }},
-                unit  : {{ json_encode($detail['unit']  ?? '') }}
-            };
-        @endforeach
-        return map;
-    })()
-@else
-    {}
-@endif;
-
+// Renders {label, value, unit} rows: one per specification of the sub category.
+// Values already saved (or just typed) are filled in, everything else stays blank.
 function renderDetailsTable(options, savedMap) {
     savedMap = savedMap || {};
 
-    let html = `
-        <table class="details-table">
-            <thead>
-                <tr>
-                    <th class="center">S.No</th>
-                    <th>Label</th>
-                    <th style="width:200px;">Value</th>
-                    <th style="width:160px;">Unit</th>
-                </tr>
-            </thead>
-            <tbody>`;
+    var html = '<table class="details-table">'
+             + '<thead><tr>'
+             + '<th class="center">S.No</th>'
+             + '<th>Label</th>'
+             + '<th style="width:200px;">Value</th>'
+             + '<th style="width:160px;">Unit</th>'
+             + '</tr></thead><tbody>';
 
-    options.forEach((option, i) => {
-        const label     = option.option_name || '';
-        const saved     = savedMap[label] || {};
-        const savedVal  = saved.value || '';
-        const savedUnit = saved.unit  || '';
+    options.forEach(function (option, i) {
+        var label     = option.option_name || '';
+        var saved     = savedMap[label] || {};
+        var savedVal  = saved.value || '';
+        var savedUnit = saved.unit  || '';
+        var unitField;
 
-        let unitField = '';
         if (option.units && option.units.length > 0) {
-            let opts = '<option value="">Select</option>';
-            option.units.forEach(u => {
-                const uname = u.unit_name || '';
-                const sel   = (savedUnit === uname) ? 'selected' : '';
-                opts += `<option value="${uname}" ${sel}>${uname}</option>`;
+            var opts = '<option value="">Select</option>';
+            option.units.forEach(function (u) {
+                var uname = u.unit_name || '';
+                opts += '<option value="' + escapeHtml(uname) + '"'
+                      + (savedUnit === uname ? ' selected' : '') + '>'
+                      + escapeHtml(uname) + '</option>';
             });
-            unitField = `<select name="product_details[${i}][unit]">${opts}</select>`;
+            unitField = '<select name="product_details[' + i + '][unit]">' + opts + '</select>';
         } else {
-            unitField = `<input type="text"
-                                name="product_details[${i}][unit]"
-                                value="${savedUnit}"
-                                placeholder="e.g. W, kg, mm"/>`;
+            unitField = '<input type="text" name="product_details[' + i + '][unit]"'
+                      + ' value="' + escapeHtml(savedUnit) + '" placeholder="e.g. W, kg, mm"/>';
         }
 
-        html += `
-            <tr>
-                <td class="sno">${i + 1}.</td>
-                <td>
-                    <input type="text"
-                           name="product_details[${i}][label]"
-                           value="${label}"
-                           placeholder="Label"/>
-                </td>
-                <td>
-                    <input type="text"
-                           name="product_details[${i}][value]"
-                           value="${savedVal}"
-                           placeholder="Enter value"/>
-                </td>
-                <td>${unitField}</td>
-            </tr>`;
+        html += '<tr>'
+              + '<td class="sno">' + (i + 1) + '.</td>'
+              + '<td><input type="text" name="product_details[' + i + '][label]"'
+              + ' value="' + escapeHtml(label) + '" placeholder="Label"/></td>'
+              + '<td><input type="text" name="product_details[' + i + '][value]"'
+              + ' value="' + escapeHtml(savedVal) + '" placeholder="Enter value"/></td>'
+              + '<td>' + unitField + '</td>'
+              + '</tr>';
     });
 
     html += '</tbody></table>';
     document.getElementById('productDetailsWrapper').innerHTML = html;
 }
-
-document.addEventListener('DOMContentLoaded', function () {
-    @if($mode === 'edit' && isset($record) && $record->sub_category_id)
-        handleSubCategoryChange('{{ $record->sub_category_id }}');
-    @endif
-});
 </script>
 
 @endsection

@@ -68,23 +68,185 @@ class ProductController extends Controller
     }
 
     // ── Shared dropdown data ──────────────────────────
-    private function getDropdowns(?string $subCategoryId = null): array
+    private function getDropdowns(mixed $subCategoryId = null, mixed $categoryId = null): array
     {
         $brands    = Brand::where('is_active', true)->orderBy('name')->get();
         $units     = Unit::where('is_active', true)->orderBy('unit_name')->get();
         $mainMenus = MainMenu::availableForDropdown()->orderBy('category_name')->get();
-        $subMenus  = SubMenu::availableForDropdown()->orderBy('sub_category_name')->get();
 
+        $categoryObjectId    = $this->toObjectId($categoryId);
         $subCategoryObjectId = $this->toObjectId($subCategoryId);
-        if ($subCategoryObjectId) {
-            $options = ProductDetailOption::where('sub_category_id', $subCategoryObjectId)
-                                          ->orderBy('name')
-                                          ->get();
-        } else {
-            $options = collect();
-        }
+
+        // Sub categories cascade from the selected category: with no category
+        // picked yet there is nothing to choose from.
+        $subMenus = $categoryObjectId
+            ? SubMenu::availableForDropdown()
+                     ->where('category_id', $categoryObjectId)
+                     ->orderBy('sub_category_name')
+                     ->get()
+            : collect();
+
+        // Keep values already stored on the record selectable even when the
+        // category / sub category has since been deactivated or hidden.
+        $mainMenus = $this->ensureSelectable($mainMenus, $categoryObjectId, MainMenu::class, 'category_name');
+        $subMenus  = $this->ensureSelectable($subMenus, $subCategoryObjectId, SubMenu::class, 'sub_category_name');
+
+        $options = $subCategoryObjectId
+            ? ProductDetailOption::where('sub_category_id', $subCategoryObjectId)
+                                 ->orderBy('name')
+                                 ->get()
+            : collect();
 
         return compact('brands', 'units', 'mainMenus', 'subMenus', 'options');
+    }
+
+    /**
+     * Make sure the id a form is currently showing exists in its dropdown, so an
+     * edit screen never silently drops the value it was opened with.
+     */
+    private function ensureSelectable($collection, ?\MongoDB\BSON\ObjectId $currentId, string $model, string $sortKey)
+    {
+        if (!$currentId) {
+            return $collection;
+        }
+
+        $current = (string) $currentId;
+        if ($collection->contains(fn ($item) => (string) $item->_id === $current)) {
+            return $collection;
+        }
+
+        $missing = $model::find($currentId);
+
+        return $missing
+            ? $collection->push($missing)->sortBy($sortKey)->values()
+            : $collection;
+    }
+
+    /**
+     * Build the Product Details rows for the form: every specification defined
+     * for the sub category is listed, and only the ones already filled in on the
+     * product carry a value - the rest stay blank. Values saved against a
+     * specification that no longer exists are kept at the end so editing a
+     * product never silently discards them.
+     */
+    private function buildDetailRows($options, mixed $savedDetails): array
+    {
+        $saved = [];
+        foreach ($this->normalizeList($savedDetails) as $detail) {
+            if (is_object($detail) && method_exists($detail, 'getArrayCopy')) {
+                $detail = $detail->getArrayCopy();
+            }
+
+            if (!is_array($detail)) {
+                continue;
+            }
+
+            $label = trim((string) ($detail['label'] ?? ''));
+            if ($label === '') {
+                continue;
+            }
+
+            $saved[$label] = [
+                'value' => (string) ($detail['value'] ?? ''),
+                'unit'  => (string) ($detail['unit'] ?? ''),
+            ];
+        }
+
+        $rows = [];
+        foreach ($options as $option) {
+            $label = trim((string) $option->name);
+            if ($label === '') {
+                continue;
+            }
+
+            $rows[] = [
+                'label'     => $label,
+                'value'     => $saved[$label]['value'] ?? '',
+                'unit'      => $saved[$label]['unit'] ?? '',
+                'units'     => $this->optionUnitNames($option),
+                'is_orphan' => false,
+            ];
+
+            unset($saved[$label]);
+        }
+
+        // Anything left over was saved before the specification list changed.
+        foreach ($saved as $label => $detail) {
+            $rows[] = [
+                'label'     => $label,
+                'value'     => $detail['value'],
+                'unit'      => $detail['unit'],
+                'units'     => [],
+                'is_orphan' => true,
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Turn the submitted Product Details rows into what gets stored. The form
+     * always posts every specification of the sub category, so rows the admin
+     * left blank are skipped instead of being saved as empty values.
+     */
+    private function collectSubmittedDetails(mixed $submitted): array
+    {
+        $details = [];
+
+        foreach ((array) $submitted as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $label = trim((string) ($row['label'] ?? ''));
+            $value = trim((string) ($row['value'] ?? ''));
+            $unit  = trim((string) ($row['unit'] ?? ''));
+
+            if ($label === '' || $value === '') {
+                continue;
+            }
+
+            $details[] = [
+                'label' => $label,
+                'value' => $value,
+                'unit'  => $unit === '' ? null : $unit,
+            ];
+        }
+
+        return $details;
+    }
+
+    /**
+     * Unit names offered for a specification, resolved from unit_ids and falling
+     * back to the denormalised unit_names.
+     */
+    private function optionUnitNames($option): array
+    {
+        $unitIds = collect($this->normalizeList($option->unit_ids ?? []))
+            ->map(fn ($id) => $id instanceof \MongoDB\BSON\ObjectId ? $id : $this->toObjectId($id))
+            ->filter()
+            ->values();
+
+        if ($unitIds->isNotEmpty()) {
+            $names = Unit::whereIn('_id', $unitIds->all())
+                         ->orderBy('unit_name')
+                         ->pluck('unit_name')
+                         ->filter()
+                         ->unique()
+                         ->values()
+                         ->all();
+
+            if (!empty($names)) {
+                return $names;
+            }
+        }
+
+        return collect($this->normalizeList($option->unit_names ?? []))
+            ->map(fn ($unit) => trim((string) $unit))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 
     private function toObjectId(mixed $value): ?\MongoDB\BSON\ObjectId
@@ -368,9 +530,15 @@ class ProductController extends Controller
     // ── Create ────────────────────────────────────────
     public function create()
     {
+        $dropdowns = $this->getDropdowns(old('sub_category_id'), old('category_id'));
+
         return view('admin.products.products', array_merge(
-            ['mode' => 'create', 'record' => null],
-            $this->getDropdowns()
+            [
+                'mode'       => 'create',
+                'record'     => null,
+                'detailRows' => $this->buildDetailRows($dropdowns['options'], old('product_details')),
+            ],
+            $dropdowns
         ));
     }
 
@@ -446,17 +614,7 @@ class ProductController extends Controller
 
         // ── product_details: [{label, value, unit}] ──
         if ($request->has('product_details')) {
-            $details = [];
-            foreach ($request->product_details as $row) {
-                if (!empty($row['label'])) {
-                    $details[] = [
-                        'label' => $row['label'],
-                        'value' => $row['value'] ?? '',
-                        'unit'  => $row['unit']  ?? null,
-                    ];
-                }
-            }
-            $data['product_details'] = $details;
+            $data['product_details'] = $this->collectSubmittedDetails($request->product_details);
         }
 
         // ── measurement_details ───────────────────────
@@ -490,9 +648,23 @@ class ProductController extends Controller
     {
         $record = Product::findOrFail($id);
 
+        // The sub category list is scoped to the product's category, and the
+        // Product Details table is built from that sub category's specifications.
+        $dropdowns = $this->getDropdowns(
+            old('sub_category_id', $record->sub_category_id),
+            old('category_id', $record->category_id),
+        );
+
         return view('admin.products.products', array_merge(
-            ['mode' => 'edit', 'record' => $record],
-            $this->getDropdowns($record->sub_category_id)
+            [
+                'mode'       => 'edit',
+                'record'     => $record,
+                'detailRows' => $this->buildDetailRows(
+                    $dropdowns['options'],
+                    old('product_details', $record->product_details),
+                ),
+            ],
+            $dropdowns
         ));
     }
 
@@ -563,17 +735,7 @@ class ProductController extends Controller
 
         // ── product_details ───────────────────────────
         if ($request->has('product_details')) {
-            $details = [];
-            foreach ($request->product_details as $row) {
-                if (!empty($row['label'])) {
-                    $details[] = [
-                        'label' => $row['label'],
-                        'value' => $row['value'] ?? '',
-                        'unit'  => $row['unit']  ?? null,
-                    ];
-                }
-            }
-            $data['product_details'] = $details;
+            $data['product_details'] = $this->collectSubmittedDetails($request->product_details);
         }
 
         // ── measurement_details ───────────────────────
@@ -620,33 +782,13 @@ class ProductController extends Controller
                                       ->orderBy('name')
                                       ->get(['_id', 'name', 'unit_ids', 'unit_names']);
 
-        $options = $options->map(function ($option) {
-            $unitIds = collect($this->normalizeList($option->unit_ids ?? []))
-                ->map(fn ($id) => $id instanceof \MongoDB\BSON\ObjectId ? $id : $this->toObjectId($id))
-                ->filter()
-                ->values();
-
-            $units = collect();
-            if ($unitIds->isNotEmpty()) {
-                $units = Unit::whereIn('_id', $unitIds->all())
-                             ->orderBy('unit_name')
-                             ->get(['_id', 'unit_name'])
-                             ->map(fn ($unit) => ['unit_name' => $unit->unit_name]);
-            }
-
-            if ($units->isEmpty()) {
-                $units = collect($this->normalizeList($option->unit_names ?? []))
-                    ->filter()
-                    ->unique()
-                    ->values()
-                    ->map(fn ($unitName) => ['unit_name' => $unitName]);
-            }
-
-            return [
-                'option_name' => $option->name,
-                'units'       => $units,
-            ];
-        });
+        $options = $options->map(fn ($option) => [
+            'option_name' => $option->name,
+            // Kept as [{unit_name}] for backwards compatibility with older callers.
+            'units'       => collect($this->optionUnitNames($option))
+                                ->map(fn ($unitName) => ['unit_name' => $unitName])
+                                ->values(),
+        ]);
 
         return response()->json(['options' => $options]);
     }
@@ -654,11 +796,20 @@ class ProductController extends Controller
     // ── AJAX: Get sub categories by category_id ───────
     public function getSubMenusByMainMenu(Request $request)
     {
-        $categoryId  = $request->input('main_menu_id');
+        $categoryId = $this->toObjectId($request->input('main_menu_id'));
+
+        if (!$categoryId) {
+            return response()->json([
+                'message'  => 'A valid category is required.',
+                'subMenus' => [],
+            ], 422);
+        }
+
         $subMenus = SubMenu::availableForDropdown()
-            ->where('category_id', new \MongoDB\BSON\ObjectId($categoryId))
+            ->where('category_id', $categoryId)
             ->orderBy('sub_category_name')
             ->get(['_id', 'sub_category_name']);
+
         return response()->json(['subMenus' => $subMenus]);
     }
 
