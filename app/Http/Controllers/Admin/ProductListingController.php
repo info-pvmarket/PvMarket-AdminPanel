@@ -23,6 +23,7 @@ use App\Services\ListingUpdateService;
 use App\Services\ListingImageService;
 use App\Services\PriceHistoryService;
 use App\Services\InventoryHistoryService;
+use App\Rules\ListingTotalQuantityLimit;
 use App\Rules\PriceTierQuantityAtMostTotal;
 use Illuminate\Validation\ValidationException;
 
@@ -469,7 +470,7 @@ class ProductListingController extends Controller
             'discount_type'                    => 'nullable|string',
             'incoterm_id'                      => 'required|string',
             'slug'                             => 'nullable|string|max:255',
-            'total_quantity'                   => 'required|integer|min:1',
+            'total_quantity'                   => ['required', 'integer', 'min:1', new ListingTotalQuantityLimit((string) $request->input('sell_type'))],
             'lead_time'                        => 'required|integer|min:1',
             'is_on_hold'                       => 'nullable|boolean',
             'is_solar_listing'                 => 'nullable|boolean',
@@ -705,7 +706,7 @@ class ProductListingController extends Controller
             'discount_type'                    => 'nullable|string',
             'incoterm_id' => 'required|string',
             'slug'        => 'nullable|string|max:255',
-            'total_quantity'                   => 'required|integer|min:1',
+            'total_quantity'                   => ['required', 'integer', 'min:1', new ListingTotalQuantityLimit((string) $request->input('sell_type'))],
             'inventory_notes'                  => 'nullable|string|max:500',
             'lead_time'                        => 'required|integer|min:1',
             'is_on_hold'                       => 'nullable|boolean',

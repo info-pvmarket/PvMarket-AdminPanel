@@ -1445,6 +1445,25 @@ document.getElementById('productSelect').addEventListener('change', function () 
 });
 
 // ── Live summary ─────────────────────────────────────────────
+const totalQuantityLimits = {
+    'sell by pieces': { maximum: 15000, unit: 'pieces' },
+    'sell by pallets': { maximum: 450, unit: 'pallets' },
+    'sell by container': { maximum: 20, unit: 'containers' },
+};
+
+function syncTotalQuantityLimit() {
+    const sellType = document.getElementById('sellTypeSelect').value;
+    const input = document.getElementById('totalQtyInput');
+    const limit = totalQuantityLimits[sellType];
+
+    input.max = limit ? String(limit.maximum) : '';
+    input.setCustomValidity(
+        limit && Number(input.value) > limit.maximum
+            ? `Total quantity must be less than or equal to ${limit.maximum.toLocaleString()} when selling by ${limit.unit}.`
+            : ''
+    );
+}
+
 document.getElementById('sellTypeSelect').addEventListener('change', function () {
     document.getElementById('summSellType').textContent =
         this.value ? this.options[this.selectedIndex].text : 'Not set';
@@ -1453,6 +1472,7 @@ document.getElementById('sellTypeSelect').addEventListener('change', function ()
         'sell by pallets': 'pallets',
         'sell by container': 'container',
     }[this.value] || 'pcs';
+    syncTotalQuantityLimit();
 });
 
 document.getElementById('sellTypeSelect').dispatchEvent(new Event('change'));
@@ -1465,6 +1485,7 @@ document.getElementById('totalQtyInput').addEventListener('input', function () {
     document.getElementById('summQty').textContent =
         this.value ? Number(this.value).toLocaleString() + ' pcs' : '—';
     updateStickyLabel();
+    syncTotalQuantityLimit();
 });
 
 function syncOfferStatusSummary() {
