@@ -1061,6 +1061,30 @@
             @endif
         </button>
 
+        <button class="tab-btn {{ $activeTab === 'products' ? 'active' : '' }}"
+                onclick="switchTab('products', this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 7h18v13H3z"/><path d="M3 7l3-4h12l3 4"/>
+                <path d="M8 12h8M8 16h5"/>
+            </svg>
+            Products
+            @if($createdProducts->total() > 0)
+                <span class="badge badge-info" style="margin-left:4px;">{{ $createdProducts->total() }}</span>
+            @endif
+        </button>
+
+        <button class="tab-btn {{ $activeTab === 'warehouses' ? 'active' : '' }}"
+                onclick="switchTab('warehouses', this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 10l9-7 9 7v11H3z"/>
+                <path d="M9 21v-8h6v8"/>
+            </svg>
+            Warehouses
+            @if($userWarehouses->total() > 0)
+                <span class="badge badge-info" style="margin-left:4px;">{{ $userWarehouses->total() }}</span>
+            @endif
+        </button>
+
         <button class="tab-btn {{ $activeTab === 'purchases' ? 'active' : '' }}"
                 onclick="switchTab('purchases', this)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1874,6 +1898,143 @@
             </div>
         @endforelse
         </div>
+    </div>
+
+    {{-- ══════════════════════════
+         TAB: Products created by this user
+    ══════════════════════════ --}}
+    <div class="tab-content {{ $activeTab === 'products' ? 'active' : '' }}" id="tab-products">
+        <div class="section-title">Products Added by {{ $user->name }}</div>
+
+        <div class="stats-summary">
+            <div class="stat-card">
+                <div class="stat-value">{{ $createdProducts->total() }}</div>
+                <div class="stat-label">Total Products</div>
+            </div>
+        </div>
+
+        @if($createdProducts->count() > 0)
+            <div style="overflow-x:auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>SKU</th>
+                            <th>Category / Subcategory</th>
+                            <th>Brand</th>
+                            <th>Verification</th>
+                            <th>Created</th>
+                            <th>Last Updated</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($createdProducts as $createdProduct)
+                            <tr>
+                                <td class="product-name">{{ lang($createdProduct, 'product_name') ?: 'Unnamed product' }}</td>
+                                <td>{{ $createdProduct->sku_code ?: '—' }}</td>
+                                <td>
+                                    {{ lang($createdProduct, 'category_name') ?: '—' }}
+                                    / {{ lang($createdProduct, 'sub_category_name') ?: '—' }}
+                                </td>
+                                <td>{{ lang($createdProduct, 'brand_name') ?: '—' }}</td>
+                                <td>{{ ucfirst($createdProduct->verification_status ?? 'pending') }}</td>
+                                <td>{{ $createdProduct->created_at ? \Carbon\Carbon::parse($createdProduct->created_at)->format('M d, Y H:i') : '—' }}</td>
+                                <td>{{ $createdProduct->updated_at ? \Carbon\Carbon::parse($createdProduct->updated_at)->format('M d, Y H:i') : '—' }}</td>
+                                <td>
+                                    <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                                        @if(($createdProduct->verification_status ?? 'pending') !== 'verified')
+                                            <form method="POST" action="{{ route('admin.users.products.approve', ['userId' => $user->id, 'productId' => $createdProduct->id]) }}" style="margin:0;">
+                                                @csrf @method('PATCH')
+                                                <input type="hidden" name="products_page" value="{{ $createdProducts->currentPage() }}">
+                                                <button type="submit" class="btn-action btn-action-success" onclick="return confirm('Approve and activate this product?')">Approve</button>
+                                            </form>
+                                        @endif
+                                        <a href="{{ route('admin.products.edit', $createdProduct->id) }}" class="btn-action btn-action-info">Edit</a>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top:16px;">{{ $createdProducts->links() }}</div>
+        @else
+            <div class="empty-card">
+                <div class="empty-icon">📦</div>
+                <div class="empty-text">No products added by this user.</div>
+            </div>
+        @endif
+    </div>
+
+    {{-- ══════════════════════════
+         TAB: Warehouses owned by this user
+    ══════════════════════════ --}}
+    <div class="tab-content {{ $activeTab === 'warehouses' ? 'active' : '' }}" id="tab-warehouses">
+        <div class="section-title">Warehouses Added by {{ $user->name }}</div>
+
+        <div class="stats-summary">
+            <div class="stat-card">
+                <div class="stat-value">{{ $userWarehouses->total() }}</div>
+                <div class="stat-label">Total Warehouses</div>
+            </div>
+        </div>
+
+        @if($userWarehouses->count() > 0)
+            <div style="overflow-x:auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Warehouse</th>
+                            <th>Location</th>
+                            <th>Contact</th>
+                            <th>Payment</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Last Updated</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($userWarehouses as $userWarehouse)
+                            <tr>
+                                <td class="product-name">{{ lang($userWarehouse, 'warehouse_name') ?: 'Unnamed warehouse' }}</td>
+                                <td>
+                                    {{ lang($userWarehouse, 'city') ?: '—' }},
+                                    {{ lang($userWarehouse, 'country_name') ?: '—' }}
+                                </td>
+                                <td>
+                                    {{ $userWarehouse->contact_name ?: '—' }}<br>
+                                    {{ $userWarehouse->warehouse_email ?: '—' }}
+                                </td>
+                                <td>{{ ucfirst($userWarehouse->payment_status ?? 'pending') }}</td>
+                                <td>{{ $userWarehouse->is_active ? 'Active' : 'Inactive' }}</td>
+                                <td>{{ $userWarehouse->created_at ? \Carbon\Carbon::parse($userWarehouse->created_at)->format('M d, Y H:i') : '—' }}</td>
+                                <td>{{ $userWarehouse->updated_at ? \Carbon\Carbon::parse($userWarehouse->updated_at)->format('M d, Y H:i') : '—' }}</td>
+                                <td>
+                                    <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                                        @if(!$userWarehouse->is_paid)
+                                            <form method="POST" action="{{ route('admin.users.warehouses.approve', ['userId' => $user->id, 'warehouseId' => $userWarehouse->id]) }}" style="margin:0;">
+                                                @csrf @method('PATCH')
+                                                <input type="hidden" name="warehouses_page" value="{{ $userWarehouses->currentPage() }}">
+                                                <button type="submit" class="btn-action btn-action-success" title="Marks this warehouse as paid" onclick="return confirm('Approve this warehouse and mark it as paid?')">Approve</button>
+                                            </form>
+                                        @endif
+                                        <a href="{{ route('admin.warehouses.edit', $userWarehouse->id) }}" class="btn-action btn-action-info">Edit</a>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top:16px;">{{ $userWarehouses->links() }}</div>
+        @else
+            <div class="empty-card">
+                <div class="empty-icon">🏭</div>
+                <div class="empty-text">No warehouses added by this user.</div>
+            </div>
+        @endif
     </div>
 
     {{-- ══════════════════════════

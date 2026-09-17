@@ -13,6 +13,49 @@ class AdminListPresentationTest extends TestCase
         return dirname(__DIR__, 2).DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $path);
     }
 
+    public function test_user_edit_has_a_separate_paginated_products_tab_scoped_to_creator(): void
+    {
+        $controller = file_get_contents($this->projectFile('app/Http/Controllers/Admin/UserController.php'));
+        $view = file_get_contents($this->projectFile('resources/views/admin/users/edit.blade.php'));
+
+        $this->assertStringContainsString("Product::whereIn('created_by', [\$userId, (string) \$userId])", $controller);
+        $this->assertStringContainsString("->paginate(10, ['*'], 'products_page')", $controller);
+        $this->assertStringContainsString("'active_tab' => 'products'", $controller);
+        $this->assertStringContainsString("switchTab('products', this)", $view);
+        $this->assertStringContainsString('id="tab-products"', $view);
+        $this->assertStringContainsString("route('admin.products.edit', \$createdProduct->id)", $view);
+    }
+
+    public function test_user_edit_has_a_separate_paginated_warehouses_tab_scoped_to_owner(): void
+    {
+        $controller = file_get_contents($this->projectFile('app/Http/Controllers/Admin/UserController.php'));
+        $view = file_get_contents($this->projectFile('resources/views/admin/users/edit.blade.php'));
+
+        $this->assertStringContainsString("Warehouse::whereIn('user_id', [\$userId, (string) \$userId])", $controller);
+        $this->assertStringContainsString("->paginate(10, ['*'], 'warehouses_page')", $controller);
+        $this->assertStringContainsString("'active_tab' => 'warehouses'", $controller);
+        $this->assertStringContainsString("switchTab('warehouses', this)", $view);
+        $this->assertStringContainsString('id="tab-warehouses"', $view);
+        $this->assertStringContainsString("route('admin.warehouses.edit', \$userWarehouse->id)", $view);
+    }
+
+    public function test_user_product_and_warehouse_approval_actions_are_owner_scoped(): void
+    {
+        $routes = file_get_contents($this->projectFile('routes/web.php'));
+        $controller = file_get_contents($this->projectFile('app/Http/Controllers/Admin/UserController.php'));
+        $view = file_get_contents($this->projectFile('resources/views/admin/users/edit.blade.php'));
+
+        $this->assertStringContainsString("name('admin.users.products.approve')", $routes);
+        $this->assertStringContainsString("name('admin.users.warehouses.approve')", $routes);
+        $this->assertStringContainsString("whereIn('created_by', [\$ownerId, \$userId])", $controller);
+        $this->assertStringContainsString("whereIn('user_id', [\$ownerId, \$userId])", $controller);
+        $this->assertStringContainsString("'verification_status' => 'verified'", $controller);
+        $this->assertStringContainsString("'payment_status' => 'paid'", $controller);
+        $this->assertStringContainsString("route('admin.users.products.approve'", $view);
+        $this->assertStringContainsString("route('admin.users.warehouses.approve'", $view);
+        $this->assertStringContainsString("@csrf @method('PATCH')", $view);
+    }
+
     public function test_user_management_has_real_status_and_delete_forms(): void
     {
         $routes = file_get_contents($this->projectFile('routes/web.php'));

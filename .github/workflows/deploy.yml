@@ -5,6 +5,12 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      production_only:
+        description: Deploy only to production
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -75,9 +81,10 @@ jobs:
           printf '%s\n' "$SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
           chmod 600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
 
-      - name: Deploy development then production
+      - name: Deploy selected environments
         shell: bash
         env:
+          PROD_ONLY: ${{ (github.event_name == 'push' && contains(github.event.head_commit.message, '[prod-only]')) || (github.event_name == 'workflow_dispatch' && inputs.production_only) }}
           DEPLOY_HOST: ${{ secrets.HETZNER_SSH_HOST }}
           DEPLOY_USER: ${{ secrets.HETZNER_SSH_USER }}
           IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
@@ -95,5 +102,7 @@ jobs:
                 "$DEPLOY_USER@$DEPLOY_HOST" \
                 "sudo /usr/local/sbin/pv-market-new-deploy '$environment' admin '$IMAGE_NAME@$IMAGE_DIGEST' '$GHCR_USER'"
           }
-          deploy dev
+          if [[ "$PROD_ONLY" != "true" ]]; then
+            deploy dev
+          fi
           deploy prod

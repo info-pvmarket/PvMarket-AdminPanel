@@ -192,6 +192,21 @@ class UserController extends Controller
             ->get()
             ->groupBy(fn($img) => (string)$img->product_listing_id);
 
+        // Products are owned by their creator, independently of this user's listings.
+        // Include both BSON and legacy string IDs stored in created_by.
+        $createdProducts = Product::whereIn('created_by', [$userId, (string) $userId])
+            ->whereNull('deleted_at')
+            ->orderBy('created_at', 'desc')
+            ->paginate(10, ['*'], 'products_page')
+            ->appends(array_merge($request->query(), ['active_tab' => 'products']));
+
+        // Warehouse ownership is stored in user_id (as BSON or a legacy string).
+        $userWarehouses = Warehouse::whereIn('user_id', [$userId, (string) $userId])
+            ->whereNull('deleted_at')
+            ->orderBy('created_at', 'desc')
+            ->paginate(10, ['*'], 'warehouses_page')
+            ->appends(array_merge($request->query(), ['active_tab' => 'warehouses']));
+
         // ── Purchases (Orders where this user is the buyer) ───────────
         $purchases = Order::where('user_id', $userId)
             ->orderBy('created_at', 'desc')
@@ -245,6 +260,8 @@ class UserController extends Controller
             'listingProductsMap',
             'listingWarehousesMap',
             'listingImagesMap',
+            'createdProducts',
+            'userWarehouses',
             'listingFilter',
             'listingStatus',
             'listingPayment',
@@ -870,5 +887,53 @@ public function assignAdmin(Request $request, $userId)
 
         return redirect()->route('admin.users.edit', $params)
             ->with('success', 'Listing rejected.');
+    }
+
+    public function approveUserProduct(Request $request, string $userId, string $productId)
+    {
+        $this->managedUser($userId);
+        abort_unless(preg_match('/^[a-f\d]{24}$/i', $productId), 404);
+
+        $ownerId = new ObjectId($userId);
+        $product = Product::where('_id', new ObjectId($productId))
+            ->whereIn('created_by', [$ownerId, $userId])
+            ->whereNull('deleted_at')
+            ->firstOrFail();
+
+        $product->update([
+            'verification_status' => 'verified',
+            'is_active' => true,
+            'updated_by' => Auth::user()->name,
+        ]);
+
+        return redirect()->route('admin.users.edit', [
+            'id' => $userId,
+            'active_tab' => 'products',
+            'products_page' => max(1, (int) $request->input('products_page', 1)),
+        ])->with('success', 'Product verified.');
+    }
+
+    public function approveUserWarehouse(Request $request, string $userId, string $warehouseId)
+    {
+        $this->managedUser($userId);
+        abort_unless(preg_match('/^[a-f\d]{24}$/i', $warehouseId), 404);
+
+        $ownerId = new ObjectId($userId);
+        $warehouse = Warehouse::where('_id', new ObjectId($warehouseId))
+            ->whereIn('user_id', [$ownerId, $userId])
+            ->whereNull('deleted_at')
+            ->firstOrFail();
+
+        $warehouse->update([
+            'is_paid' => true,
+            'payment_status' => 'paid',
+            'updated_by' => Auth::user()->name,
+        ]);
+
+        return redirect()->route('admin.users.edit', [
+            'id' => $userId,
+            'active_tab' => 'warehouses',
+            'warehouses_page' => max(1, (int) $request->input('warehouses_page', 1)),
+        ])->with('success', 'Warehouse marked as paid.');
     }
 }

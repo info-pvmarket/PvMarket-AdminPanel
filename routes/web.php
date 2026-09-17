@@ -412,6 +412,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/admin/users/{userId}/listings/{listingId}/approve', [UserController::class, 'approveListing'])->name('admin.users.listing-approve');
         Route::post('/admin/users/{userId}/listings/{listingId}/reject', [UserController::class, 'rejectListing'])->name('admin.users.listing-reject');
 
+        Route::patch('/admin/users/{userId}/products/{productId}/approve', [UserController::class, 'approveUserProduct'])->name('admin.users.products.approve');
+        Route::patch('/admin/users/{userId}/warehouses/{warehouseId}/approve', [UserController::class, 'approveUserWarehouse'])->name('admin.users.warehouses.approve');
+
     });
 
     // ══════════════════════════════════════════════════════════════════════
