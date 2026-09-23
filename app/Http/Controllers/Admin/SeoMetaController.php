@@ -208,9 +208,9 @@ class SeoMetaController extends Controller
             'created_by'     => Auth::id(),
         ];
         $ogData = $this->attachTranslations($ogData, new SeoOGMetaData());
-        $ogMeta = SeoOGMetaData::create($ogData);
+        $ogMeta = $seoMeta->ogMeta()->updateOrCreate([], $ogData);
 
-        $this->handleOgImages($request, $ogMeta->id);
+        $this->handleOgImages($request, (string) $ogMeta->getKey());
 
         // Create Twitter Meta
         if ($request->filled('twitter_title') || $request->filled('twitter_description')) {
@@ -333,14 +333,12 @@ class SeoMetaController extends Controller
         ];
         $ogData = $this->attachTranslations($ogData, $ogMeta ?? new SeoOGMetaData());
 
-        if ($ogMeta) {
-            $ogMeta->update($ogData);
-        } else {
+        if (!$ogMeta) {
             $ogData['created_by'] = Auth::id();
-            $ogMeta = SeoOGMetaData::create($ogData);
         }
+        $ogMeta = $seoMeta->ogMeta()->updateOrCreate([], $ogData);
 
-        $this->handleOgImages($request, $ogMeta->id);
+        $this->handleOgImages($request, (string) $ogMeta->getKey());
 
         // Update or create Twitter Meta
         $twitterMeta = $seoMeta->twitterMeta;

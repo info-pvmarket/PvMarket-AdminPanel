@@ -5,6 +5,7 @@ namespace App\Models;
 use MongoDB\Laravel\Eloquent\Model;
 use App\Traits\HasTranslations;
 use App\Casts\AsObjectId;
+use MongoDB\BSON\ObjectId;
 
 class SeoMetaData extends Model
 {
@@ -115,12 +116,30 @@ class SeoMetaData extends Model
     // Scope for finding by entity combination
     public function scopeForEntity($query, $marketId = null, $categoryId = null, $subCategoryId = null, $brandId = null, $productId = null)
     {
-        return $query
-            ->where('market_id', $marketId)
-            ->where('category_id', $categoryId)
-            ->where('sub_category_id', $subCategoryId)
-            ->where('brand_id', $brandId)
-            ->where('product_id', $productId);
+        foreach ([
+            'market_id'       => $marketId,
+            'category_id'     => $categoryId,
+            'sub_category_id' => $subCategoryId,
+            'brand_id'        => $brandId,
+            'product_id'      => $productId,
+        ] as $field => $value) {
+            if ($value === null || $value === '') {
+                $query->whereNull($field);
+                continue;
+            }
+
+            // Older records may contain string IDs while newer records use
+            // BSON ObjectIds. Match both representations so API lookups and
+            // duplicate checks consistently resolve the intended entity.
+            $candidates = [$value];
+            if (is_string($value) && preg_match('/^[a-f0-9]{24}$/i', $value)) {
+                $candidates[] = new ObjectId($value);
+            }
+
+            $query->whereIn($field, $candidates);
+        }
+
+        return $query;
     }
 
     // Get the page type based on entity combination

@@ -30,7 +30,8 @@ class SeoMetaPresentationTest extends TestCase
         $controller = file_get_contents($this->projectFile('app/Http/Controllers/Admin/SeoMetaController.php'));
 
         $this->assertSame(2, substr_count($controller, "'og_type'          => 'required|in:website,article,product'"));
-        $this->assertSame(2, substr_count($controller, "SeoOGMetaData::create(\$ogData)"));
+        $this->assertSame(2, substr_count($controller, "->ogMeta()->updateOrCreate([], \$ogData)"));
+        $this->assertSame(2, substr_count($controller, "(string) \$ogMeta->getKey()"));
         $this->assertStringNotContainsString("filled('og_title') || \$request->filled('og_description')", $controller);
 
         foreach (['robot_index', 'robot_follow', 'robot_noarchive', 'robot_nosnippet', 'robot_noimageindex', 'robot_nocache'] as $field) {
@@ -39,5 +40,14 @@ class SeoMetaPresentationTest extends TestCase
 
         $this->assertSame(2, substr_count($controller, "'index'             => \$request->boolean('robot_index')"));
         $this->assertSame(2, substr_count($controller, "'follow'            => \$request->boolean('robot_follow')"));
+    }
+
+    public function test_entity_scope_matches_string_and_object_id_storage(): void
+    {
+        $model = file_get_contents($this->projectFile('app/Models/SeoMetaData.php'));
+
+        $this->assertStringContainsString("preg_match('/^[a-f0-9]{24}$/i', \$value)", $model);
+        $this->assertStringContainsString('$candidates[] = new ObjectId($value);', $model);
+        $this->assertStringContainsString('$query->whereIn($field, $candidates);', $model);
     }
 }
