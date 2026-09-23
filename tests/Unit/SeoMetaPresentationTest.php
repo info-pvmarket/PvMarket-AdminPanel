@@ -2,6 +2,8 @@
 
 namespace Tests\Unit;
 
+use App\Models\SeoMetaData;
+use MongoDB\BSON\ObjectId;
 use PHPUnit\Framework\TestCase;
 
 class SeoMetaPresentationTest extends TestCase
@@ -49,5 +51,23 @@ class SeoMetaPresentationTest extends TestCase
         $this->assertStringContainsString("preg_match('/^[a-f0-9]{24}$/i', \$value)", $model);
         $this->assertStringContainsString('$candidates[] = new ObjectId($value);', $model);
         $this->assertStringContainsString('$query->whereIn($field, $candidates);', $model);
+    }
+
+    public function test_seo_relations_use_the_raw_mongodb_object_id(): void
+    {
+        $id = new ObjectId('6ab3c281b4ea08bca90acd32');
+        $model = new SeoMetaData();
+        $model->setRawAttributes(['id' => $id], true);
+
+        $this->assertInstanceOf(ObjectId::class, $model->mongo_relation_id);
+        $this->assertSame((string) $id, (string) $model->mongo_relation_id);
+
+        $seoModel = file_get_contents($this->projectFile('app/Models/SeoMetaData.php'));
+        $ogModel = file_get_contents($this->projectFile('app/Models/SeoOGMetaData.php'));
+        $twitterModel = file_get_contents($this->projectFile('app/Models/SeoTwitterMetaData.php'));
+
+        $this->assertSame(3, substr_count($seoModel, "'mongo_relation_id'"));
+        $this->assertStringContainsString("'og_meta_id', 'mongo_relation_id'", $ogModel);
+        $this->assertStringContainsString("'twitter_meta_id', 'mongo_relation_id'", $twitterModel);
     }
 }

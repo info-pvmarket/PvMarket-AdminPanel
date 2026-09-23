@@ -4,11 +4,12 @@ namespace App\Models;
 
 use MongoDB\Laravel\Eloquent\Model;
 use App\Traits\HasTranslations;
+use App\Traits\HasMongoRelationKey;
 use App\Casts\AsObjectId;
 
 class SeoOGMetaData extends Model
 {
-    use HasTranslations;
+    use HasTranslations, HasMongoRelationKey;
 
     protected $connection = 'mongodb';
     protected $collection = 'seo_og_meta_data';
@@ -45,6 +46,6 @@ class SeoOGMetaData extends Model
 
     public function images()
     {
-        return $this->hasMany(SeoOGImage::class, 'og_meta_id');
+        return $this->hasMany(SeoOGImage::class, 'og_meta_id', 'mongo_relation_id');
     }
 }

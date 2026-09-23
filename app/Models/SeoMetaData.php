@@ -4,12 +4,13 @@ namespace App\Models;
 
 use MongoDB\Laravel\Eloquent\Model;
 use App\Traits\HasTranslations;
+use App\Traits\HasMongoRelationKey;
 use App\Casts\AsObjectId;
 use MongoDB\BSON\ObjectId;
 
 class SeoMetaData extends Model
 {
-    use HasTranslations;
+    use HasTranslations, HasMongoRelationKey;
 
     protected $connection = 'mongodb';
     protected $collection = 'seo_meta_data';
@@ -88,17 +89,17 @@ class SeoMetaData extends Model
 
     public function ogMeta()
     {
-        return $this->hasOne(SeoOGMetaData::class, 'seo_meta_id');
+        return $this->hasOne(SeoOGMetaData::class, 'seo_meta_id', 'mongo_relation_id');
     }
 
     public function twitterMeta()
     {
-        return $this->hasOne(SeoTwitterMetaData::class, 'seo_meta_id');
+        return $this->hasOne(SeoTwitterMetaData::class, 'seo_meta_id', 'mongo_relation_id');
     }
 
     public function robotMeta()
     {
-        return $this->hasOne(SeoRobotMetaData::class, 'seo_meta_id');
+        return $this->hasOne(SeoRobotMetaData::class, 'seo_meta_id', 'mongo_relation_id');
     }
 
     // Build unique key for this combination

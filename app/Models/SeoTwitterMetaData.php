@@ -4,11 +4,12 @@ namespace App\Models;
 
 use MongoDB\Laravel\Eloquent\Model;
 use App\Traits\HasTranslations;
+use App\Traits\HasMongoRelationKey;
 use App\Casts\AsObjectId;
 
 class SeoTwitterMetaData extends Model
 {
-    use HasTranslations;
+    use HasTranslations, HasMongoRelationKey;
 
     protected $connection = 'mongodb';
     protected $collection = 'seo_twitter_meta_data';
@@ -44,6 +45,6 @@ class SeoTwitterMetaData extends Model
 
     public function images()
     {
-        return $this->hasMany(SeoTwitterImage::class, 'twitter_meta_id');
+        return $this->hasMany(SeoTwitterImage::class, 'twitter_meta_id', 'mongo_relation_id');
     }
 }
