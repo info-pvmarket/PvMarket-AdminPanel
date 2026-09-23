@@ -288,14 +288,17 @@
 
         <div class="form-grid-3">
             <div class="checkbox-group">
+                <input type="hidden" name="robot_index" value="0"/>
                 <input type="checkbox" name="robot_index" id="robot_index" value="1" {{ old('robot_index', true) ? 'checked' : '' }}/>
                 <label for="robot_index">Index this page</label>
             </div>
             <div class="checkbox-group">
+                <input type="hidden" name="robot_follow" value="0"/>
                 <input type="checkbox" name="robot_follow" id="robot_follow" value="1" {{ old('robot_follow', true) ? 'checked' : '' }}/>
                 <label for="robot_follow">Follow links</label>
             </div>
             <div class="checkbox-group">
+                <input type="hidden" name="robot_noarchive" value="0"/>
                 <input type="checkbox" name="robot_noarchive" id="robot_noarchive" value="1" {{ old('robot_noarchive') ? 'checked' : '' }}/>
                 <label for="robot_noarchive">No Archive</label>
             </div>
@@ -303,14 +306,17 @@
 
         <div class="form-grid-3">
             <div class="checkbox-group">
+                <input type="hidden" name="robot_nosnippet" value="0"/>
                 <input type="checkbox" name="robot_nosnippet" id="robot_nosnippet" value="1" {{ old('robot_nosnippet') ? 'checked' : '' }}/>
                 <label for="robot_nosnippet">No Snippet</label>
             </div>
             <div class="checkbox-group">
+                <input type="hidden" name="robot_noimageindex" value="0"/>
                 <input type="checkbox" name="robot_noimageindex" id="robot_noimageindex" value="1" {{ old('robot_noimageindex') ? 'checked' : '' }}/>
                 <label for="robot_noimageindex">No Image Index</label>
             </div>
             <div class="checkbox-group">
+                <input type="hidden" name="robot_nocache" value="0"/>
                 <input type="checkbox" name="robot_nocache" id="robot_nocache" value="1" {{ old('robot_nocache') ? 'checked' : '' }}/>
                 <label for="robot_nocache">No Cache</label>
             </div>
@@ -772,14 +778,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
         <div class="form-grid-3">
             <div class="checkbox-group">
+                <input type="hidden" name="robot_index" value="0"/>
                 <input type="checkbox" name="robot_index" id="robot_index" value="1" {{ old('robot_index', $robotMeta->index ?? true) ? 'checked' : '' }}/>
                 <label for="robot_index">Index this page</label>
             </div>
             <div class="checkbox-group">
+                <input type="hidden" name="robot_follow" value="0"/>
                 <input type="checkbox" name="robot_follow" id="robot_follow" value="1" {{ old('robot_follow', $robotMeta->follow ?? true) ? 'checked' : '' }}/>
                 <label for="robot_follow">Follow links</label>
             </div>
             <div class="checkbox-group">
+                <input type="hidden" name="robot_noarchive" value="0"/>
                 <input type="checkbox" name="robot_noarchive" id="robot_noarchive" value="1" {{ old('robot_noarchive', $robotMeta->noarchive ?? false) ? 'checked' : '' }}/>
                 <label for="robot_noarchive">No Archive</label>
             </div>
@@ -787,14 +796,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
         <div class="form-grid-3">
             <div class="checkbox-group">
+                <input type="hidden" name="robot_nosnippet" value="0"/>
                 <input type="checkbox" name="robot_nosnippet" id="robot_nosnippet" value="1" {{ old('robot_nosnippet', $robotMeta->nosnippet ?? false) ? 'checked' : '' }}/>
                 <label for="robot_nosnippet">No Snippet</label>
             </div>
             <div class="checkbox-group">
+                <input type="hidden" name="robot_noimageindex" value="0"/>
                 <input type="checkbox" name="robot_noimageindex" id="robot_noimageindex" value="1" {{ old('robot_noimageindex', $robotMeta->noimageindex ?? false) ? 'checked' : '' }}/>
                 <label for="robot_noimageindex">No Image Index</label>
             </div>
             <div class="checkbox-group">
+                <input type="hidden" name="robot_nocache" value="0"/>
                 <input type="checkbox" name="robot_nocache" id="robot_nocache" value="1" {{ old('robot_nocache', $robotMeta->nocache ?? false) ? 'checked' : '' }}/>
                 <label for="robot_nocache">No Cache</label>
             </div>

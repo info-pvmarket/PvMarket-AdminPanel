@@ -132,6 +132,15 @@ class SeoMetaController extends Controller
             'category_id'      => 'nullable|string',
             'sub_category_id'  => 'nullable|string',
             'brand_id'         => 'nullable|string',
+            'og_title'         => 'nullable|string|max:255',
+            'og_description'   => 'nullable|string|max:500',
+            'og_type'          => 'required|in:website,article,product',
+            'og_url'           => 'nullable|url|max:500',
+            'og_site_name'     => 'nullable|string|max:255',
+            'og_locale'        => 'nullable|string|max:20',
+            'max_snippet'      => 'nullable|integer|min:-1',
+            'max_image_preview'=> 'required|in:none,standard,large',
+            'max_video_preview'=> 'nullable|integer|min:-1',
         ]);
 
         // Sanitize ObjectId fields to prevent "undefined" string errors
@@ -185,25 +194,23 @@ class SeoMetaController extends Controller
         $seoData = $this->attachTranslations($seoData, new SeoMetaData());
         $seoMeta = SeoMetaData::create($seoData);
 
-        // Create OG Meta
-        if ($request->filled('og_title') || $request->filled('og_description')) {
-            $ogData = [
-                'seo_meta_id'    => $seoMeta->id,
-                'og_title'       => $request->og_title ?? $request->meta_title,
-                'og_description' => $request->og_description ?? $request->meta_description,
-                'og_type'        => $request->og_type ?? 'website',
-                'og_url'         => $request->og_url,
-                'og_site_name'   => $request->og_site_name ?? 'PV Market',
-                'og_locale'      => $request->og_locale ?? 'en_US',
-                'is_active'      => true,
-                'created_by'     => Auth::id(),
-            ];
-            $ogData = $this->attachTranslations($ogData, new SeoOGMetaData());
-            $ogMeta = SeoOGMetaData::create($ogData);
+        // Always persist Open Graph settings. Title/description fall back to
+        // the basic metadata when the dedicated fields are left blank.
+        $ogData = [
+            'seo_meta_id'    => $seoMeta->id,
+            'og_title'       => $request->filled('og_title') ? $request->og_title : $request->meta_title,
+            'og_description' => $request->filled('og_description') ? $request->og_description : $request->meta_description,
+            'og_type'        => $request->og_type,
+            'og_url'         => $request->og_url,
+            'og_site_name'   => $request->filled('og_site_name') ? $request->og_site_name : 'PV Market',
+            'og_locale'      => $request->filled('og_locale') ? $request->og_locale : 'en_US',
+            'is_active'      => true,
+            'created_by'     => Auth::id(),
+        ];
+        $ogData = $this->attachTranslations($ogData, new SeoOGMetaData());
+        $ogMeta = SeoOGMetaData::create($ogData);
 
-            // Handle OG images
-            $this->handleOgImages($request, $ogMeta->id);
-        }
+        $this->handleOgImages($request, $ogMeta->id);
 
         // Create Twitter Meta
         if ($request->filled('twitter_title') || $request->filled('twitter_description')) {
@@ -227,8 +234,8 @@ class SeoMetaController extends Controller
         // Create Robot Meta
         $robotData = [
             'seo_meta_id'       => $seoMeta->id,
-            'index'             => $request->boolean('robot_index', true),
-            'follow'            => $request->boolean('robot_follow', true),
+            'index'             => $request->boolean('robot_index'),
+            'follow'            => $request->boolean('robot_follow'),
             'noarchive'         => $request->boolean('robot_noarchive', false),
             'nosnippet'         => $request->boolean('robot_nosnippet', false),
             'noimageindex'      => $request->boolean('robot_noimageindex', false),
@@ -282,6 +289,15 @@ class SeoMetaController extends Controller
             'bottom_header'    => 'nullable|string|max:255',
             'bottom_description'=> 'nullable|string',
             'canonical_url'    => 'nullable|url|max:500',
+            'og_title'         => 'nullable|string|max:255',
+            'og_description'   => 'nullable|string|max:500',
+            'og_type'          => 'required|in:website,article,product',
+            'og_url'           => 'nullable|url|max:500',
+            'og_site_name'     => 'nullable|string|max:255',
+            'og_locale'        => 'nullable|string|max:20',
+            'max_snippet'      => 'nullable|integer|min:-1',
+            'max_image_preview'=> 'required|in:none,standard,large',
+            'max_video_preview'=> 'nullable|integer|min:-1',
         ]);
 
         $seoMeta = SeoMetaData::findOrFail($id);
@@ -304,29 +320,27 @@ class SeoMetaController extends Controller
 
         // Update or create OG Meta
         $ogMeta = $seoMeta->ogMeta;
-        if ($request->filled('og_title') || $request->filled('og_description')) {
-            $ogData = [
-                'seo_meta_id'    => $seoMeta->id,
-                'og_title'       => $request->og_title ?? $request->meta_title,
-                'og_description' => $request->og_description ?? $request->meta_description,
-                'og_type'        => $request->og_type ?? 'website',
-                'og_url'         => $request->og_url,
-                'og_site_name'   => $request->og_site_name ?? 'PV Market',
-                'og_locale'      => $request->og_locale ?? 'en_US',
-                'is_active'      => true,
-                'updated_by'     => Auth::id(),
-            ];
-            $ogData = $this->attachTranslations($ogData, $ogMeta ?? new SeoOGMetaData());
+        $ogData = [
+            'seo_meta_id'    => $seoMeta->id,
+            'og_title'       => $request->filled('og_title') ? $request->og_title : $request->meta_title,
+            'og_description' => $request->filled('og_description') ? $request->og_description : $request->meta_description,
+            'og_type'        => $request->og_type,
+            'og_url'         => $request->og_url,
+            'og_site_name'   => $request->filled('og_site_name') ? $request->og_site_name : 'PV Market',
+            'og_locale'      => $request->filled('og_locale') ? $request->og_locale : 'en_US',
+            'is_active'      => true,
+            'updated_by'     => Auth::id(),
+        ];
+        $ogData = $this->attachTranslations($ogData, $ogMeta ?? new SeoOGMetaData());
 
-            if ($ogMeta) {
-                $ogMeta->update($ogData);
-            } else {
-                $ogData['created_by'] = Auth::id();
-                $ogMeta = SeoOGMetaData::create($ogData);
-            }
-
-            $this->handleOgImages($request, $ogMeta->id);
+        if ($ogMeta) {
+            $ogMeta->update($ogData);
+        } else {
+            $ogData['created_by'] = Auth::id();
+            $ogMeta = SeoOGMetaData::create($ogData);
         }
+
+        $this->handleOgImages($request, $ogMeta->id);
 
         // Update or create Twitter Meta
         $twitterMeta = $seoMeta->twitterMeta;
@@ -357,8 +371,8 @@ class SeoMetaController extends Controller
         $robotMeta = $seoMeta->robotMeta;
         $robotData = [
             'seo_meta_id'       => $seoMeta->id,
-            'index'             => $request->boolean('robot_index', true),
-            'follow'            => $request->boolean('robot_follow', true),
+            'index'             => $request->boolean('robot_index'),
+            'follow'            => $request->boolean('robot_follow'),
             'noarchive'         => $request->boolean('robot_noarchive', false),
             'nosnippet'         => $request->boolean('robot_nosnippet', false),
             'noimageindex'      => $request->boolean('robot_noimageindex', false),
