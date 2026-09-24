@@ -78,9 +78,10 @@ trait WritesSeoMetaRecords
     {
         $textFields = [
             'meta_title', 'meta_description', 'meta_keywords', 'canonical_url',
-            'page_header', 'short_description', 'bottom_header', 'bottom_description',
             'og_title', 'og_description', 'og_url',
             'twitter_title', 'twitter_description',
+            // Only present on forms that offer the on-page copy fields.
+            'page_header', 'short_description', 'bottom_header', 'bottom_description',
         ];
 
         foreach ($textFields as $field) {
@@ -111,16 +112,23 @@ trait WritesSeoMetaRecords
         }
 
         $parent = array_merge($identity, $extra, [
-            'meta_title'         => $this->seoValue($request, 'meta_title'),
-            'meta_description'   => $this->seoValue($request, 'meta_description'),
-            'meta_keywords'      => $this->seoValue($request, 'meta_keywords'),
-            'canonical_url'      => $this->seoValue($request, 'canonical_url'),
-            'page_header'        => $this->seoValue($request, 'page_header'),
-            'short_description'  => $this->seoValue($request, 'short_description'),
-            'bottom_header'      => $this->seoValue($request, 'bottom_header'),
-            'bottom_description' => $this->seoValue($request, 'bottom_description'),
-            'is_active'          => true,
+            'meta_title'       => $this->seoValue($request, 'meta_title'),
+            'meta_description' => $this->seoValue($request, 'meta_description'),
+            'meta_keywords'    => $this->seoValue($request, 'meta_keywords'),
+            'canonical_url'    => $this->seoValue($request, 'canonical_url'),
+            'is_active'        => true,
         ]);
+
+        // On-page copy is only offered on forms that own the page body (the SEO
+        // Meta screen for category and brand pages). Static pages take their
+        // body content from page sections instead and do not post these, so they
+        // are written only when the form actually provides them - otherwise an
+        // update would blank copy a different screen had authored.
+        foreach (['page_header', 'short_description', 'bottom_header', 'bottom_description'] as $field) {
+            if ($request->has($field)) {
+                $parent[$field] = $this->seoValue($request, $field);
+            }
+        }
 
         if ($seoMeta) {
             $parent['updated_by'] = Auth::id();

@@ -43,7 +43,6 @@
     .smf-image img { height:58px; border-radius:6px; border:1px solid var(--border); object-fit:cover; display:block; }
     .smf-image button { position:absolute; top:-6px; right:-6px; width:20px; height:20px; border-radius:50%; border:none; background:var(--danger); color:white; font-size:12px; line-height:1; cursor:pointer; }
     .smf-image.removing img { opacity:.35; }
-    .smf-quill { border:1px solid var(--border); border-radius:8px; overflow:hidden; background:white; }
     @media (max-width: 900px) { .smf-checks { grid-template-columns:1fr 1fr; } }
 </style>
 
@@ -105,43 +104,6 @@
                        value="{{ old('canonical_url', $seoRecord->canonical_url ?? '') }}">
                 <span class="smf-hint">Only set this to point at a different page.</span>
                 @error('canonical_url')<span class="smf-error">{{ $message }}</span>@enderror
-            </div>
-        </div>
-
-        {{-- ─────────────── On-page copy ─────────────── --}}
-        <div class="smf-group">On-page copy</div>
-
-        <div class="fields-grid">
-            <div>
-                <label class="field-label">Page Header (H1)</label>
-                <input type="text" class="field-input" name="page_header" maxlength="255"
-                       placeholder="Overrides the page's visible heading"
-                       value="{{ old('page_header', $seoRecord->page_header ?? '') }}">
-                @error('page_header')<span class="smf-error">{{ $message }}</span>@enderror
-            </div>
-
-            <div>
-                <label class="field-label">Bottom Header</label>
-                <input type="text" class="field-input" name="bottom_header" maxlength="255"
-                       placeholder="Heading above the footer copy"
-                       value="{{ old('bottom_header', $seoRecord->bottom_header ?? '') }}">
-                @error('bottom_header')<span class="smf-error">{{ $message }}</span>@enderror
-            </div>
-
-            <div class="full-width">
-                <label class="field-label">Short Description (intro)</label>
-                <textarea class="field-input" name="short_description" rows="2" style="resize:vertical;"
-                          placeholder="Intro paragraph shown under the heading">{{ old('short_description', $seoRecord->short_description ?? '') }}</textarea>
-                @error('short_description')<span class="smf-error">{{ $message }}</span>@enderror
-            </div>
-
-            <div class="full-width">
-                <label class="field-label">Bottom Description</label>
-                <textarea name="bottom_description" id="smfBottomInput"
-                          style="display:none;">{{ old('bottom_description', $seoRecord->bottom_description ?? '') }}</textarea>
-                <div class="smf-quill"><div id="smfBottomEditor"></div></div>
-                <span class="smf-hint">Long-form copy rendered at the bottom of the page.</span>
-                @error('bottom_description')<span class="smf-error">{{ $message }}</span>@enderror
             </div>
         </div>
 
@@ -401,21 +363,5 @@ function smfMarkImageForDeletion(button) {
         update();
     });
 
-    // Rich text for the bottom copy. window.initQuill is defined by the inline
-    // script after the form, which has already run by DOMContentLoaded.
-    document.addEventListener('DOMContentLoaded', function () {
-        var editor = document.getElementById('smfBottomEditor');
-        var input = document.getElementById('smfBottomInput');
-
-        if (editor && input && typeof window.initQuill === 'function') {
-            window.initQuill(editor, input, [
-                [{ header: [2, 3, false] }],
-                ['bold', 'italic', 'underline'],
-                [{ list: 'ordered' }, { list: 'bullet' }],
-                ['link'],
-                ['clean'],
-            ]);
-        }
-    });
 })();
 </script>
