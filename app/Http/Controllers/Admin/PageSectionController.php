@@ -33,17 +33,6 @@ class PageSectionController extends Controller
         'privacy'          => 'Privacy Policy',
         'customer_support' => 'Customer Support',
         'faq'              => 'FAQ',
-        'products'         => 'All Products',
-        'popular_products' => 'Popular Products',
-        'discount_center'  => 'Discount Centre',
-        'price_promotions' => 'Price Promotions',
-        'brands'           => 'Brands',
-        'marketplace'      => 'Marketplace',
-        'request_for_quote' => 'Request For Quote',
-        'solar_calculator' => 'Solar Calculator',
-        'blogs'            => 'Blogs (listing)',
-        'news'             => 'News (listing)',
-        'events'           => 'Events (listing)',
     ];
 
     /**
@@ -59,17 +48,6 @@ class PageSectionController extends Controller
         'disclaimer'        => '/disclaimer',
         'privacy'           => '/privacy-cookies-policy',
         'faq'               => '/faq',
-        'products'          => '/products',
-        'popular_products'  => '/popular-products',
-        'discount_center'   => '/discount-center',
-        'price_promotions'  => '/price-promotions',
-        'brands'            => '/brands',
-        'marketplace'       => '/marketplace',
-        'request_for_quote' => '/request-for-quote',
-        'solar_calculator'  => '/solar-calculator',
-        'blogs'             => '/blogs',
-        'news'              => '/news',
-        'events'            => '/events',
     ];
 
     /**
