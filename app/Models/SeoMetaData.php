@@ -22,6 +22,7 @@ class SeoMetaData extends Model
         'brand_id',
         'product_id',
         'market_code',
+        'page_key',
         'category_slug',
         'sub_category_slug',
         'brand_slug',

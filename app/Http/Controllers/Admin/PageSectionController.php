@@ -7,22 +7,69 @@ use App\Models\PageSection;
 use App\Models\PageSetting;
 use App\Models\Market;
 use App\Models\Country;
+use App\Models\SeoMetaData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use MongoDB\BSON\ObjectId;
 
 class PageSectionController extends Controller
 {
+    use \App\Traits\WritesSeoMetaRecords;
+
+    /**
+     * Static pages that can be edited here.
+     *
+     * The keys double as the SEO `page_key` and as the /content-blocks `page`
+     * parameter, so they must match what the storefront asks for. See
+     * self::$pageRoutes for the storefront path each one maps to.
+     */
     private array $pages = [
-        'home'        => 'Homepage',
-        'about'       => 'About Us',
-        'contact'     => 'Contact Us',
-        'terms'       => 'Terms & Conditions',
-        'delivery'    => 'Delivery & Return Policy',
-        'disclaimer'  => 'Disclaimer',
-        'privacy'     => 'Privacy Policy',
+        'home'             => 'Homepage',
+        'about'            => 'About Us',
+        'contact'          => 'Contact Us',
+        'terms'            => 'Terms & Conditions',
+        'delivery'         => 'Delivery & Return Policy',
+        'disclaimer'       => 'Disclaimer',
+        'privacy'          => 'Privacy Policy',
         'customer_support' => 'Customer Support',
-        'faq'         => 'FAQ',
+        'faq'              => 'FAQ',
+        'products'         => 'All Products',
+        'popular_products' => 'Popular Products',
+        'discount_center'  => 'Discount Centre',
+        'price_promotions' => 'Price Promotions',
+        'brands'           => 'Brands',
+        'marketplace'      => 'Marketplace',
+        'request_for_quote' => 'Request For Quote',
+        'solar_calculator' => 'Solar Calculator',
+        'blogs'            => 'Blogs (listing)',
+        'news'             => 'News (listing)',
+        'events'           => 'Events (listing)',
+    ];
+
+    /**
+     * Storefront path for each page key, used for the canonical hint in the
+     * form. `customer_support` has no storefront route yet.
+     */
+    private array $pageRoutes = [
+        'home'              => '/',
+        'about'             => '/about-us',
+        'contact'           => '/contact-us',
+        'terms'             => '/terms-and-conditions',
+        'delivery'          => '/delivery-and-return-policy',
+        'disclaimer'        => '/disclaimer',
+        'privacy'           => '/privacy-cookies-policy',
+        'faq'               => '/faq',
+        'products'          => '/products',
+        'popular_products'  => '/popular-products',
+        'discount_center'   => '/discount-center',
+        'price_promotions'  => '/price-promotions',
+        'brands'            => '/brands',
+        'marketplace'       => '/marketplace',
+        'request_for_quote' => '/request-for-quote',
+        'solar_calculator'  => '/solar-calculator',
+        'blogs'             => '/blogs',
+        'news'              => '/news',
+        'events'            => '/events',
     ];
 
     /**
@@ -208,7 +255,58 @@ class PageSectionController extends Controller
             'isGlobal'  => $isGlobal,
             'country'   => $country,
             'countryId' => $countryId,
+
+            // SEO record for this page + market, or null when none exists yet.
+            'seoRecord'      => $this->findPageSeoRecord($page, $marketId),
+            'seoPreviewPath' => $this->pageRoutes[$page] ?? '/',
         ]);
+    }
+
+    /**
+     * Market code used to scope an SEO record, or null for the global record.
+     *
+     * Note this is deliberately different from `location_id`: page sections key
+     * off the Country _id, while seo_meta_data keys off the lowercase market
+     * code, the same way SeoMetaController::getEntitySlugs() does.
+     */
+    private function getMarketCodeFor(string $marketId): ?string
+    {
+        if ($this->isGlobal($marketId)) {
+            return null;
+        }
+
+        $market = Market::find($marketId);
+        $code = $market?->code;
+
+        return $code ? strtolower($code) : null;
+    }
+
+    /** The SEO record for a page + market, or null when none exists yet. */
+    private function findPageSeoRecord(string $page, string $marketId): ?SeoMetaData
+    {
+        return $this->findSeoMetaRecord([
+            'page_key'    => $page,
+            'market_code' => $this->getMarketCodeFor($marketId),
+        ]);
+    }
+
+    /** Create or update the SEO record for a page + market. */
+    private function savePageSeoRecord(Request $request, string $page, string $marketId): void
+    {
+        $marketCode = $this->getMarketCodeFor($marketId);
+
+        $extra = [];
+        if (!$this->isGlobal($marketId)) {
+            $market = Market::find($marketId);
+            if ($market) {
+                $extra['market_id'] = new ObjectId((string) $market->_id);
+            }
+        }
+
+        $this->saveSeoMetaRecord($request, [
+            'page_key'    => $page,
+            'market_code' => $marketCode,
+        ], $extra);
     }
 
     /**
@@ -216,6 +314,13 @@ class PageSectionController extends Controller
      */
     public function update(Request $request, string $marketId, string $page)
     {
+        abort_unless(array_key_exists($page, $this->pages), 404);
+
+        $request->validate(
+            $this->seoMetaValidationRules(),
+            $this->seoMetaValidationMessages()
+        );
+
         $isGlobal = $this->isGlobal($marketId);
         $countryId = null;
 
@@ -289,40 +394,32 @@ class PageSectionController extends Controller
             }
         }
 
-        // ── SEO settings ─────────────────────────────────────────────────────
+        // ── Publish flag ─────────────────────────────────────────────────────
+        // SEO now lives in seo_meta_data (see below) rather than the page_settings
+        // seo_* columns, which the API never exposed.
         if ($isGlobal) {
             $settingQuery = PageSetting::where('page', $page);
             $this->applyGlobalFilter($settingQuery);
             $setting = $settingQuery->first();
 
             if ($setting) {
-                $setting->update([
-                    'seo_title'       => $request->seo_title,
-                    'seo_description' => $request->seo_description,
-                    'seo_keywords'    => $request->seo_keywords,
-                    'is_published'    => $request->boolean('is_published'),
-                ]);
+                $setting->update(['is_published' => $request->boolean('is_published')]);
             } else {
                 PageSetting::create([
-                    'page'            => $page,
-                    'location_id'     => null,
-                    'seo_title'       => $request->seo_title,
-                    'seo_description' => $request->seo_description,
-                    'seo_keywords'    => $request->seo_keywords,
-                    'is_published'    => $request->boolean('is_published'),
+                    'page'         => $page,
+                    'location_id'  => null,
+                    'is_published' => $request->boolean('is_published'),
                 ]);
             }
         } else {
             PageSetting::updateOrCreate(
                 ['page' => $page, 'location_id' => $countryId],
-                [
-                    'seo_title'       => $request->seo_title,
-                    'seo_description' => $request->seo_description,
-                    'seo_keywords'    => $request->seo_keywords,
-                    'is_published'    => $request->boolean('is_published'),
-                ]
+                ['is_published' => $request->boolean('is_published')]
             );
         }
+
+        // ── SEO meta ─────────────────────────────────────────────────────────
+        $this->savePageSeoRecord($request, $page, $marketId);
 
         return redirect()->route('admin.page-sections.edit', [$marketId, $page])
                          ->with('success', $this->pages[$page] . ' updated successfully.');

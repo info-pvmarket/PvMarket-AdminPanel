@@ -849,25 +849,10 @@
         </div>
     @endforelse
 
-    {{-- SEO Settings --}}
+    {{-- Publish flag --}}
     <div class="section-card">
-        <h2 style="font-size:15px; font-weight:700; margin:0 0 16px;">SEO Settings</h2>
+        <h2 style="font-size:15px; font-weight:700; margin:0 0 16px;">Visibility</h2>
         <div class="fields-grid">
-            <div>
-                <label class="field-label">SEO Title</label>
-                <input type="text" class="field-input" name="seo_title"
-                       value="{{ old('seo_title', $setting->seo_title) }}">
-            </div>
-            <div>
-                <label class="field-label">SEO Keywords</label>
-                <input type="text" class="field-input" name="seo_keywords"
-                       value="{{ old('seo_keywords', $setting->seo_keywords) }}">
-            </div>
-            <div class="full-width">
-                <label class="field-label">SEO Description</label>
-                <textarea class="field-input" name="seo_description" rows="3"
-                          style="resize:vertical;">{{ old('seo_description', $setting->seo_description) }}</textarea>
-            </div>
             <div class="full-width">
                 <label style="display:flex; align-items:center; gap:8px; font-size:14px; cursor:pointer;">
                     <input type="checkbox" name="is_published"
@@ -877,6 +862,14 @@
             </div>
         </div>
     </div>
+
+    {{-- SEO tags: stored in seo_meta_data and served to the storefront by the
+         /seo-meta API. Replaces the old page_settings seo_* fields, which the
+         API never exposed. --}}
+    @include('admin.partials.seo-meta-full-fields', [
+        'seoRecord'      => $seoRecord,
+        'seoPreviewPath' => $seoPreviewPath,
+    ])
 
     <div style="display:flex; gap:12px; margin-bottom:40px;">
         <button type="submit"
