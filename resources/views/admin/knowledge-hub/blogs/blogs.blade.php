@@ -150,6 +150,10 @@
             </div>
         </div>
 
+        <hr class="section-divider">
+
+        @include('admin.partials.seo-meta-fields', ['seoPreviewPath' => 'blogs'])
+
     </form>
 
     {{-- ═══ COMMENTS SECTION — outside main form ═══ --}}

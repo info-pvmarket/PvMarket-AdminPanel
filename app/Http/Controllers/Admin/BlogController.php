@@ -11,6 +11,8 @@ use App\Services\TranslationService;
 
 class BlogController extends Controller
 {
+    use \App\Traits\HandlesSeoMeta;
+
     public function __construct(protected TranslationService $translator) {}
 
     public function index(Request $request)
@@ -52,9 +54,9 @@ class BlogController extends Controller
             'related_blog_id' => 'nullable|string',
             'image'           => 'nullable|image|mimes:jpeg,png,jpg,webp|max:614400',
             'data'            => 'nullable|string',
-        ], [
+        ] + $this->seoValidationRules(), [
             'image.max' => 'The blog image must not be larger than 600 MB.',
-        ]);
+        ] + $this->seoValidationMessages());
 
         $data = [
             'title'         => $request->title,
@@ -71,6 +73,7 @@ class BlogController extends Controller
             'is_active'     => true,
             'blog_comments' => [],
             'image'         => $this->buildImageData(null), // empty placeholder
+            'seo'           => $this->buildSeoData($request, null, 'blogs'),
         ];
 
         if ($request->related_blog_id) {
@@ -116,9 +119,9 @@ class BlogController extends Controller
             'related_blog_id' => 'nullable|string',
             'image'           => 'nullable|image|mimes:jpeg,png,jpg,webp|max:614400',
             'data'            => 'nullable|string',
-        ], [
+        ] + $this->seoValidationRules(), [
             'image.max' => 'The blog image must not be larger than 600 MB.',
-        ]);
+        ] + $this->seoValidationMessages());
 
         $data = [
             'title'       => $request->title,
@@ -130,6 +133,7 @@ class BlogController extends Controller
                                 ? [$request->related_blog_id]
                                 : [],
             'data'        => $request->data,
+            'seo'         => $this->buildSeoData($request, $blog->seo, 'blogs'),
         ];
 
         if ($request->related_blog_id) {

@@ -20,6 +20,7 @@ class News extends Model
     'alt_tag',
     'description',
     'is_active',
+    'seo',
 ];
 
 protected $casts = [

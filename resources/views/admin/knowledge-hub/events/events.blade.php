@@ -160,6 +160,10 @@
             </div>
         </div>
 
+        <hr class="section-divider">
+
+        @include('admin.partials.seo-meta-fields', ['seoPreviewPath' => 'events'])
+
         <div class="form-actions">
             <button type="submit" class="btn-save">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

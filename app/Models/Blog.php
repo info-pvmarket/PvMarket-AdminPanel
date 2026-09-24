@@ -24,6 +24,7 @@ class Blog extends Model
         'is_faq',
         'is_active',
         'blog_comments',
+        'seo',
     ];
 
     public array $translatable = ['title', 'data'];

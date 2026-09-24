@@ -18,6 +18,7 @@ class Event extends Model
         'description',
         'image',
         'alt_tag',
+        'seo',
     ];
 
     public array $translatable = ['heading', 'description', 'place'];

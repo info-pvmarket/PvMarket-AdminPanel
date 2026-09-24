@@ -11,6 +11,8 @@ use App\Services\TranslationService;
 
 class NewsController extends Controller
 {
+    use \App\Traits\HandlesSeoMeta;
+
     public function __construct(protected TranslationService $translator) {}
     public function index(Request $request)
     {
@@ -42,7 +44,7 @@ class NewsController extends Controller
         'content' => 'nullable|string',
         'image'   => 'nullable|image|mimes:jpeg,png,jpg,webp|max:3072',
         'alt_tag' => 'nullable|string|max:255',
-    ]);
+    ] + $this->seoValidationRules(), $this->seoValidationMessages());
 
     $data = [
     'title'     => $request->title,
@@ -50,6 +52,7 @@ class NewsController extends Controller
     'content'   => $request->content,
     'alt_tag'   => $request->alt_tag,
     'is_active' => true,
+    'seo'       => $this->buildSeoData($request, null, 'news'),
 ];
 
     $data['image'] = $this->emptyImageData();
@@ -85,7 +88,7 @@ if ($request->hasFile('image')) {
             'content' => 'nullable|string',
             'image'   => 'nullable|image|mimes:jpeg,png,jpg,webp|max:3072',
             'alt_tag' => 'nullable|string|max:255',
-        ]);
+        ] + $this->seoValidationRules(), $this->seoValidationMessages());
 
         $slug = $request->filled('slug')
             ? Str::slug($request->slug)
@@ -96,6 +99,7 @@ if ($request->hasFile('image')) {
     'slug'    => $request->filled('slug') ? Str::slug($request->slug) : Str::slug($request->title),
     'content' => $request->content,
     'alt_tag' => $request->alt_tag,
+    'seo'     => $this->buildSeoData($request, $news->seo, 'news'),
 ];
 
         $data['image'] = $news->image ?? $this->emptyImageData();

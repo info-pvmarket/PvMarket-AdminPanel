@@ -10,6 +10,8 @@ use App\Services\TranslationService;
 
 class EventController extends Controller
 {
+    use \App\Traits\HandlesSeoMeta;
+
 
         public function __construct(protected TranslationService $translator) {}
     public function index(Request $request)
@@ -46,7 +48,7 @@ class EventController extends Controller
             'description' => 'nullable|string',
             'image'       => 'nullable|image|mimes:jpeg,png,jpg,webp|max:3072',
             'alt_tag'     => 'nullable|string|max:255',
-        ]);
+        ] + $this->seoValidationRules(), $this->seoValidationMessages());
 
         $data = [
             'heading'     => $request->heading,
@@ -54,6 +56,7 @@ class EventController extends Controller
             'event_date'  => $request->event_date,
             'description' => $request->description,
             'alt_tag'     => $request->alt_tag,
+            'seo'         => $this->buildSeoData($request, null, 'events'),
         ];
 
         if ($request->hasFile('image') && $request->file('image')->isValid()) {
@@ -89,7 +92,7 @@ class EventController extends Controller
             'description' => 'nullable|string',
             'image'       => 'nullable|image|mimes:jpeg,png,jpg,webp|max:3072',
             'alt_tag'     => 'nullable|string|max:255',
-        ]);
+        ] + $this->seoValidationRules(), $this->seoValidationMessages());
 
         $data = [
             'heading'     => $request->heading,
@@ -97,6 +100,7 @@ class EventController extends Controller
             'event_date'  => $request->event_date,
             'description' => $request->description,
             'alt_tag'     => $request->alt_tag,
+            'seo'         => $this->buildSeoData($request, $event->seo, 'events'),
         ];
 
         if ($request->hasFile('image') && $request->file('image')->isValid()) {
