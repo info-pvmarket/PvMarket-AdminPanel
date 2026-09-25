@@ -115,9 +115,33 @@ class SeoMetaData extends Model
         ]);
     }
 
+    /**
+     * Exclude records that belong to a static page.
+     *
+     * Static page SEO lives in this same collection keyed by `page_key` and is
+     * edited under Static Pages, not on the SEO Meta screen. Those records carry
+     * no entity FKs, so without this they satisfy an all-null entity lookup -
+     * which made the Global Home duplicate guard fire against them.
+     */
+    public function scopeWithoutStaticPages($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('page_key')->orWhere('page_key', '');
+        });
+    }
+
+    /** Records that belong to a static page. */
+    public function scopeStaticPagesOnly($query)
+    {
+        return $query->whereNotNull('page_key')->where('page_key', '!=', '');
+    }
+
     // Scope for finding by entity combination
     public function scopeForEntity($query, $marketId = null, $categoryId = null, $subCategoryId = null, $brandId = null, $productId = null)
     {
+        // An entity lookup must never resolve to a static page's record.
+        $query->withoutStaticPages();
+
         foreach ([
             'market_id'       => $marketId,
             'category_id'     => $categoryId,
@@ -147,6 +171,7 @@ class SeoMetaData extends Model
     // Get the page type based on entity combination
     public function getPageTypeAttribute(): string
     {
+        if (!empty($this->page_key)) return 'Static Page';
         if ($this->product_id) return 'Product';
         if ($this->brand_id) return 'Brand';
         if ($this->sub_category_id) return 'Sub Category';

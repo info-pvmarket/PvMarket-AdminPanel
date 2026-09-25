@@ -39,7 +39,9 @@ class SeoMetaController extends Controller
         $typeFilter = $request->get('type');
 
         $query = SeoMetaData::with(['market', 'category', 'subCategory', 'brand', 'product'])
-            ->where('is_active', true);
+            ->where('is_active', true)
+            // Static page SEO is edited under Static Pages, not here.
+            ->withoutStaticPages();
 
         // Search filter
         if ($search) {
@@ -259,6 +261,10 @@ class SeoMetaController extends Controller
         $record = SeoMetaData::with(['ogMeta.images', 'twitterMeta.images', 'robotMeta'])
                              ->findOrFail($id);
 
+        // Static page records belong to the Static Pages screen; this one offers
+        // entity fields that do not apply to them.
+        abort_if(!empty($record->page_key), 404);
+
         $markets       = Market::where('is_active', true)->orderBy('name')->get();
         $categories    = MainMenu::availableForDropdown()->orderBy('category_name')->get();
         $subCategories = $record->category_id
@@ -301,6 +307,10 @@ class SeoMetaController extends Controller
         ]);
 
         $seoMeta = SeoMetaData::findOrFail($id);
+
+        // Static page records belong to the Static Pages screen; this one offers
+        // entity fields that do not apply to them.
+        abort_if(!empty($seoMeta->page_key), 404);
 
         // Update main SEO meta
         $seoData = [
@@ -398,6 +408,10 @@ class SeoMetaController extends Controller
     public function destroy(string $id)
     {
         $seoMeta = SeoMetaData::findOrFail($id);
+
+        // Static page records belong to the Static Pages screen; this one offers
+        // entity fields that do not apply to them.
+        abort_if(!empty($seoMeta->page_key), 404);
 
         // Soft delete - set is_active to false
         $seoMeta->update(['is_active' => false]);
