@@ -20,6 +20,7 @@ use App\Services\TranslationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class SeoMetaController extends Controller
 {
@@ -330,8 +331,19 @@ class SeoMetaController extends Controller
         // entity fields that do not apply to them.
         abort_if(!empty($seoMeta->page_key), 404);
 
-        // Update main SEO meta
+        $slugs = $this->getEntitySlugs(
+            $seoMeta->market_id ? (string) $seoMeta->market_id : null,
+            $seoMeta->category_id ? (string) $seoMeta->category_id : null,
+            $seoMeta->sub_category_id ? (string) $seoMeta->sub_category_id : null,
+            $seoMeta->brand_id ? (string) $seoMeta->brand_id : null,
+        );
+
+        // Update main SEO meta and repair legacy blank slugs from entity names.
         $seoData = [
+			'market_code'       => $slugs['market_code'],
+			'category_slug'     => $slugs['category_slug'],
+			'sub_category_slug' => $slugs['sub_category_slug'],
+			'brand_slug'        => $slugs['brand_slug'],
             'meta_title'        => $request->meta_title,
             'meta_description'  => $request->meta_description,
             'meta_keywords'     => $request->meta_keywords,
@@ -712,22 +724,22 @@ class SeoMetaController extends Controller
 
         if ($categoryId) {
             $category = MainMenu::find($categoryId);
-            if ($category && $category->slug) {
-                $slugs['category_slug'] = strtolower($category->slug);
+            if ($category) {
+                $slugs['category_slug'] = Str::slug($category->slug ?: $category->category_name);
             }
         }
 
         if ($subCategoryId) {
             $subCategory = SubMenu::find($subCategoryId);
-            if ($subCategory && $subCategory->slug) {
-                $slugs['sub_category_slug'] = strtolower($subCategory->slug);
+            if ($subCategory) {
+                $slugs['sub_category_slug'] = Str::slug($subCategory->slug ?: $subCategory->sub_category_name);
             }
         }
 
         if ($brandId) {
             $brand = Brand::find($brandId);
-            if ($brand && $brand->slug) {
-                $slugs['brand_slug'] = strtolower($brand->slug);
+            if ($brand) {
+                $slugs['brand_slug'] = Str::slug($brand->slug ?: $brand->name);
             }
         }
 
