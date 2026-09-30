@@ -14,12 +14,12 @@ class SeoCacheInvalidatorTest extends TestCase
         config()->set('services.frontend.revalidate_secret', 'test-secret');
         Http::fake(['https://pv.market/api/revalidate/seo' => Http::response(['revalidated' => true])]);
 
-        $this->assertTrue((new SeoCacheInvalidator)->invalidate('https://pv.market/bos/pv-optimizer'));
+        $this->assertTrue((new SeoCacheInvalidator)->invalidate('https://pv.market/ess/dc-freezer-and-refrigerator'));
 
         Http::assertSent(fn ($request) =>
             $request->url() === 'https://pv.market/api/revalidate/seo'
             && $request->hasHeader('Authorization', 'Bearer test-secret')
-            && $request['canonical_url'] === 'https://pv.market/bos/pv-optimizer'
+            && $request['canonical_url'] === 'https://pv.market/ess/dc-freezer-and-refrigerator'
         );
     }
 
