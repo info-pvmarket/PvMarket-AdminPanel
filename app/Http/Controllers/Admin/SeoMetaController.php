@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\SeoMetaData;
+use App\Services\SeoCacheInvalidator;
 use App\Models\SeoOGMetaData;
 use App\Models\SeoOGImage;
 use App\Models\SeoTwitterMetaData;
@@ -129,6 +130,12 @@ class SeoMetaController extends Controller
             'short_description'=> 'nullable|string',
             'bottom_header'    => 'nullable|string|max:255',
             'bottom_description'=> 'nullable|string',
+            'faqs'              => 'nullable|array',
+            'faqs.*.question'   => 'nullable|string|max:500|required_with:faqs.*.answer',
+            'faqs.*.answer'     => 'nullable|string|required_with:faqs.*.question',
+            'internal_links'          => 'nullable|array',
+            'internal_links.*.title'  => 'nullable|string|max:255|required_with:internal_links.*.url',
+            'internal_links.*.url'    => 'nullable|url|max:500|required_with:internal_links.*.title',
             'canonical_url'    => 'nullable|url|max:500',
             'market_id'        => 'nullable|string',
             'category_id'      => 'nullable|string',
@@ -185,6 +192,8 @@ class SeoMetaController extends Controller
             'short_description' => $request->short_description,
             'bottom_header'     => $request->bottom_header,
             'bottom_description'=> $request->bottom_description,
+            'faqs'              => $this->cleanContentRows($request->input('faqs', []), ['question', 'answer']),
+            'internal_links'    => $this->cleanContentRows($request->input('internal_links', []), ['title', 'url']),
             'canonical_url'     => $request->canonical_url,
             'is_active'         => true,
             'created_by'        => Auth::id(),
@@ -250,6 +259,8 @@ class SeoMetaController extends Controller
         ];
         SeoRobotMetaData::create($robotData);
 
+        app(SeoCacheInvalidator::class)->invalidate($seoMeta->canonical_url);
+
         return redirect()->route('admin.seo-meta.index')
                          ->with('success', 'SEO Meta created successfully.');
     }
@@ -294,6 +305,12 @@ class SeoMetaController extends Controller
             'short_description'=> 'nullable|string',
             'bottom_header'    => 'nullable|string|max:255',
             'bottom_description'=> 'nullable|string',
+            'faqs'              => 'nullable|array',
+            'faqs.*.question'   => 'nullable|string|max:500|required_with:faqs.*.answer',
+            'faqs.*.answer'     => 'nullable|string|required_with:faqs.*.question',
+            'internal_links'          => 'nullable|array',
+            'internal_links.*.title'  => 'nullable|string|max:255|required_with:internal_links.*.url',
+            'internal_links.*.url'    => 'nullable|url|max:500|required_with:internal_links.*.title',
             'canonical_url'    => 'nullable|url|max:500',
             'og_title'         => 'nullable|string|max:255',
             'og_description'   => 'nullable|string|max:500',
@@ -307,6 +324,7 @@ class SeoMetaController extends Controller
         ]);
 
         $seoMeta = SeoMetaData::findOrFail($id);
+        $previousCanonicalUrl = $seoMeta->canonical_url;
 
         // Static page records belong to the Static Pages screen; this one offers
         // entity fields that do not apply to them.
@@ -321,6 +339,8 @@ class SeoMetaController extends Controller
             'short_description' => $request->short_description,
             'bottom_header'     => $request->bottom_header,
             'bottom_description'=> $request->bottom_description,
+            'faqs'              => $this->cleanContentRows($request->input('faqs', []), ['question', 'answer']),
+            'internal_links'    => $this->cleanContentRows($request->input('internal_links', []), ['title', 'url']),
             'canonical_url'     => $request->canonical_url,
             'updated_by'        => Auth::id(),
         ];
@@ -399,6 +419,11 @@ class SeoMetaController extends Controller
             SeoRobotMetaData::create($robotData);
         }
 
+        $invalidator = app(SeoCacheInvalidator::class);
+        foreach (array_unique(array_filter([$previousCanonicalUrl, $seoMeta->canonical_url])) as $canonicalUrl) {
+            $invalidator->invalidate($canonicalUrl);
+        }
+
         return redirect()->route('admin.seo-meta.index')
                          ->with('success', 'SEO Meta updated successfully.');
     }
@@ -426,6 +451,8 @@ class SeoMetaController extends Controller
         if ($seoMeta->robotMeta) {
             $seoMeta->robotMeta->update(['is_active' => false]);
         }
+
+        app(SeoCacheInvalidator::class)->invalidate($seoMeta->canonical_url);
 
         return redirect()->route('admin.seo-meta.index')
                          ->with('success', 'SEO Meta deleted successfully.');
@@ -642,6 +669,26 @@ class SeoMetaController extends Controller
             return null;
         }
         return $value;
+    }
+
+    /**
+     * Remove empty repeater rows and persist only the documented keys.
+     */
+    private function cleanContentRows(array $rows, array $keys): array
+    {
+        return collect($rows)
+            ->map(function ($row) use ($keys) {
+                if (!is_array($row)) {
+                    return null;
+                }
+
+                return collect($keys)->mapWithKeys(function ($key) use ($row) {
+                    return [$key => trim((string) ($row[$key] ?? ''))];
+                })->all();
+            })
+            ->filter(fn ($row) => is_array($row) && collect($row)->contains(fn ($value) => $value !== ''))
+            ->values()
+            ->all();
     }
 
     // ─── PRIVATE: Get Entity Slugs ─────────────────────────────────────────────

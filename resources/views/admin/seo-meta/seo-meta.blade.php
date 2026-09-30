@@ -178,6 +178,7 @@
                 <div id="bottomDescriptionEditor"></div>
             </div>
         </div>
+        @include('admin.seo-meta.partials.faq-internal-links')
     </div>
 
     {{-- Open Graph Section --}}
@@ -625,6 +626,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div id="bottomDescriptionEditor"></div>
             </div>
         </div>
+        @include('admin.seo-meta.partials.faq-internal-links', ['record' => $record])
     </div>
 
     {{-- Open Graph Section --}}

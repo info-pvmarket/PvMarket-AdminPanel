@@ -3,6 +3,7 @@
 namespace App\Traits;
 
 use App\Models\SeoMetaData;
+use App\Services\SeoCacheInvalidator;
 use App\Models\SeoOGImage;
 use App\Models\SeoTwitterImage;
 use Illuminate\Http\Request;
@@ -104,6 +105,7 @@ trait WritesSeoMetaRecords
     protected function saveSeoMetaRecord(Request $request, array $identity, array $extra = []): ?SeoMetaData
     {
         $seoMeta = $this->findSeoMetaRecord($identity);
+        $previousCanonicalUrl = $seoMeta?->canonical_url;
 
         if ($this->seoBlockIsEmpty($request)) {
             // Nothing authored. Leave an existing record alone rather than
@@ -145,6 +147,11 @@ trait WritesSeoMetaRecords
         $this->saveOpenGraph($request, $seoMeta);
         $this->saveTwitter($request, $seoMeta);
         $this->saveRobots($request, $seoMeta);
+
+        $invalidator = app(SeoCacheInvalidator::class);
+        foreach (array_unique(array_filter([$previousCanonicalUrl, $seoMeta->canonical_url])) as $canonicalUrl) {
+            $invalidator->invalidate($canonicalUrl);
+        }
 
         return $seoMeta;
     }

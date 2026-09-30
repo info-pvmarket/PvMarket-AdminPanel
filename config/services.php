@@ -34,6 +34,11 @@ return [
 
     'frontend' => [
         'url' => env('FRONTEND_URL', 'http://localhost:3000'),
+        'seo_revalidate_url' => env(
+            'FRONTEND_SEO_REVALIDATE_URL',
+            rtrim(env('FRONTEND_URL', 'http://localhost:3000'), '/').'/api/revalidate/seo'
+        ),
+        'revalidate_secret' => env('FRONTEND_REVALIDATE_SECRET'),
     ],
 
     'slack' => [

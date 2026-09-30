@@ -34,6 +34,8 @@ class SeoMetaData extends Model
         'short_description',
         'bottom_header',
         'bottom_description',
+        'faqs',
+        'internal_links',
         'canonical_url',
         'is_active',
         'created_by',
@@ -49,6 +51,8 @@ class SeoMetaData extends Model
         'is_active'       => 'boolean',
         'created_at'      => 'datetime',
         'updated_at'      => 'datetime',
+        'faqs'            => 'array',
+        'internal_links'  => 'array',
     ];
 
     public array $translatable = [
