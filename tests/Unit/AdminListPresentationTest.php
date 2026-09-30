@@ -384,6 +384,19 @@ class AdminListPresentationTest extends TestCase
         $this->assertStringNotContainsString("\$request->has('container_applicable')", $controller);
     }
 
+    public function test_sub_category_pages_allow_managed_unique_slugs(): void
+    {
+        $view = file_get_contents($this->projectFile('resources/views/admin/setup/sub-menu/sub-menu.blade.php'));
+        $controller = file_get_contents($this->projectFile('app/Http/Controllers/Admin/SubMenuController.php'));
+
+        $this->assertStringContainsString('name="items[0][slug]"', $view);
+        $this->assertStringContainsString('name="slug"', $view);
+        $this->assertStringContainsString('{{ $sub->slug', $view);
+        $this->assertStringContainsString("'items.*.slug'", $controller);
+        $this->assertStringContainsString('ensureSlugIsAvailable', $controller);
+        $this->assertStringContainsString("->where('slug', \$slug)", $controller);
+    }
+
     public function test_main_menu_list_hides_value_of_stocks(): void
     {
         $view = file_get_contents($this->projectFile('resources/views/admin/setup/main-menu/main-menu.blade.php'));

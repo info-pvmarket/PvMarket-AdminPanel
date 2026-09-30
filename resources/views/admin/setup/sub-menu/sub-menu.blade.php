@@ -71,6 +71,7 @@
                 <tr>
                     <th style="width:60px;">S.No</th>
                     <th>Sub Category Name</th>
+                    <th>Slug</th>
                     <th>Alt Tag</th>
                     <th style="width:60px;">Actions</th>
                 </tr>
@@ -78,8 +79,9 @@
             <tbody id="rowsBody">
                 <tr id="row-1">
                     <td class="sno">1.</td>
-                    <td><input type="text" name="items[0][name]" class="form-row-input" placeholder="Sub Category Name" required/></td>
-                    <td><input type="text" name="items[0][alt_tag]" class="form-row-input" placeholder="Alt Tag"/></td>
+                    <td><input type="text" name="items[0][name]" value="{{ old('items.0.name') }}" class="form-row-input" placeholder="Sub Category Name" required/></td>
+                    <td><input type="text" name="items[0][slug]" value="{{ old('items.0.slug') }}" class="form-row-input" placeholder="auto-generated if empty"/></td>
+                    <td><input type="text" name="items[0][alt_tag]" value="{{ old('items.0.alt_tag') }}" class="form-row-input" placeholder="Alt Tag"/></td>
                     <td>
                         <button type="button" class="btn-remove" onclick="removeRow(this)">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -119,6 +121,7 @@ function addRow() {
     tr.innerHTML = `
         <td class="sno">${rowCount}.</td>
         <td><input type="text" name="items[${idx}][name]" class="form-row-input" placeholder="Sub Category Name" required/></td>
+        <td><input type="text" name="items[${idx}][slug]" class="form-row-input" placeholder="auto-generated if empty"/></td>
         <td><input type="text" name="items[${idx}][alt_tag]" class="form-row-input" placeholder="Alt Tag"/></td>
         <td>
             <button type="button" class="btn-remove" onclick="removeRow(this)">
@@ -222,6 +225,16 @@ function renumber() {
                         </option>
                     @endforeach
                 </select>
+            </div>
+        </div>
+
+        <div class="form-grid-1">
+            <div class="form-group">
+                <label class="form-label">Slug</label>
+                <input type="text" name="slug" class="form-input"
+                       value="{{ old('slug', $record->slug) }}"
+                       placeholder="auto-generated from the sub category name if empty"/>
+                <span class="form-hint">Used in the public URL, for example: pv-optimizer</span>
             </div>
         </div>
 
@@ -347,6 +360,7 @@ function renumber() {
             <tr>
                 <th class="center" style="width:70px;">S.No</th>
                 <th>Sub Category</th>
+                <th>Slug</th>
                 <th>Category</th>
                 <th class="center" style="width:100px;">Action</th>
             </tr>
@@ -358,6 +372,7 @@ function renumber() {
                     {{ $subMenus->firstItem() + $index }}
                 </td>
                 <td style="font-weight:600;">{{ lang($sub, 'sub_category_name') }}</td>
+                <td><code>{{ $sub->slug ?: '—' }}</code></td>
                 <td>
                     <span style="display:inline-block; padding:3px 10px; background:var(--primary-l);
                                  color:var(--primary-d); border-radius:6px; font-size:12px; font-weight:600;">
@@ -407,7 +422,7 @@ function renumber() {
             </tr>
             @empty
             <tr>
-                <td colspan="4">
+                <td colspan="5">
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                             <path d="M4 6h16M4 12h10M4 18h6"/>
