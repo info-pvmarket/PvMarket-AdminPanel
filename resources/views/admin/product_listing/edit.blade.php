@@ -841,7 +841,7 @@
                             <label class="form-label">Slug</label>
                             <input type="text" name="slug" class="form-control"
                                    placeholder="auto-generated if blank"
-                                   value="{{ old('slug') }}"/>
+                                   value="{{ old('slug', $listing->slug) }}"/>
                             <span style="font-size:.73rem; color:var(--muted); margin-top:3px;">Leave blank to auto-generate</span>
                         </div>
                     </div>
