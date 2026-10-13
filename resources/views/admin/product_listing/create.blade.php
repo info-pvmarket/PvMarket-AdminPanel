@@ -693,6 +693,93 @@
         ══════════════════════════════ --}}
         <div class="create-main">
 
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
+    <span style="font-size:13px; color:#6b7280; font-weight:500; white-space:nowrap;">For bulk imports:</span>
+
+    <a href="{{ route('product_listing.import.template') }}"
+       style="display:inline-flex; align-items:center; gap:7px; padding:9px 16px; background:#fff;
+              color:var(--primary); border:1.5px solid var(--primary); border-radius:8px;
+              font-size:13px; font-weight:600; text-decoration:none; white-space:nowrap;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Download Template
+    </a>
+
+    <button type="button" onclick="document.getElementById('listingBulkFile').click()"
+        style="display:inline-flex; align-items:center; gap:7px; padding:9px 16px; background:var(--primary);
+               color:#fff; border:1.5px solid var(--primary); border-radius:8px;
+               font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        Upload Sheet
+    </button>
+
+    <input type="file" id="listingBulkFile" accept=".xlsx,.csv" hidden onchange="listingBulkUpload(this)">
+</div>
+
+<div id="listingBulkStatus" style="margin-bottom:16px;"></div>
+
+<script>
+async function listingBulkUpload(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const box = document.getElementById('listingBulkStatus');
+    box.innerHTML = '<div class="alert-success">Uploading & processing…</div>';
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+        const res = await fetch("{{ route('product_listing.import') }}", {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
+            body: fd,
+        });
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok || !j.batch_id) {
+            box.innerHTML = '<div class="alert-error">' + (j.message || 'Upload failed — check the file and try again.') + '</div>';
+        } else {
+            let html = '<div class="alert-success">Import complete: ' + (j.success_count || 0) + ' created, ' + (j.error_count || 0) + ' failed.</div>';
+            if ((j.errors || []).length) {
+                html += '<ul style="color:#b91c1c;font-size:12px;margin:8px 0 0;padding-left:18px;">' +
+                    j.errors.map(e => '<li>' + (e.product ? e.product + ' — ' : '') + (e.column ? e.column + ': ' : '') + e.message + '</li>').join('') + '</ul>';
+            }
+            box.innerHTML = html;
+        }
+    } catch (e) {
+        box.innerHTML = '<div class="alert-error">Upload failed.</div>';
+    }
+    input.value = '';
+}
+
+function listingBulkPoll(id) {
+    const box = document.getElementById('listingBulkStatus');
+    const url = "{{ url('user/listings/import') }}/" + id + "/status";
+    let tries = 0;
+    const tick = async () => {
+        tries++;
+        try {
+            const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
+            const j = await r.json();
+            if (j.status === 'completed') {
+                let html = '<div class="alert-success">Import complete: ' + j.success_count + ' created, ' + j.error_count + ' failed.</div>';
+                if ((j.errors || []).length) {
+                    html += '<ul style="color:#b91c1c;font-size:12px;margin:8px 0 0;padding-left:18px;">' +
+                        j.errors.map(e => '<li>' + (e.product ? e.product + ' — ' : '') + (e.column ? e.column + ': ' : '') + e.message + '</li>').join('') + '</ul>';
+                }
+                box.innerHTML = html; return;
+            }
+            box.innerHTML = '<div class="alert-success">Processing… ' + j.success_count + ' created, ' + j.error_count + ' failed so far.</div>';
+        } catch (e) {}
+        if (tries < 120) setTimeout(tick, 2000);
+    };
+    tick();
+}
+</script>
+
+
             {{-- Page header --}}
             <div>
                 <div class="page-header">
