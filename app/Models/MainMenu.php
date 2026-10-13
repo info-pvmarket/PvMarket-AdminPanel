@@ -39,7 +39,8 @@ class MainMenu extends Model
 
     public function scopeAvailableForDropdown($query)
     {
-        return $query->where('is_active', true);
+        return $query->where('is_active', true)
+            ->where('stock_value', true);
     }
 
     public array $translatable = [
