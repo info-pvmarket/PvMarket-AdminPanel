@@ -101,12 +101,104 @@
     .ql-toolbar button:hover .ql-fill,   .ql-toolbar button.ql-active .ql-fill   { fill:#0EA5E9; }
 </style>
 
-<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
-    <h1 style="font-size:22px; font-weight:800; color:var(--text);">
-        {{ $mode === 'create' ? 'Add' : 'Edit' }} Product
-    </h1>
+<div style="display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:20px;">
+    <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+        <h1 style="font-size:22px; font-weight:800; color:var(--text); margin:0;">
+            {{ $mode === 'create' ? 'Add' : 'Edit' }} Product
+        </h1>
+
+        @if($mode === 'create')
+        <span style="font-size:13px; color:#6b7280; font-weight:500; white-space:nowrap;">For bulk imports:</span>
+
+        <button type="button" onclick="bulkDownloadTemplate()"
+            style="display:inline-flex; align-items:center; gap:7px; padding:9px 16px; background:#fff;
+                   color:var(--primary); border:1.5px solid var(--primary); border-radius:8px;
+                   font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;"
+            onmouseover="this.style.background='#f1f5ff'" onmouseout="this.style.background='#fff'">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Download Template
+        </button>
+
+        <button type="button" onclick="bulkTriggerUpload()"
+            style="display:inline-flex; align-items:center; gap:7px; padding:9px 16px; background:var(--primary);
+                   color:#fff; border:1.5px solid var(--primary); border-radius:8px;
+                   font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;"
+            onmouseover="this.style.background='var(--primary-d)'" onmouseout="this.style.background='var(--primary)'">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            Upload Sheet
+        </button>
+
+        <form id="bulkImportForm" action="{{ route('admin.products.import') }}" method="POST"
+              enctype="multipart/form-data" style="display:none">
+            @csrf
+            <input type="hidden" name="category_id" id="bulkCategoryHidden">
+            <input type="hidden" name="sub_category_id" id="bulkSubCategoryHidden">
+            <input type="file" name="file" id="bulkFileInput" accept=".xlsx,.csv" onchange="bulkSubmitUpload()">
+        </form>
+        @endif
+    </div>
+
     <a href="{{ route('admin.products.index') }}" class="btn-back">← Back</a>
 </div>
+
+@if($mode === 'create')
+<div id="bulkImportStatus" style="margin-bottom:16px;"></div>
+<script>
+function bulkSelectedScope() {
+    const c = (document.getElementById('categorySelect') || {}).value;
+    const s = (document.getElementById('subCategorySelect') || {}).value;
+    return { c, s, ok: !!(c && s) };
+}
+function bulkDownloadTemplate() {
+    const sc = bulkSelectedScope();
+    if (!sc.ok) { alert('Select a Main Category and Sub Category first.'); return; }
+    window.location = "{{ route('admin.products.import.template') }}?category_id=" + sc.c + "&sub_category_id=" + sc.s;
+}
+function bulkTriggerUpload() {
+    if (!bulkSelectedScope().ok) { alert('Select a Main Category and Sub Category first.'); return; }
+    document.getElementById('bulkFileInput').click();
+}
+function bulkSubmitUpload() {
+    const sc = bulkSelectedScope();
+    if (!sc.ok) return;
+    document.getElementById('bulkCategoryHidden').value = sc.c;
+    document.getElementById('bulkSubCategoryHidden').value = sc.s;
+    document.getElementById('bulkImportForm').submit();
+}
+@if (session('import_batch_id'))
+(function () {
+    const id = "{{ session('import_batch_id') }}";
+    const box = document.getElementById('bulkImportStatus');
+    box.innerHTML = '<div class="alert-success">Import started… processing.</div>';
+    const url = "{{ url('admin/products/import') }}/" + id + "/status";
+    let tries = 0;
+    const tick = async () => {
+        tries++;
+        try {
+            const r = await fetch(url); const j = await r.json();
+            if (j.status === 'completed') {
+                let html = '<div class="alert-success">Import complete: ' + j.success_count + ' created, ' + j.error_count + ' failed.</div>';
+                if ((j.errors || []).length) {
+                    html += '<ul style="color:#b91c1c; font-size:12px; margin:8px 0 0; padding-left:18px;">' +
+                        j.errors.map(e => '<li>' + (e.product ? (e.product + ' — ') : '') + (e.column ? (e.column + ': ') : '') + e.message + '</li>').join('') + '</ul>';
+                }
+                box.innerHTML = html; return;
+            }
+            box.innerHTML = '<div class="alert-success">Processing… ' + j.success_count + ' created, ' + j.error_count + ' failed so far.</div>';
+        } catch (e) {}
+        if (tries < 120) setTimeout(tick, 2000);
+    };
+    tick();
+})();
+@endif
+</script>
+@endif
 
 <div class="content-panel">
 

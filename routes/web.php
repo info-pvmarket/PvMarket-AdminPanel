@@ -43,6 +43,8 @@ use App\Http\Controllers\Admin\CurrencyController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\SeoMetaController;
 use App\Http\Controllers\Admin\ProjectApprovalController;
+use App\Http\Controllers\Admin\ProductImportController;
+use App\Http\Controllers\Admin\ListingImportController;
 
 // ── Redirect root to login ──────────────────────────────────────────────
 Route::get('/', function () {
@@ -504,6 +506,9 @@ Route::middleware('auth')->group(function () {
         Route::put('/{id}', [ProductListingController::class, 'update'])->name('update');
         Route::delete('/{id}', [ProductListingController::class, 'destroy'])->name('destroy');
         Route::patch('/{id}/toggle', [ProductListingController::class, 'toggleActive'])->name('toggle');
+        Route::get('/import/template', [ListingImportController::class, 'template'])->name('import.template');
+        Route::post('/import', [ListingImportController::class, 'import'])->name('import');
+        Route::get('/import/{batch}/status', [ListingImportController::class, 'status'])->name('import.status');
     });
 
     Route::middleware('admin.permission:listings')->group(function () {
@@ -539,6 +544,9 @@ Route::middleware('auth')->group(function () {
         Route::delete('/{id}', [ProductController::class, 'destroy'])->name('destroy');
         Route::get('/options-by-submenu', [ProductController::class, 'getOptionsBySubMenu'])->name('options-by-submenu');
         Route::get('/sub-menus-by-main', [ProductController::class, 'getSubMenusByMainMenu'])->name('sub-menus-by-main');
+        Route::get('/import/template', [ProductImportController::class, 'template'])->name('import.template');
+        Route::post('/import', [ProductImportController::class, 'import'])->name('import');
+        Route::get('/import/{batch}/status', [ProductImportController::class, 'status'])->name('import.status');
     });
 
     // ══════════════════════════════════════════════════════════════════════
