@@ -696,18 +696,18 @@
             <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
     <span style="font-size:13px; color:#6b7280; font-weight:500; white-space:nowrap;">For bulk imports:</span>
 
-    <a href="{{ route('product_listing.import.template') }}"
+    <button type="button" id="listingTemplateBtn" class="bulk-btn" onclick="listingBulkDownloadTemplate()"
        style="display:inline-flex; align-items:center; gap:7px; padding:9px 16px; background:#fff;
               color:var(--primary); border:1.5px solid var(--primary); border-radius:8px;
-              font-size:13px; font-weight:600; text-decoration:none; white-space:nowrap;">
+              font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
             <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
         </svg>
         Download Template
-    </a>
+    </button>
 
-    <button type="button" onclick="document.getElementById('listingBulkFile').click()"
+    <button type="button" id="listingUploadBtn" class="bulk-btn" onclick="listingBulkTriggerUpload()"
         style="display:inline-flex; align-items:center; gap:7px; padding:9px 16px; background:var(--primary);
                color:#fff; border:1.5px solid var(--primary); border-radius:8px;
                font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;">
@@ -724,6 +724,45 @@
 <div id="listingBulkStatus" style="margin-bottom:16px;"></div>
 
 <script>
+    function listingBulkScope() {
+    const c = (document.getElementById('mainCatSelect') || {}).value;
+    const s = (document.getElementById('subCatSelect') || {}).value;
+    return { c, s, ok: !!(c && s) };
+}
+function listingBulkDownloadTemplate() {
+    const sc = listingBulkScope();
+    if (!sc.ok) { alert('Select a Main Category and Sub Category first.'); return; }
+    window.location = "{{ route('product_listing.import.template') }}?category_id=" + sc.c + "&sub_category_id=" + sc.s;
+}
+function listingBulkTriggerUpload() {
+    if (!listingBulkScope().ok) { alert('Select a Main Category and Sub Category first.'); return; }
+    document.getElementById('listingBulkFile').click();
+}
+
+// Disable the bulk buttons until both a main category and a sub category are chosen.
+document.addEventListener('DOMContentLoaded', function () {
+    const cat  = document.getElementById('mainCatSelect');
+    const sub  = document.getElementById('subCatSelect');
+    const btns = [document.getElementById('listingTemplateBtn'), document.getElementById('listingUploadBtn')];
+    if (!cat || !sub) return;
+
+    const refresh = () => {
+        const ok = listingBulkScope().ok;
+        btns.forEach(b => {
+            if (!b) return;
+            b.disabled = !ok;
+            b.title = ok ? '' : 'Select a Main Category and Sub Category first';
+        });
+    };
+
+    cat.addEventListener('change', refresh);
+    sub.addEventListener('change', refresh);
+    // Sub categories are reloaded by script after a category change, which doesn't fire 'change'.
+    new MutationObserver(refresh).observe(sub, { childList: true });
+    refresh();
+});
+
+
 async function listingBulkUpload(input) {
     const file = input.files[0];
     if (!file) return;
@@ -731,6 +770,11 @@ async function listingBulkUpload(input) {
     box.innerHTML = '<div class="alert-success">Uploading & processing…</div>';
     const fd = new FormData();
     fd.append('file', file);
+    const sc = listingBulkScope();
+    if (!sc.ok) { box.innerHTML = '<div class="alert-error">Select a Main Category and Sub Category first.</div>'; input.value = ''; return; }
+    fd.append('category_id', sc.c);
+    fd.append('sub_category_id', sc.s);
+
     try {
         const res = await fetch("{{ route('product_listing.import') }}", {
             method: 'POST',
@@ -1065,6 +1109,8 @@ function listingBulkPoll(id) {
             <div class="toggle-info-sub">Feature this offer in the Solar Analysis product listings</div>
         </div>
     </div>
+
+    <style>.bulk-btn:disabled { opacity:.45; cursor:not-allowed; }</style>
     <div style="display:flex; align-items:center; gap:12px;">
         {{-- Tier dropdown --}}
         <div id="solarTierWrapper" style="display:none;">
