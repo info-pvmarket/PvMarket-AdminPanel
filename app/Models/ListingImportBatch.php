@@ -8,6 +8,9 @@ class ListingImportBatch extends Model
 {
     protected $connection = 'mongodb';
     protected $collection = 'listing_import_batches';
-    protected $fillable = ['user_id', 'file_name', 'status', 'success_count', 'error_count', 'errors', 'completed_at'];
-    protected $casts = ['success_count' => 'integer', 'error_count' => 'integer', 'errors' => 'array', 'completed_at' => 'datetime',];
+    protected $fillable = [
+        'user_id', 'category_id', 'sub_category_id', 'file_name',
+        'status', 'success_count', 'error_count', 'errors', 'completed_at',
+    ];
+    protected $casts = ['success_count' => 'integer', 'error_count' => 'integer', 'completed_at' => 'datetime'];
 }

@@ -28,9 +28,9 @@ class ProductImportController extends Controller
           ->orderBy('name')->pluck('name')->filter()->values()->toArray();
         
         $headings = array_merge([
-            'product_name', 'brand_name', 'category_name', 'sub_category_name', 'specific_value',
-            'specific_value_unit', 'product_description', 'pieces_per_pallet', 'pallets_per_container', 'height', 'height_unit',
-            'width', 'width_unit', 'depth', 'depth_unit', 'weight', 'weight_unit',
+            'Product Name', 'Brand', 'Main Category', 'Sub Category', 'Specification',
+            'Unit', 'Product Description', 'Pieces Per Pallet', 'Pallets per Container', 'Height', 'Height Unit',
+            'Width', 'Width Unit', 'Depth', 'Depth Unit', 'Weight', 'Weight Unit',
         ], $specs);
 
         return Excel::download(new ProductImportTemplateExport($headings), 'product_import_template.xlsx');

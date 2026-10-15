@@ -50,7 +50,7 @@ class ProductImport implements ToCollection, WithHeadingRow
         }
 
         foreach ($rows as $row) {
-            $r = $row->toArray();
+            $r = $this->withFieldAliases($row->toArray());
 
             $name          = trim((string) ($r['product_name'] ?? ''));
             $specificValue = trim((string) ($r['specific_value'] ?? ''));
@@ -121,6 +121,26 @@ class ProductImport implements ToCollection, WithHeadingRow
                 $this->rowError($name, null, $e->getMessage());
             }
         }
+    }
+
+     // The template uses website labels, which arrive slugged ("Brand" -> "brand").
+    // Map them onto the field names used above; old templates still work.
+    private const FIELD_ALIASES = [
+        'brand'         => 'brand_name',
+        'main_category' => 'category_name',
+        'sub_category'  => 'sub_category_name',
+        'specification' => 'specific_value',
+        'unit'          => 'specific_value_unit',
+    ];
+
+    private function withFieldAliases(array $r): array
+    {
+        foreach (self::FIELD_ALIASES as $from => $to) {
+            if (array_key_exists($from, $r) && ! array_key_exists($to, $r)) {
+                $r[$to] = $r[$from];
+            }
+        }
+        return $r;
     }
 
 

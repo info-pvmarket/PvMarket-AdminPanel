@@ -108,9 +108,10 @@
         </h1>
 
         @if($mode === 'create')
+        <style>.bulk-btn:disabled { opacity:.45; cursor:not-allowed; }</style>
         <span style="font-size:13px; color:#6b7280; font-weight:500; white-space:nowrap;">For bulk imports:</span>
 
-        <button type="button" onclick="bulkDownloadTemplate()"
+         <button type="button" id="bulkTemplateBtn" class="bulk-btn" onclick="bulkDownloadTemplate()"
             style="display:inline-flex; align-items:center; gap:7px; padding:9px 16px; background:#fff;
                    color:var(--primary); border:1.5px solid var(--primary); border-radius:8px;
                    font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;"
@@ -122,7 +123,7 @@
             Download Template
         </button>
 
-        <button type="button" onclick="bulkTriggerUpload()"
+         <button type="button" id="bulkUploadBtn" class="bulk-btn" onclick="bulkTriggerUpload()"
             style="display:inline-flex; align-items:center; gap:7px; padding:9px 16px; background:var(--primary);
                    color:#fff; border:1.5px solid var(--primary); border-radius:8px;
                    font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;"
@@ -171,6 +172,29 @@ function bulkSubmitUpload() {
     document.getElementById('bulkSubCategoryHidden').value = sc.s;
     document.getElementById('bulkImportForm').submit();
 }
+// Disable the bulk buttons until both a category and a sub category are chosen.
+document.addEventListener('DOMContentLoaded', function () {
+    const cat  = document.getElementById('categorySelect');
+    const sub  = document.getElementById('subCategorySelect');
+    const btns = [document.getElementById('bulkTemplateBtn'), document.getElementById('bulkUploadBtn')];
+    if (!cat || !sub) return;
+
+    const refresh = () => {
+        const ok = bulkSelectedScope().ok;
+        btns.forEach(b => {
+            if (!b) return;
+            b.disabled = !ok;
+            b.title = ok ? '' : 'Select a Main Category and Sub Category first';
+        });
+    };
+
+    cat.addEventListener('change', refresh);
+    sub.addEventListener('change', refresh);
+    // Sub categories are reloaded by script after a category change, which doesn't fire 'change'.
+    new MutationObserver(refresh).observe(sub, { childList: true });
+    refresh();
+});
+
 @if (session('import_batch_id'))
 (function () {
     const id = "{{ session('import_batch_id') }}";

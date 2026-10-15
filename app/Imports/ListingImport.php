@@ -3,6 +3,8 @@
 namespace App\Imports;
 
 use App\Models\Incoterm;
+use App\Models\MainMenu;
+use App\Models\SubMenu;
 use App\Models\ListingImportBatch;
 use App\Models\Product;
 use App\Models\ProductListing;
@@ -19,6 +21,8 @@ class ListingImport implements ToCollection, WithHeadingRow
     public function __construct(
         public string $batchId,
         public string $userId,
+        public string $categoryId,
+        public string $subCategoryId,
     ) {}
 
     public function collection(Collection $rows): void
@@ -38,10 +42,12 @@ class ListingImport implements ToCollection, WithHeadingRow
             if ($i->name) $incotermByKey[mb_strtolower(trim($i->name))] = $i;
         }
 
-        $validSell = ['sell by pieces' => true, 'sell by pallets' => true, 'sell by container' => true];
+        $scopeCat   = MainMenu::find($this->categoryId);
+        $scopeSub   = SubMenu::find($this->subCategoryId);
+        $scopeLabel = trim(($scopeCat?->category_name ?? '') . ' → ' . ($scopeSub?->sub_category_name ?? ''));
 
         foreach ($rows as $row) {
-            $r = $row->toArray();
+            $r = $this->withFieldAliases($row->toArray());
             if (trim(implode('', array_map('strval', $r))) === '') continue;
 
             $name = trim((string) ($r['product_name'] ?? ''));
@@ -51,10 +57,12 @@ class ListingImport implements ToCollection, WithHeadingRow
                 $sheetCat = trim((string) ($r['category'] ?? ''));
                 $sheetSub = trim((string) ($r['sub_category'] ?? ''));
 
-                // Resolve product by name, disambiguate by category/sub.
+                // Resolve product by name within the category selected on the page.
                 $cands = $productsByName[mb_strtolower($name)] ?? [];
                 if (count($cands) === 0) { $this->err($name, 'product_name', "Unknown product \"$name\""); continue; }
-                $product = null;
+                $cands = array_values(array_filter($cands, fn ($p) =>
+                    (string) $p->category_id === $this->categoryId && (string) $p->sub_category_id === $this->subCategoryId));
+                if (count($cands) === 0) { $this->err($name, 'product_name', "Product is not in $scopeLabel (the category selected on the page)"); continue; }
                 if (count($cands) === 1) {
                     $product = $cands[0];
                 } else {
@@ -81,9 +89,11 @@ class ListingImport implements ToCollection, WithHeadingRow
                 // Currency / sell type / promotion.
                 $currency = strtoupper(trim((string) ($r['currency'] ?? '')));
                 if ($currency === '') { $this->err($name, 'currency', 'Currency is required'); continue; }
-                $sellTypeRaw = strtolower(trim((string) ($r['sell_type'] ?? '')));
-                if (!isset($validSell[$sellTypeRaw])) { $this->err($name, 'sell_type', 'Must be: sell by pieces, sell by pallets, or sell by container'); continue; }
-                $promotion = trim((string) ($r['promotion'] ?? ''));
+                $sellTypeRaw = self::SELL_TYPES[$this->norm($r['sell_type'] ?? '')] ?? null;
+                if ($sellTypeRaw === null) { $this->err($name, 'sell_type', 'Must be: Sell By Pieces Only, Sell By Pallets Only, or Sell By Containers Only'); continue; }
+                $promotion = self::PROMOTIONS[$this->norm($r['promotion'] ?? '')] ?? null;
+                if ($promotion === null) { $this->err($name, 'promotion', 'Must be: No Promotion, Exclusive Offer, or Top Discount'); continue; }
+
 
                 // Quantities.
                 $totalQtyRaw = (int) ($r['total_quantity'] ?? 0);
@@ -108,7 +118,7 @@ class ListingImport implements ToCollection, WithHeadingRow
                     'warehouse_id'        => new ObjectId((string) $warehouse->_id),
                     'sell_type'           => $sellType,
                     'currency_id'         => $currency,
-                    'discount_type'       => $promotion !== '' ? $promotion : null,
+                    'discount_type'       => $promotion,
                     'total_quantity'      => $pieces,
                     'lead_time'           => $leadTime,
                     'incoterms_id'        => new ObjectId((string) $incoterm->_id),
@@ -133,6 +143,48 @@ class ListingImport implements ToCollection, WithHeadingRow
                 $this->err($name, null, $e->getMessage());
             }
         }
+    }
+
+     // Sheet values -> stored values; accepts the website's labels and the stored values.
+    private const SELL_TYPES = [
+        'sell by pieces only' => 'sell by pieces', 'sell by pieces' => 'sell by pieces', 'pieces' => 'sell by pieces',
+        'sell by pallets only' => 'sell by pallets', 'sell by pallets' => 'sell by pallets', 'pallets' => 'sell by pallets',
+        'sell by containers only' => 'sell by container', 'sell by containers' => 'sell by container',
+        'sell by container' => 'sell by container', 'containers' => 'sell by container',
+    ];
+
+    private const PROMOTIONS = [
+        '' => 'none', 'none' => 'none', 'no promotion' => 'none',
+        'exclusive offer' => 'Exclusive offer',
+        'top discount' => 'Top Discount products', 'top discount products' => 'Top Discount products',
+    ];
+
+    // Website-label headers arrive slugged ("Tier 1 Price / Unit" -> "tier_1_price_unit").
+    private function withFieldAliases(array $r): array
+    {
+        $map = [
+            'main_category'   => 'category',
+            'product'         => 'product_name',
+            'warehouse'       => 'warehouse_name',
+            'lead_time_weeks' => 'lead_time',
+        ];
+        foreach ([1, 2, 3] as $n) {
+            $map["tier_{$n}_min_qty"]    = "tier{$n}_min_qty";
+            $map["tier_{$n}_max_qty"]    = "tier{$n}_max_qty";
+            $map["tier_{$n}_price_unit"] = "tier{$n}_price";
+            $map["tier_{$n}_commission"] = "tier{$n}_commission";
+        }
+        foreach ($map as $from => $to) {
+            if (array_key_exists($from, $r) && ! array_key_exists($to, $r)) {
+                $r[$to] = $r[$from];
+            }
+        }
+        return $r;
+    }
+
+    private function norm(mixed $v): string
+    {
+        return preg_replace('/\s+/', ' ', str_replace('_', ' ', mb_strtolower(trim((string) $v))));
     }
 
 
