@@ -109,7 +109,7 @@ Brand::create($rowData);
 
         $updateData = [
     'name'          => $request->name,
-    'slug'          => $request->slug ?: Str::slug($request->name),
+    'slug'          => Str::slug($request->slug ?: $request->name),
     'alt_tag'       => $request->alt_tag ?? Str::slug($request->name),
     'menu_order'    => (int)($request->menu_order ?? 0),
     'image'         => $imageData,
