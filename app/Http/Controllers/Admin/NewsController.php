@@ -8,6 +8,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\Controller;
 use App\Services\TranslationService;
+use App\Rules\RichTextImages;
 
 class NewsController extends Controller
 {
@@ -41,7 +42,7 @@ class NewsController extends Controller
     $request->validate([
         'title' => 'required|string|max:255',
         'slug'    => 'nullable|string|max:255',
-        'content' => 'nullable|string',
+        'content' => ['nullable', 'string', new RichTextImages],
         'image'   => 'nullable|image|mimes:jpeg,png,jpg,webp|max:3072',
         'alt_tag' => 'nullable|string|max:255',
     ] + $this->seoValidationRules(), $this->seoValidationMessages());
@@ -85,7 +86,7 @@ if ($request->hasFile('image')) {
         $request->validate([
             'title' => 'required|string|max:255',
             'slug'    => 'nullable|string|max:255',
-            'content' => 'nullable|string',
+            'content' => ['nullable', 'string', new RichTextImages],
             'image'   => 'nullable|image|mimes:jpeg,png,jpg,webp|max:3072',
             'alt_tag' => 'nullable|string|max:255',
         ] + $this->seoValidationRules(), $this->seoValidationMessages());

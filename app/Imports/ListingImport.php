@@ -122,7 +122,7 @@ class ListingImport implements ToCollection, WithHeadingRow
                     'total_quantity'      => $pieces,
                     'lead_time'           => $leadTime,
                     'incoterms_id'        => new ObjectId((string) $incoterm->_id),
-                    'slug'                => Str::slug($product->product_name . '-' . uniqid()),
+                    'slug'                => ProductListing::uniqueSlug($product->product_name),
                     'slots'               => $slots,
                     'verification_status' => 'pending',
                     'is_active'           => true,

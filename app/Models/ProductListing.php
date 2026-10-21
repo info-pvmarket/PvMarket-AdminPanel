@@ -225,4 +225,26 @@ public function getSlotsAttribute($value)
     })->filter(fn($s) => !empty($s))->values()->toArray();
 }
 
+/**
+     * A clean listing slug: $source slugged, with -2, -3 ... only when another
+     * listing already uses it as its slug or an old alias. Same rule as the
+     * Go API's UniqueListingSlug (NEW-07).
+     */
+    public static function uniqueSlug(string $source, ?string $exceptId = null): string
+    {
+        $base = \Illuminate\Support\Str::slug($source) ?: 'listing';
+
+        for ($n = 1; ; $n++) {
+            $candidate = $n === 1 ? $base : "{$base}-{$n}";
+            $taken = static::query()
+                ->where(fn ($q) => $q->where('slug', $candidate)->orWhere('slug_aliases', $candidate))
+                ->when($exceptId, fn ($q) => $q->where('_id', '!=', $exceptId))
+                ->exists();
+
+            if (! $taken) {
+                return $candidate;
+            }
+        }
+    }
+
 }

@@ -121,7 +121,7 @@
                     label="Blog Image:"
                     :current-image="$currentImageUrl"
                 />
-                <span class="form-hint">JPEG, PNG or WebP. Maximum file size: 600 MB.</span>
+                <span class="form-hint">JPEG, PNG or WebP. Maximum file size: 5 MB.</span>
                 <span class="image-size-error" id="imageSizeError" role="alert"></span>
 
                 <div class="form-group">
@@ -214,7 +214,7 @@
 
 </div>
 
-<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+@include('admin.partials.quill')
 <script>
 (function () {
     var quill = new Quill('#quillEditor', {
@@ -222,7 +222,7 @@
         placeholder: 'Write your blog content here...',
         modules: {
             toolbar: [
-                [{ header: [1,2,3,4,5,6,false] }],
+                [{ header: [2, 3, 4, false] }],
                 [{ font: [] }],
                 ['bold','italic','underline','strike'],
                 [{ color: [] },{ background: [] }],
@@ -233,6 +233,7 @@
             ]
         }
     });
+    PvQuill.attach(quill);
 
     var existingContent = document.getElementById('dataInput').value;
     if (existingContent && existingContent.trim() !== '') {
@@ -249,13 +250,13 @@
     var slugPreview  = document.getElementById('slugPreview');
     var imageInput   = document.querySelector('#blogForm input[name="image"]');
     var imageError   = document.getElementById('imageSizeError');
-    var maxImageSize = 600 * 1024 * 1024;
+    var maxImageSize = 5 * 1024 * 1024;
 
     if (imageInput) {
         imageInput.addEventListener('change', function () {
             var file = this.files && this.files[0];
             var isTooLarge = file && file.size > maxImageSize;
-            var message = isTooLarge ? 'The blog image must not be larger than 600 MB.' : '';
+            var message = isTooLarge ? 'The blog image must not be larger than 5 MB.' : '';
 
             this.setCustomValidity(message);
             imageError.textContent = message;

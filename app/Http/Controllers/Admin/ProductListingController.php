@@ -518,9 +518,9 @@ class ProductListingController extends Controller
         $validated['verification_status'] = 'pending';
         $validated['incoterms_id'] = new \MongoDB\BSON\ObjectId($validated['incoterm_id']);
         unset($validated['incoterm_id']);
-        $validated['slug']            = $request->filled('slug')
-            ? \Illuminate\Support\Str::slug($request->slug)
-            : \Illuminate\Support\Str::slug($request->product_id . '-' . time());
+        $validated['slug']            = ProductListing::uniqueSlug($request->filled('slug')
+            ? $request->slug
+            : (\App\Models\Product::find($request->product_id)?->product_name ?? 'listing'));
         $validated['real_time_price'] = $request->boolean('real_time_price', false);
         $validated['is_active']           = ! $request->boolean('is_on_hold', false);
         unset($validated['is_on_hold']);
@@ -773,9 +773,15 @@ class ProductListingController extends Controller
         $validated['solar_phase_types'] = $validated['is_solar_listing'] ? array_values($request->input('solar_phase_types', [])) : [];
         $validated['incoterms_id'] = new \MongoDB\BSON\ObjectId($request->incoterm_id);
         unset($validated['incoterm_id']);
-        $validated['slug']            = $request->filled('slug')
-            ? \Illuminate\Support\Str::slug($request->slug)
-            : $listing->slug;
+        $newSlug = $request->filled('slug') ? \Illuminate\Support\Str::slug($request->slug) : $listing->slug;
+        if ($newSlug !== $listing->slug) {
+            $newSlug = ProductListing::uniqueSlug($newSlug, (string) $listing->_id);
+            // The old URL keeps working: it resolves and redirects (NEW-07).
+            if ($listing->slug) {
+                $listing->push('slug_aliases', $listing->slug, true);
+            }
+        }
+        $validated['slug'] = $newSlug;
         $validated['real_time_price'] = $request->boolean('real_time_price', false);
         $validated['main_category_id'] = new \MongoDB\BSON\ObjectId($request->main_category_id);
         $validated['sub_category_id']  = new \MongoDB\BSON\ObjectId($request->sub_category_id);

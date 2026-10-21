@@ -125,6 +125,26 @@
                             value="{{ old('event_date', $record->event_date ?? '') }}"
                         />
                     </div>
+                    <div class="form-group">
+                        <label class="form-label">End Date</label>
+                        <input
+                            type="date" name="end_date" class="form-input"
+                            value="{{ old('end_date', $record->end_date ?? '') }}"
+                        />
+                    </div>
+                </div>
+
+                {{-- Upcoming vs past is decided by the end date in this timezone (TASK-6.12). --}}
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Timezone</label>
+                        @php $selectedTz = old('timezone', $record->timezone ?? 'UTC'); @endphp
+                        <select name="timezone" class="form-input">
+                            @foreach (timezone_identifiers_list() as $tz)
+                                <option value="{{ $tz }}" @selected($tz === $selectedTz)>{{ $tz }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                 </div>
 
             </div>
@@ -178,7 +198,7 @@
     </form>
 </div>
 
-<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+@include('admin.partials.quill')
 <script>
 (function () {
     var quill = new Quill('#quillEditor', {
@@ -186,7 +206,7 @@
         placeholder: 'Write event description here...',
         modules: {
             toolbar: [
-                [{ header: [1, 2, 3, 4, 5, 6, false] }],
+                [{ header: [ 2, 3, 4, false] }],
                 [{ font: [] }],
                 ['bold', 'italic', 'underline', 'strike'],
                 [{ color: [] }, { background: [] }],
@@ -197,6 +217,7 @@
             ]
         }
     });
+    PvQuill.attach(quill);
 
     var existingContent = document.getElementById('descriptionInput').value;
     if (existingContent && existingContent.trim() !== '') {
