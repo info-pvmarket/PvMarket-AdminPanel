@@ -45,6 +45,7 @@ use App\Http\Controllers\Admin\SeoMetaController;
 use App\Http\Controllers\Admin\ProjectApprovalController;
 use App\Http\Controllers\Admin\ProductImportController;
 use App\Http\Controllers\Admin\ListingImportController;
+use App\Http\Controllers\Admin\EditorImageController;
 
 // ── Redirect root to login ──────────────────────────────────────────────
 Route::get('/', function () {
@@ -72,6 +73,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/read-all', [NotificationController::class, 'markAllAsRead'])->name('read-all');
         Route::delete('/{id}', [NotificationController::class, 'destroy'])->name('destroy');
     });
+
+    Route::post('admin/editor-images', [EditorImageController::class, 'store'])->name('admin.editor-images.store');
 
     // Profile (accessible to all authenticated users)
     Route::get('/admin/profile', [ProfileController::class, 'show'])->name('admin.profile');

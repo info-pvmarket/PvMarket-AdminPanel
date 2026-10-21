@@ -15,6 +15,8 @@ class Event extends Model
         'heading',
         'place',
         'event_date',
+        'end_date',     // last day of a multi-day event (TASK-6.12)
+        'timezone',     // IANA zone event_date / end_date are in
         'description',
         'image',
         'alt_tag',

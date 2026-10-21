@@ -7,6 +7,7 @@ use App\Models\Event;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use App\Services\TranslationService;
+use App\Rules\RichTextImages;
 
 class EventController extends Controller
 {
@@ -45,7 +46,9 @@ class EventController extends Controller
             'heading'     => 'required|string|max:500',
             'place'       => 'nullable|string|max:255',
             'event_date'  => 'nullable|date',
-            'description' => 'nullable|string',
+            'end_date'    => 'nullable|date|after_or_equal:event_date',
+            'timezone'    => 'nullable|timezone:all',
+            'description' => ['nullable', 'string', new RichTextImages],
             'image'       => 'nullable|image|mimes:jpeg,png,jpg,webp|max:3072',
             'alt_tag'     => 'nullable|string|max:255',
         ] + $this->seoValidationRules(), $this->seoValidationMessages());
@@ -54,6 +57,8 @@ class EventController extends Controller
             'heading'     => $request->heading,
             'place'       => $request->place,
             'event_date'  => $request->event_date,
+            'end_date'    => $request->end_date,
+            'timezone'    => $request->timezone ?: 'UTC',
             'description' => $request->description,
             'alt_tag'     => $request->alt_tag,
             'seo'         => $this->buildSeoData($request, null, 'events'),
@@ -89,7 +94,9 @@ class EventController extends Controller
             'heading'     => 'required|string|max:500',
             'place'       => 'nullable|string|max:255',
             'event_date'  => 'nullable|date',
-            'description' => 'nullable|string',
+            'end_date'    => 'nullable|date|after_or_equal:event_date',
+            'timezone'    => 'nullable|timezone:all',
+            'description' => ['nullable', 'string', new RichTextImages],
             'image'       => 'nullable|image|mimes:jpeg,png,jpg,webp|max:3072',
             'alt_tag'     => 'nullable|string|max:255',
         ] + $this->seoValidationRules(), $this->seoValidationMessages());
@@ -98,6 +105,8 @@ class EventController extends Controller
             'heading'     => $request->heading,
             'place'       => $request->place,
             'event_date'  => $request->event_date,
+            'end_date'    => $request->end_date,
+            'timezone'    => $request->timezone ?: 'UTC',
             'description' => $request->description,
             'alt_tag'     => $request->alt_tag,
             'seo'         => $this->buildSeoData($request, $event->seo, 'events'),

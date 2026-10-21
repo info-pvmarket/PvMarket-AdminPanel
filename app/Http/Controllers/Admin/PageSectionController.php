@@ -11,6 +11,7 @@ use App\Models\SeoMetaData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use MongoDB\BSON\ObjectId;
+use App\Rules\RichTextImages;
 
 class PageSectionController extends Controller
 {
@@ -295,7 +296,7 @@ class PageSectionController extends Controller
         abort_unless(array_key_exists($page, $this->pages), 404);
 
         $request->validate(
-            $this->seoMetaValidationRules(),
+            $this->seoMetaValidationRules() + ['sections.*.extra' => [new RichTextImages]],
             $this->seoMetaValidationMessages()
         );
 

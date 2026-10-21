@@ -887,14 +887,14 @@
 
 </form>
 
-<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+@include('admin.partials.quill')
 <script>
 (function () {
 
     var quillInstances = {};
 
     var toolbarFull = [
-        [{ header: [1, 2, 3, false] }],
+        [{ header: [ 2, 3, 4, false] }],
         ['bold', 'italic', 'underline'],
         [{ color: [] }],
         [{ list: 'ordered' }, { list: 'bullet' }],
@@ -915,6 +915,7 @@
             placeholder: 'Write content here...',
             modules: { toolbar: toolbar }
         });
+        PvQuill.attach(quill);
 
         var existing = inputEl ? inputEl.value.trim() : '';
         if (existing !== '') {

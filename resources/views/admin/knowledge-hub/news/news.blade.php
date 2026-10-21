@@ -167,7 +167,7 @@
     </form>
 </div>
 
-<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+@include('admin.partials.quill')
 <script>
 (function () {
     var quill = new Quill('#quillEditor', {
@@ -175,7 +175,7 @@
         placeholder: 'Write full news content here...',
         modules: {
             toolbar: [
-                [{ header: [1,2,3,4,5,6,false] }],
+                [{ header: [2, 3, 4, false] }],
                 ['bold','italic','underline','strike'],
                 [{ color:[] },{ background:[] }],
                 [{ list:'ordered' },{ list:'bullet' }],
@@ -185,6 +185,7 @@
             ]
         }
     });
+    PvQuill.attach(quill);
 
     var existing = document.getElementById('descriptionInput').value;
     if (existing && existing.trim() !== '') {
