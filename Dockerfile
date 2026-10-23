@@ -1,4 +1,6 @@
-FROM php:8.4-apache-bookworm AS php-base
+# Pinned to the patch release so security fixes are explicit and a cached
+# build cannot keep an older 8.4.x base image.
+FROM php:8.4.27-apache-bookworm AS php-base
 
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 
