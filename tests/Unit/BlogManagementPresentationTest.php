@@ -26,7 +26,8 @@ class BlogManagementPresentationTest extends TestCase
         $view = file_get_contents($this->projectFile('resources/views/admin/knowledge-hub/blogs/blogs.blade.php'));
         $phpIni = file_get_contents($this->projectFile('docker/php.ini'));
 
-        $this->assertSame(2, substr_count($controller, "'image'           => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120'"));
+        $this->assertSame(1, substr_count($controller, "'image'           => 'required|image|mimes:jpeg,png,jpg,webp|max:5120'"), 'New blogs require a valid cover with the same 5 MB limit.');
+        $this->assertSame(1, substr_count($controller, "'image'           => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120'"), 'Existing blogs may retain their cover without uploading a replacement.');
         $this->assertSame(2, substr_count($controller, "'image.max' => 'The blog image must not be larger than 5 MB.'"));
         $this->assertStringContainsString('var maxImageSize = 5 * 1024 * 1024;', $view);
         $this->assertStringContainsString('upload_max_filesize=600M', $phpIni);
