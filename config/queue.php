@@ -31,6 +31,14 @@ return [
 
     'connections' => [
 
+        'blog-translations' => [
+            'driver' => 'mongodb',
+            'connection' => 'mongodb',
+            'collection' => 'jobs',
+            'queue' => 'blog-translations',
+            'retry_after' => 1860,
+        ],
+
         'sync' => [
             'driver' => 'sync',
         ],

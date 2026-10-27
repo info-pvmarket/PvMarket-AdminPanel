@@ -61,19 +61,19 @@ trait HandlesSeoMeta
      *                                       social image keeps the current one.
      * @param  string  $folder  storage folder for a newly uploaded social image.
      */
-    protected function buildSeoData(Request $request, mixed $existing = null, string $folder = 'seo'): array
+    protected function buildSeoData(Request $request, mixed $existing = null, string $folder = 'seo', bool $deleteReplacedImages = true): array
     {
         $existing = $this->normalizeSeoArray($existing);
 
         $ogImage = $existing['og_image'] ?? null;
 
         if ($request->boolean('seo_og_image_remove')) {
-            $this->deleteSeoImage($ogImage);
+            if ($deleteReplacedImages) $this->deleteSeoImage($ogImage);
             $ogImage = null;
         }
 
         if ($request->hasFile('seo_og_image') && $request->file('seo_og_image')->isValid()) {
-            $this->deleteSeoImage($ogImage);
+            if ($deleteReplacedImages) $this->deleteSeoImage($ogImage);
             $ogImage = $this->storeSeoImage(
                 $request->file('seo_og_image'),
                 $folder,

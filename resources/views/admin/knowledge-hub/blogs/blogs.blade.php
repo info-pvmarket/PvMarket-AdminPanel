@@ -23,6 +23,7 @@
     .form-actions { display:flex; justify-content:flex-end; padding-top:20px; border-top:1px solid var(--border); margin-top:20px; }
     .btn-save { display:inline-flex; align-items:center; gap:8px; padding:10px 28px; background:#10B981; color:white; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; transition:background .15s, box-shadow .2s; }
     .btn-save:hover { background:#059669; box-shadow:0 4px 14px rgba(16,185,129,.35); }
+    .btn-save:disabled { opacity:.65; cursor:wait; }
     .alert-error { padding:12px 16px; background:#FEE2E2; color:#991B1B; border:1px solid #FECACA; border-radius:8px; font-size:13.5px; margin-bottom:20px; }
     .form-file-wrap { border:1.5px solid var(--border); border-radius:8px; overflow:hidden; display:flex; align-items:center; background:white; transition:border-color .2s; }
     .form-file-wrap:focus-within { border-color:var(--primary); box-shadow:0 0 0 3px rgba(14,165,233,.1); }
@@ -66,7 +67,7 @@
 <div class="content-panel">
 
     @if($errors->any())
-        <div class="alert-error">{{ $errors->first() }}</div>
+        <div class="alert-error" role="alert">{{ $errors->first() }}</div>
     @endif
 
     <form
@@ -120,8 +121,9 @@
                     name="image"
                     label="Blog Image:"
                     :current-image="$currentImageUrl"
+                    :required="$mode === 'create'"
                 />
-                <span class="form-hint">JPEG, PNG or WebP. Maximum file size: 5 MB.</span>
+                <span class="form-hint">{{ $mode === 'create' ? 'A content-specific cover is required for new blogs. ' : '' }}JPEG, PNG or WebP. Maximum file size: 5 MB.</span>
                 <span class="image-size-error" id="imageSizeError" role="alert"></span>
 
                 <div class="form-group">
@@ -202,19 +204,21 @@
     @endif
 
     <div class="form-actions">
-        <button type="submit" form="blogForm" class="btn-save">
+        <p id="blogSaveStatus" role="status" aria-live="polite" style="margin-right:16px;"></p>
+        <button type="submit" form="blogForm" class="btn-save" id="blogSaveButton" aria-describedby="blogSaveStatus">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                 <polyline points="17 8 12 3 7 8"/>
                 <line x1="12" y1="3" x2="12" y2="15"/>
             </svg>
-            Save
+            <span data-save-label>Save</span>
         </button>
     </div>
 
 </div>
 
 @include('admin.partials.quill')
+<script src="{{ asset('js/blog-save-state.js') }}?v=1"></script>
 <script>
 (function () {
     var quill = new Quill('#quillEditor', {
@@ -237,13 +241,14 @@
 
     var existingContent = document.getElementById('dataInput').value;
     if (existingContent && existingContent.trim() !== '') {
-        quill.clipboard.dangerouslyPasteHTML(existingContent);
+        quill.pvLoadSavedContent(existingContent);
     }
 
     document.getElementById('blogForm').addEventListener('submit', function () {
         var html = quill.root.innerHTML;
         document.getElementById('dataInput').value = (html === '<p><br></p>') ? '' : html;
     });
+    PvBlogSave.attach(document.getElementById('blogForm'), document.getElementById('blogSaveButton'), document.getElementById('blogSaveStatus'));
 
     var headingInput = document.getElementById('headingInput');
     var slugInput    = document.getElementById('slugInput');
@@ -275,6 +280,8 @@
                   .replace(/^-+|-+$/g, '');
     }
 
+    if (slugInput.value.trim()) slugInput.dataset.manual = 'true';
+
     headingInput.addEventListener('input', function () {
         if (!slugInput.dataset.manual) {
             var slug = toSlug(this.value);
@@ -284,7 +291,7 @@
     });
 
     slugInput.addEventListener('input', function () {
-        this.dataset.manual = this.value ? 'true' : '';
+        this.dataset.manual = 'true';
         slugPreview.textContent = this.value ? 'Preview: ' + toSlug(this.value) : '';
     });
 })();
@@ -358,11 +365,17 @@
 </div>
 
 @if(session('success'))
-    <div class="alert-success">
+    <div class="alert-success" role="status">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
         </svg>
         {{ session('success') }}
+    </div>
+@endif
+
+@if(session('warning'))
+    <div role="alert" style="padding:12px 16px; margin-bottom:20px; background:#FEF3C7; color:#92400E;">
+        {{ session('warning') }}
     </div>
 @endif
 

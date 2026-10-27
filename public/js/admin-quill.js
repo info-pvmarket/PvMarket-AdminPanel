@@ -1,7 +1,7 @@
 /**
  * Rich-text editor rules for the CMS (TASK-6.4):
  * - the image button uploads the file and inserts its URL, never base64;
- * - pasted base64 images are dropped;
+ * - pasted base64 images are dropped; saved blog images survive hydration;
  * - every image carries alt text: asked for on insert, editable by clicking it.
  */
 (function () {
@@ -73,9 +73,22 @@
     window.PvQuill = {
         /** Apply the CMS image rules to an editor. Call right after new Quill(...). */
         attach: function (quill) {
-            // Pasted (or loaded) base64 images are dropped.
+            var loadingSavedContent = false;
+            // Use only for hydrating stored content, never for clipboard paste.
+            quill.pvLoadSavedContent = function (html) {
+                loadingSavedContent = true;
+                try {
+                    quill.clipboard.dangerouslyPasteHTML(html);
+                } finally {
+                    loadingSavedContent = false;
+                }
+            };
+            // New clipboard images remain blocked; explicit hydration is scoped above.
             quill.clipboard.addMatcher('IMG', function (node, delta) {
-                return /^data:/i.test(node.getAttribute('src') || '') ? new Delta() : delta;
+                var src = node.getAttribute('src') || '';
+                if (!/^data:/i.test(src)) return delta;
+                return loadingSavedContent && /^data:image\/(?:png|jpe?g|gif|webp);base64,/i.test(src)
+                    ? delta : new Delta();
             });
 
             var toolbar = quill.getModule('toolbar');
@@ -89,9 +102,13 @@
                 if (!blot) return;
                 var alt = askAlt(img.getAttribute('alt'));
                 if (alt === null) return;
+                if (!alt) {
+                    window.alert('Alt text is required for every image.');
+                    return;
+                }
                 var index = quill.getIndex(blot);
-                quill.deleteText(index, 1, 'user');
-                quill.insertEmbed(index, 'image', { src: img.getAttribute('src'), alt: alt }, 'user');
+                // Formatting in place retains width, height and placement.
+                quill.formatText(index, 1, 'alt', alt, 'user');
             });
 
             return quill;
