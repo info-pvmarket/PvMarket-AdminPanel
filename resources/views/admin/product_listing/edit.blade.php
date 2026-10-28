@@ -1648,7 +1648,7 @@ function syncInventoryNotesVisibility() {
     const quantityChanged = Number.isFinite(currentQuantity) && currentQuantity !== originalTotalQuantity;
 
     notesGroup.style.display = quantityChanged ? 'flex' : 'none';
-    notesInput.required = quantityChanged;
+    notesInput.required = quantityChanged && !document.getElementById('toggleSoldOff').checked;
 
     if (!quantityChanged) {
         summary.textContent = '';
@@ -1693,19 +1693,34 @@ document.getElementById('toggleIsActive').addEventListener('change', function ()
 });
 
 // ── Toggle: Sold Off ──────────────────────────────────────────
+function syncSoldOffQuantity() {
+    const soldOff = document.getElementById('toggleSoldOff').checked;
+    const quantity = document.getElementById('totalQtyInput');
+    quantity.readOnly = soldOff;
+    quantity.min = soldOff ? '0' : '1';
+    if (soldOff) quantity.value = '0';
+    // Clearing Sold Off never restores the previous quantity: restock explicitly.
+    syncQuantityPresentation();
+    syncInventoryNotesVisibility();
+}
+
 document.getElementById('toggleSoldOff').addEventListener('change', function () {
     if (this.checked) {
         document.getElementById('togglePopular').checked  = false;
     }
 
+    syncSoldOffQuantity();
     syncOfferStatusSummary();
 });
+
+syncSoldOffQuantity();
 
 // ── Toggle: Popular ───────────────────────────────────────────
 document.getElementById('togglePopular').addEventListener('change', function () {
     if (this.checked) {
         document.getElementById('toggleSoldOff').checked = false;
         document.getElementById('toggleIsActive').checked = false;
+        syncSoldOffQuantity();
         syncOfferStatusSummary();
     }
 });
@@ -1740,7 +1755,7 @@ function handleUpdate(btn) {}
 function validatePriceTiersAgainstTotalQuantity() {
     const totalQuantity = Number(document.getElementById('totalQtyInput').value);
     const errorElement = document.getElementById('tierQuantityError');
-    const hasInvalidTier = Number.isFinite(totalQuantity) && slots.some(slot =>
+    const hasInvalidTier = !document.getElementById('toggleSoldOff').checked && Number.isFinite(totalQuantity) && slots.some(slot =>
         Number(slot.min_quantity) > totalQuantity ||
         (hasSpecificMaxQuantity(slot) && Number(slot.max_quantity) > totalQuantity)
     );

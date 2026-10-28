@@ -698,7 +698,14 @@ class ProductListingController extends Controller
         $oldSlots = $listing->slots ?? [];
         $oldCurrency = (string) $listing->currency_id;
         $oldTotalQuantity = (int) $listing->total_quantity;
-        $priceTierQuantityRule = new PriceTierQuantityAtMostTotal((int) $request->input('total_quantity'));
+        $request->validate(['is_sold_off' => 'nullable|boolean']);
+        $isSoldOff = $request->boolean('is_sold_off', false);
+        // Sold Off clears current stock; inventory history retains the old amount.
+        if ($isSoldOff) {
+            $request->merge(['total_quantity' => 0]);
+        }
+        $priceTierQuantityRules = $isSoldOff
+            ? [] : [new PriceTierQuantityAtMostTotal((int) $request->input('total_quantity'))];
 
         $validated = $request->validate([
             'sell_type'                        => 'required|string|in:sell by pieces,sell by pallets,sell by container',
@@ -706,7 +713,7 @@ class ProductListingController extends Controller
             'discount_type'                    => 'nullable|string',
             'incoterm_id' => 'required|string',
             'slug'        => 'nullable|string|max:255',
-            'total_quantity'                   => ['required', 'integer', 'min:1', new ListingTotalQuantityLimit((string) $request->input('sell_type'))],
+            'total_quantity'                   => ['required', 'integer', $isSoldOff ? 'min:0' : 'min:1', new ListingTotalQuantityLimit((string) $request->input('sell_type'))],
             'inventory_notes'                  => 'nullable|string|max:500',
             'lead_time'                        => 'required|integer|min:1',
             'is_on_hold'                       => 'nullable|boolean',
@@ -717,8 +724,8 @@ class ProductListingController extends Controller
             'solar_phase_types'                => 'nullable|required_if:is_solar_listing,1|array|min:1',
             'solar_phase_types.*'              => 'in:single,three',
             'slots'                            => 'required|array|min:1',
-            'slots.*.min_quantity'             => ['required', 'integer', 'min:0', $priceTierQuantityRule],
-            'slots.*.max_quantity'             => ['nullable', 'integer', 'min:1', $priceTierQuantityRule],
+            'slots.*.min_quantity'             => ['required', 'integer', 'min:0', ...$priceTierQuantityRules],
+            'slots.*.max_quantity'             => ['nullable', 'integer', 'min:1', ...$priceTierQuantityRules],
             'slots.*.price'                    => 'required|numeric|min:0',
             'slots.*.commission_percentage'    => 'nullable|numeric|min:0',  // ← new
             'slots.*.total_price'              => 'nullable|numeric|min:0',  // ← new
@@ -741,7 +748,7 @@ class ProductListingController extends Controller
         }
 
         $validated['sell_type'] = ProductListing::normalizeSellType($validated['sell_type']);
-        $newTotalQuantity = ProductListing::quantityInPieces(
+        $newTotalQuantity = $isSoldOff ? 0 : ProductListing::quantityInPieces(
             (int) $validated['total_quantity'],
             $validated['sell_type'],
             $product,
@@ -753,19 +760,19 @@ class ProductListingController extends Controller
         }
         $validated['total_quantity'] = $newTotalQuantity;
 
-        if ($newTotalQuantity !== $oldTotalQuantity) {
+        if (! $isSoldOff && $newTotalQuantity !== $oldTotalQuantity) {
             $request->validate([
                 'inventory_notes' => 'required|string|max:500',
             ], [
                 'inventory_notes.required' => 'Please enter notes explaining the total quantity change.',
             ]);
         }
-        $inventoryNotes = trim((string) ($validated['inventory_notes'] ?? ''));
+        $inventoryNotes = $isSoldOff ? 'Marked as Sold Off' : trim((string) ($validated['inventory_notes'] ?? ''));
         unset($validated['inventory_notes']);
         $validated['warehouse_id'] = new \MongoDB\BSON\ObjectId($listing->warehouse_id);
         $validated['is_active']   = ! $request->boolean('is_on_hold', false);
         unset($validated['is_on_hold']);
-        $validated['is_sold_off'] = $request->boolean('is_sold_off', false);
+        $validated['is_sold_off'] = $isSoldOff;
         $validated['is_popular']  = $request->boolean('is_popular', false);
         $validated['is_solar_listing'] = $request->boolean('is_solar_listing', false);
         $validated['solar_tier'] = $validated['is_solar_listing'] ? $request->input('solar_tier') : null;
