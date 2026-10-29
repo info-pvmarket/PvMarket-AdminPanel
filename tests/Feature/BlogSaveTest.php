@@ -39,6 +39,7 @@ class BlogSaveTest extends TestCase
         ]);
         DB::purge('mongodb');
         Storage::fake('public');
+        Storage::fake('r2');
         $this->migration()->up();
         $this->withoutMiddleware([Authenticate::class, CheckAdminPermission::class]);
         $translator = Mockery::mock(TranslationService::class);
@@ -272,6 +273,7 @@ PHP;
     public function test_rejected_update_race_does_not_delete_existing_cover_or_social_image(): void
     {
         Storage::fake('public');
+        Storage::fake('r2');
         Storage::disk('public')->put('blogs/original.png', 'original cover');
         Storage::disk('public')->put('blogs/social.png', 'original social image');
         $blog = $this->record([

@@ -217,7 +217,7 @@ class BlogController extends Controller
         // by the unchanged record. Cleanup happens only after a successful save.
         try {
             if ($request->hasFile('image') && ! empty($oldImage['path'])) {
-                Storage::disk('public')->delete($oldImage['path']);
+                Storage::disk(($oldImage['disk'] ?? null) === 'r2' ? 'r2' : 'public')->delete($oldImage['path']);
             }
             if (($request->hasFile('seo_og_image') || $request->boolean('seo_og_image_remove'))
                 && ! empty($oldSeo['og_image']['path'])) {
@@ -310,7 +310,7 @@ class BlogController extends Controller
 
         $imagePath = $blog->image['path'] ?? null;
         if ($imagePath) {
-            Storage::disk('public')->delete($imagePath);
+            Storage::disk(($blog->image['disk'] ?? null) === 'r2' ? 'r2' : 'public')->delete($imagePath);
         }
 
         $blog->delete();
@@ -414,15 +414,18 @@ class BlogController extends Controller
         }
 
         $filename = time() . '_' . $file->getClientOriginalName();
-        $path     = $file->storeAs('blogs', $filename, 'public');
+        $path     = $file->storeAs('blogs', $filename, 'r2');
+
+        abort_unless(is_string($path) && $path !== '', 503, 'Image upload failed. Please try again.');
 
         return [
+            'disk'          => 'r2',
             'size'          => $file->getSize(),
             'uploaded_at'   => now()->toISOString(),
             'filename'      => $filename,
             'original_name' => $file->getClientOriginalName(),
             'path'          => $path,
-            'url'           => $path,
+            'url'           => Storage::disk('r2')->url($path),
             'mime_type'     => $file->getMimeType(),
             'alt'           => $alt ?? '',
         ];

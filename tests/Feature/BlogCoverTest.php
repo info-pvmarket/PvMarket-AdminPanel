@@ -25,6 +25,7 @@ class BlogCoverTest extends TestCase
         config(['database.connections.mongodb' => ['driver' => 'mongodb', 'dsn' => 'mongodb://127.0.0.1:27017', 'database' => $this->testDatabase], 'session.driver' => 'array', 'languages.available' => ['en' => 'English']]);
         DB::purge('mongodb');
         Storage::fake('public');
+        Storage::fake('r2');
         Queue::fake();
         $translator = Mockery::mock(TranslationService::class);
         $translator->shouldNotReceive('translateText');
@@ -58,7 +59,8 @@ class BlogCoverTest extends TestCase
         $blog = Blog::first();
         $this->assertTrue((bool) $blog->is_active);
         $this->assertNotEmpty($blog->image['url']);
-        Storage::disk('public')->assertExists($blog->image['path']);
+        Storage::disk('r2')->assertExists($blog->image['path']);
+        $this->assertSame('r2', $blog->image['disk']);
         $this->assertSame('Guide cover', $blog->image['alt']);
     }
 

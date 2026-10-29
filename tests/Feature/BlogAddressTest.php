@@ -25,6 +25,7 @@ class BlogAddressTest extends TestCase
         config(['database.connections.mongodb' => ['driver' => 'mongodb', 'dsn' => 'mongodb://127.0.0.1:27017', 'database' => $this->testDatabase], 'session.driver' => 'array', 'languages.available' => ['en' => 'English']]);
         DB::purge('mongodb');
         Storage::fake('public');
+        Storage::fake('r2');
         (require database_path('migrations/2026_10_24_000001_add_unique_index_to_blogs_slug.php'))->up();
         $this->migration()->up();
         $this->withoutMiddleware([Authenticate::class, CheckAdminPermission::class]);

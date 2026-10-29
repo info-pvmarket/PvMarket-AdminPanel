@@ -34,8 +34,12 @@ class EditorImageController extends Controller
             'image' => 'required|image|mimes:jpeg,png,jpg,webp,gif|max:5120',
         ]);
 
-        $path = $request->file('image')->store('inline-images/editor/' . now()->format('Y/m'), 'public');
+        $disk = $request->query('context') === 'blog' ? 'r2' : 'public';
+        if ($disk === 'r2') abort_unless($user->hasAdminPermission('knowledge_hub.blogs'), 403);
 
-        return response()->json(['url' => Storage::disk('public')->url($path)]);
+        $path = $request->file('image')->store('inline-images/editor/' . now()->format('Y/m'), $disk);
+        abort_unless(is_string($path) && $path !== '', 503, 'Image upload failed. Please try again.');
+
+        return response()->json(['url' => Storage::disk($disk)->url($path)]);
     }
 }

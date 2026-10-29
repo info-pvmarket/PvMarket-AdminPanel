@@ -217,7 +217,7 @@
 
 </div>
 
-@include('admin.partials.quill')
+@include('admin.partials.quill', ['editorImageContext' => 'blog'])
 <script src="{{ asset('js/blog-save-state.js') }}?v=1"></script>
 <script>
 (function () {
