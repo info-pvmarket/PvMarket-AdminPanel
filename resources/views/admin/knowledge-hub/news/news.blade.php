@@ -88,9 +88,9 @@
 
                 <div class="form-group">
                     <label class="form-label">Heading <span>*</span></label>
-                    <input type="text" name="heading" id="headingInput" class="form-input"
+                    <input type="text" name="title" id="headingInput" class="form-input"
                            placeholder="Enter news heading..."
-                           value="{{ old('heading', $record->heading ?? '') }}" required/>
+                           value="{{ old('title', $record->title ?? '') }}" required/>
                 </div>
 
                 <div class="form-group">
@@ -143,7 +143,7 @@
 
         <div class="form-group">
             <label class="form-label">Full Description</label>
-            <textarea name="description" id="descriptionInput" style="display:none;">{{ old('description', $record->description ?? '') }}</textarea>
+            <textarea name="data" id="descriptionInput" style="display:none;">{{ old('data', $record->data ?? '') }}</textarea>
             <div class="quill-wrapper">
                 <div id="quillEditor"></div>
             </div>
@@ -192,7 +192,9 @@
         quill.clipboard.dangerouslyPasteHTML(existing);
     }
 
+    var initialContents = JSON.stringify(quill.getContents());
     document.getElementById('newsForm').addEventListener('submit', function () {
+        if (JSON.stringify(quill.getContents()) === initialContents) return;
         var html = quill.root.innerHTML;
         document.getElementById('descriptionInput').value = (html === '<p><br></p>') ? '' : html;
     });
@@ -209,6 +211,7 @@
                   .replace(/^-+|-+$/g, '');
     }
 
+    if (slugInput.value) slugInput.dataset.manual = 'true';
     headingInput.addEventListener('input', function () {
         if (!slugInput.dataset.manual) {
             var slug = toSlug(this.value);
@@ -348,8 +351,8 @@
                     {{ $news->firstItem() + $index }}
                 </td>
                 <td>
-                    <span class="truncate" style="max-width:280px;" title="{{ lang($item, 'heading') }}">
-                        {{ lang($item, 'heading') }}
+                    <span class="truncate" style="max-width:280px;" title="{{ lang($item, 'title') }}">
+                        {{ lang($item, 'title') }}
 
                     </span>
                 </td>
@@ -362,7 +365,7 @@
                 <td class="center">
                     @if($item->image_display_url)
                         <img src="{{ $item->image_display_url }}"
-                             class="news-thumb" alt="{{ $item->alt_tag ?? $item->heading }}"/>
+                             class="news-thumb" alt="{{ $item->alt_tag ?? $item->title }}"/>
                     @else
                         <span style="font-size:12px; color:#CBD5E1;">—</span>
                     @endif

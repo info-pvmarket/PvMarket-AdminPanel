@@ -18,7 +18,7 @@ class News extends Model
     'content',
     'image',
     'alt_tag',
-    'description',
+    'data',
     'is_active',
     'seo',
 ];

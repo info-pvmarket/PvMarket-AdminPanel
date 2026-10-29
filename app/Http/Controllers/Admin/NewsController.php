@@ -43,6 +43,7 @@ class NewsController extends Controller
         'title' => 'required|string|max:255',
         'slug'    => 'nullable|string|max:255',
         'content' => ['nullable', 'string', new RichTextImages],
+        'data' => ['nullable', 'string', new RichTextImages],
         'image'   => 'nullable|image|mimes:jpeg,png,jpg,webp|max:3072',
         'alt_tag' => 'nullable|string|max:255',
     ] + $this->seoValidationRules(), $this->seoValidationMessages());
@@ -51,6 +52,7 @@ class NewsController extends Controller
     'title'     => $request->title,
     'slug'      => $request->filled('slug') ? Str::slug($request->slug) : Str::slug($request->title),
     'content'   => $request->content,
+    'data'      => $request->input('data'),
     'alt_tag'   => $request->alt_tag,
     'is_active' => true,
     'seo'       => $this->buildSeoData($request, null, 'news'),
@@ -87,20 +89,19 @@ if ($request->hasFile('image')) {
             'title' => 'required|string|max:255',
             'slug'    => 'nullable|string|max:255',
             'content' => ['nullable', 'string', new RichTextImages],
+            'data' => ['nullable', 'string', new RichTextImages],
             'image'   => 'nullable|image|mimes:jpeg,png,jpg,webp|max:3072',
             'alt_tag' => 'nullable|string|max:255',
         ] + $this->seoValidationRules(), $this->seoValidationMessages());
 
-        $slug = $request->filled('slug')
-            ? Str::slug($request->slug)
-            : Str::slug($request->heading);
-
         $data = [
     'title'   => $request->title,
-    'slug'    => $request->filled('slug') ? Str::slug($request->slug) : Str::slug($request->title),
-    'content' => $request->content,
-    'alt_tag' => $request->alt_tag,
-    'seo'     => $this->buildSeoData($request, $news->seo, 'news'),
+    'slug'    => $request->filled('slug') ? Str::slug($request->slug) : $news->slug,
+    'content' => $request->has('content') ? $request->input('content') : $news->content,
+    'data'    => $request->has('data') ? $request->input('data') : $news->data,
+    'alt_tag' => $request->has('alt_tag') ? $request->input('alt_tag') : $news->alt_tag,
+    'seo'     => collect(array_keys($request->all()))->contains(fn ($key) => str_starts_with($key, 'seo_'))
+        ? $this->buildSeoData($request, $news->seo, 'news') : ($news->seo ?? []),
 ];
 
         $data['image'] = $news->image ?? $this->emptyImageData();
