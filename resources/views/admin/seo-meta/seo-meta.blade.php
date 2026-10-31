@@ -81,7 +81,11 @@
             <div class="form-group">
                 <label class="form-label">Category</label>
                 <select name="category_id" id="category_id" class="form-input form-select">
-                    <option value="">None (Home Page)</option>
+                    <option value="">None</option>
+                    <option value="page:home" {{ old('seo_category_selection') === 'page:home' ? 'selected' : '' }}>Home Page</option>
+                    @foreach(\App\Support\SeoLandingPages::PAGES as $key => $page)
+                        <option value="page:{{ $key }}" {{ old('page_key') === $key || old('category_id') === 'page:'.$key ? 'selected' : '' }}>{{ $page['label'] }}</option>
+                    @endforeach
                     @foreach($categories as $category)
                         <option value="{{ $category->id }}" {{ old('category_id') == $category->id ? 'selected' : '' }}>
                             {{ $category->category_name }}
@@ -398,10 +402,28 @@ document.addEventListener('DOMContentLoaded', function() {
     const categorySelect = document.getElementById('category_id');
     const subCategorySelect = document.getElementById('sub_category_id');
     const brandSelect = document.getElementById('brand_id');
+    const marketSelect = document.getElementById('market_id');
+    function updatePageSelection() {
+        const standalone = categorySelect.value.startsWith('page:');
+        const homePage = categorySelect.value === 'page:home';
+        marketSelect.disabled = standalone && !homePage;
+        subCategorySelect.disabled = standalone || categorySelect.value === '';
+        brandSelect.disabled = standalone;
+        if (standalone) {
+            if (!homePage) marketSelect.value = '';
+            subCategorySelect.value = '';
+            brandSelect.value = '';
+        }
+    }
+    updatePageSelection();
+    let brandsRequest = 0;
+
 
     // Function to load brands based on category/subcategory
     function loadBrands() {
-        const categoryId = categorySelect.value;
+        const request = ++brandsRequest;
+        if (categorySelect.value.startsWith('page:')) return;
+        const categoryId = categorySelect.value.startsWith('page:') ? '' : categorySelect.value;
         const subCategoryId = subCategorySelect.value;
 
         let url = `{{ url('admin/seo-meta-brands') }}?`;
@@ -411,6 +433,7 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch(url)
             .then(response => response.json())
             .then(data => {
+                if (request !== brandsRequest || categorySelect.value.startsWith('page:')) return;
                 const currentValue = brandSelect.value;
                 brandSelect.innerHTML = '<option value="">None (All Brands)</option>';
                 data.forEach(item => {
@@ -427,11 +450,14 @@ document.addEventListener('DOMContentLoaded', function() {
     categorySelect.addEventListener('change', function() {
         const categoryId = this.value;
         subCategorySelect.innerHTML = '<option value="">None</option>';
+        brandSelect.value = '';
+        updatePageSelection();
 
-        if (categoryId) {
+        if (categoryId && !categoryId.startsWith('page:')) {
             fetch(`{{ url('admin/seo-meta-sub-categories') }}?category_id=${categoryId}`)
                 .then(response => response.json())
                 .then(data => {
+                    if (categorySelect.value !== categoryId) return;
                     data.forEach(item => {
                         const option = document.createElement('option');
                         option.value = item.id;
@@ -1016,6 +1042,7 @@ function markForDeletion(type, imageId, btn) {
                 <select name="type" class="filter-select" onchange="this.form.submit()">
                     <option value="">All Types</option>
                     <option value="home" {{ request('type') == 'home' ? 'selected' : '' }}>Home</option>
+                    <option value="landing" {{ request('type') == 'landing' ? 'selected' : '' }}>Standalone Pages</option>
                     <option value="category" {{ request('type') == 'category' ? 'selected' : '' }}>Category</option>
                     <option value="subcategory" {{ request('type') == 'subcategory' ? 'selected' : '' }}>Sub Category</option>
                     <option value="brand" {{ request('type') == 'brand' ? 'selected' : '' }}>Brand</option>

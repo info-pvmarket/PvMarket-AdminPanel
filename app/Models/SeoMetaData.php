@@ -175,6 +175,9 @@ class SeoMetaData extends Model
     // Get the page type based on entity combination
     public function getPageTypeAttribute(): string
     {
+        if (\App\Support\SeoLandingPages::contains($this->page_key)) {
+            return \App\Support\SeoLandingPages::PAGES[$this->page_key]['label'];
+        }
         if (!empty($this->page_key)) return 'Static Page';
         if ($this->product_id) return 'Product';
         if ($this->brand_id) return 'Brand';

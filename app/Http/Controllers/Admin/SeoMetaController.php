@@ -21,6 +21,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+use App\Support\SeoLandingPages;
 
 class SeoMetaController extends Controller
 {
@@ -42,8 +45,14 @@ class SeoMetaController extends Controller
 
         $query = SeoMetaData::with(['market', 'category', 'subCategory', 'brand', 'product'])
             ->where('is_active', true)
-            // Static page SEO is edited under Static Pages, not here.
-            ->withoutStaticPages();
+            // Only these three Global page records belong here; other static pages
+            // remain exclusively managed by Static Pages.
+            ->where(function ($q) {
+                $q->withoutStaticPages()->orWhere(function ($pages) {
+                    $pages->whereIn('page_key', array_keys(SeoLandingPages::PAGES))
+                        ->whereNull('market_id')->where('market_code', 'global');
+                });
+            });
 
         // Search filter
         if ($search) {
@@ -67,7 +76,7 @@ class SeoMetaController extends Controller
         if ($typeFilter) {
             switch ($typeFilter) {
                 case 'home':
-                    $query->whereNull('category_id')
+                    $query->withoutStaticPages()->whereNull('category_id')
                           ->whereNull('sub_category_id')
                           ->whereNull('brand_id')
                           ->whereNull('product_id');
@@ -86,6 +95,9 @@ class SeoMetaController extends Controller
                 case 'brand':
                     $query->whereNotNull('brand_id')
                           ->whereNull('product_id');
+                    break;
+                case 'landing':
+                    $query->whereIn('page_key', array_keys(SeoLandingPages::PAGES));
                     break;
                 case 'product':
                     $query->whereNotNull('product_id');
@@ -108,7 +120,7 @@ class SeoMetaController extends Controller
     public function create()
     {
         $markets     = Market::where('is_active', true)->orderBy('name')->get();
-        $categories  = MainMenu::availableForDropdown()->orderBy('category_name')->get();
+        $categories  = MainMenu::where('is_active', true)->orderBy('category_name')->get();
         $brands      = Brand::where('is_active', true)->orderBy('name')->get();
 
         return view('admin.seo-meta.seo-meta', [
@@ -123,7 +135,15 @@ class SeoMetaController extends Controller
 
     public function store(Request $request)
     {
+        $selection = (string) $request->input('category_id', '');
+        $homePage = $selection === 'page:home';
+        $request->merge(['seo_category_selection' => $selection]);
+        // Page choices share the Category control, but never become category IDs.
+        if (str_starts_with($selection, 'page:')) {
+            $request->merge(['page_key' => $homePage ? null : substr($selection, 5), 'category_id' => null]);
+        }
         $request->validate([
+            'page_key'         => ['nullable', Rule::in(array_keys(SeoLandingPages::PAGES))],
             'meta_title'       => 'required|string|max:255',
             'meta_description' => 'nullable|string|max:500',
             'meta_keywords'    => 'nullable|string|max:500',
@@ -153,6 +173,30 @@ class SeoMetaController extends Controller
             'max_video_preview'=> 'nullable|integer|min:-1',
         ]);
 
+        $pageKey = $request->input('page_key') ?: null;
+        $this->validateLandingSelection($request, $pageKey);
+        if ($homePage) {
+            foreach (['sub_category_id', 'brand_id', 'product_id'] as $field) {
+                if ($request->filled($field)) {
+                    throw ValidationException::withMessages([$field => 'Home Page cannot select a subcategory, brand or product.']);
+                }
+            }
+        } elseif (!$pageKey && $selection === '') {
+            if (!$request->filled('brand_id')) {
+                throw ValidationException::withMessages(['category_id' => 'Select Home Page, a category, or a brand.']);
+            }
+            if ($request->filled('sub_category_id') || $request->filled('product_id')) {
+                throw ValidationException::withMessages(['sub_category_id' => 'A brand-only page cannot select a subcategory or product.']);
+            }
+        }
+        // None + Brand uses the existing brand-only scope, never the directory.
+        $brandOnlyPage = !$pageKey && !$homePage && $selection === '' && $request->filled('brand_id');
+        if ($brandOnlyPage) {
+            $id = $this->sanitizeObjectId($request->brand_id);
+            $brand = $id ? Brand::where('_id', $id)->where('is_active', true)->first() : null;
+            if (!$brand) throw ValidationException::withMessages(['brand_id' => 'Select an active brand.']);
+        }
+
         // Sanitize ObjectId fields to prevent "undefined" string errors
         $marketId      = $this->sanitizeObjectId($request->market_id);
         $categoryId    = $this->sanitizeObjectId($request->category_id);
@@ -160,7 +204,9 @@ class SeoMetaController extends Controller
         $brandId       = $this->sanitizeObjectId($request->brand_id);
 
         // Check for duplicate entity combination
-        $exists = SeoMetaData::forEntity(
+        $exists = $pageKey
+            ? SeoMetaData::where('page_key', $pageKey)->whereNull('market_id')->where('is_active', true)->exists()
+            : SeoMetaData::forEntity(
             $marketId,
             $categoryId,
             $subCategoryId,
@@ -178,11 +224,12 @@ class SeoMetaController extends Controller
 
         // Create main SEO meta
         $seoData = [
+            'page_key'          => $pageKey,
             'market_id'         => $marketId,
             'category_id'       => $categoryId,
             'sub_category_id'   => $subCategoryId,
             'brand_id'          => $brandId,
-            'market_code'       => $slugs['market_code'],
+            'market_code'       => ($pageKey || ($brandOnlyPage && !$marketId)) ? 'global' : $slugs['market_code'],
             'category_slug'     => $slugs['category_slug'],
             'sub_category_slug' => $slugs['sub_category_slug'],
             'brand_slug'        => $slugs['brand_slug'],
@@ -273,12 +320,11 @@ class SeoMetaController extends Controller
         $record = SeoMetaData::with(['ogMeta.images', 'twitterMeta.images', 'robotMeta'])
                              ->findOrFail($id);
 
-        // Static page records belong to the Static Pages screen; this one offers
-        // entity fields that do not apply to them.
-        abort_if(!empty($record->page_key), 404);
+        // Keep unrelated Static Pages records outside this screen.
+        $this->assertEditableRecord($record);
 
         $markets       = Market::where('is_active', true)->orderBy('name')->get();
-        $categories    = MainMenu::availableForDropdown()->orderBy('category_name')->get();
+        $categories    = MainMenu::where('is_active', true)->orderBy('category_name')->get();
         $subCategories = $record->category_id
             ? SubMenu::availableForDropdown()->where('category_id', $record->category_id)->get()
             : collect();
@@ -299,6 +345,7 @@ class SeoMetaController extends Controller
     public function update(Request $request, string $id)
     {
         $request->validate([
+            'page_key'         => ['nullable', Rule::in(array_keys(SeoLandingPages::PAGES))],
             'meta_title'       => 'required|string|max:255',
             'meta_description' => 'nullable|string|max:500',
             'meta_keywords'    => 'nullable|string|max:500',
@@ -326,10 +373,13 @@ class SeoMetaController extends Controller
 
         $seoMeta = SeoMetaData::findOrFail($id);
         $previousCanonicalUrl = $seoMeta->canonical_url;
+        if ($request->filled('page_key') && $request->input('page_key') !== $seoMeta->page_key) {
+            throw ValidationException::withMessages(['page_key' => 'The page identity cannot be changed.']);
+        }
+        $this->validateLandingSelection($request, $seoMeta->page_key);
 
-        // Static page records belong to the Static Pages screen; this one offers
-        // entity fields that do not apply to them.
-        abort_if(!empty($seoMeta->page_key), 404);
+        // Keep unrelated Static Pages records outside this screen.
+        $this->assertEditableRecord($seoMeta);
 
         $slugs = $this->getEntitySlugs(
             $seoMeta->market_id ? (string) $seoMeta->market_id : null,
@@ -340,7 +390,7 @@ class SeoMetaController extends Controller
 
         // Update main SEO meta and repair legacy blank slugs from entity names.
         $seoData = [
-			'market_code'       => $slugs['market_code'],
+			'market_code'       => ($seoMeta->page_key || (!$seoMeta->market_id && $seoMeta->market_code === 'global')) ? 'global' : $slugs['market_code'],
 			'category_slug'     => $slugs['category_slug'],
 			'sub_category_slug' => $slugs['sub_category_slug'],
 			'brand_slug'        => $slugs['brand_slug'],
@@ -446,9 +496,8 @@ class SeoMetaController extends Controller
     {
         $seoMeta = SeoMetaData::findOrFail($id);
 
-        // Static page records belong to the Static Pages screen; this one offers
-        // entity fields that do not apply to them.
-        abort_if(!empty($seoMeta->page_key), 404);
+        // Keep unrelated Static Pages records outside this screen.
+        $this->assertEditableRecord($seoMeta);
 
         // Soft delete - set is_active to false
         $seoMeta->update(['is_active' => false]);
@@ -592,6 +641,23 @@ class SeoMetaController extends Controller
             ->get(['_id', 'name', 'slug']);
 
         return response()->json($this->formatBrands($brands));
+    }
+
+    private function assertEditableRecord(SeoMetaData $record): void
+    {
+        if (empty($record->page_key)) return;
+        abort_unless(SeoLandingPages::contains($record->page_key)
+            && !$record->market_id && $record->market_code === 'global', 404);
+    }
+
+    private function validateLandingSelection(Request $request, ?string $pageKey): void
+    {
+        if (!SeoLandingPages::contains($pageKey)) return;
+        foreach (['market_id', 'category_id', 'sub_category_id', 'brand_id', 'product_id'] as $field) {
+            if ($request->filled($field)) {
+                throw ValidationException::withMessages([$field => 'Standalone page SEO supports Global only and cannot select a category, subcategory, brand or product.']);
+            }
+        }
     }
 
     // ─── PRIVATE: Format Brands for JSON ────────────────────────────────────────
