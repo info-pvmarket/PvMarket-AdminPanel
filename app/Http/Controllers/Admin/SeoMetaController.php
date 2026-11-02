@@ -120,7 +120,14 @@ class SeoMetaController extends Controller
     public function create()
     {
         $markets     = Market::where('is_active', true)->orderBy('name')->get();
-        $categories  = MainMenu::where('is_active', true)->orderBy('category_name')->get();
+        $landingSlugs = array_map(fn ($page) => trim($page['path'], '/'), SeoLandingPages::PAGES);
+        // Navigation entries for standalone pages are not product categories.
+        // Those pages already have explicit page:* options in the form.
+        $categories  = MainMenu::where('is_active', true)->orderBy('category_name')->get()
+            ->reject(fn ($category) =>
+                in_array(Str::slug($category->category_name ?? ''), $landingSlugs, true)
+                || in_array(Str::slug(trim($category->slug ?? '', '/')), $landingSlugs, true)
+            )->values();
         $brands      = Brand::where('is_active', true)->orderBy('name')->get();
 
         return view('admin.seo-meta.seo-meta', [

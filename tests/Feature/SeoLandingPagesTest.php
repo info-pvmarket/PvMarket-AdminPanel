@@ -158,6 +158,28 @@ class SeoLandingPagesTest extends TestCase
             fn ($categories) => $categories->pluck('category_name')->all() === ['Non stock category', 'Stock category']);
     }
 
+    public function test_create_lists_each_landing_page_once_and_keeps_product_categories(): void
+    {
+        foreach (SeoLandingPages::PAGES as $key => $page) {
+            MainMenu::create(['category_name' => $page['label'], 'slug' => $key, 'is_active' => true]);
+        }
+        // A renamed menu entry must also be recognized by its destination slug.
+        MainMenu::create(['category_name' => 'Brand directory', 'slug' => '/brands/', 'is_active' => true]);
+        foreach (['BOS', 'ESS', 'Inverters', 'PV Modules'] as $name) {
+            MainMenu::create(['category_name' => $name, 'is_active' => true, 'stock_value' => false]);
+        }
+
+        $response = $this->get(route('admin.seo-meta.create'))->assertOk()
+            ->assertViewHas('categories', fn ($categories) =>
+                $categories->pluck('category_name')->all() === ['BOS', 'ESS', 'Inverters', 'PV Modules']);
+        preg_match('/<select[^>]*id="category_id"[^>]*>(.*?)<\/select>/s', $response->getContent(), $matches);
+        $this->assertSame(9, preg_match_all('/<option\b/', $matches[1]));
+        foreach (SeoLandingPages::PAGES as $key => $page) {
+            $this->assertSame(1, substr_count($matches[1], 'value="page:'.$key.'"'));
+            $this->assertSame(1, substr_count($matches[1], $page['label']));
+        }
+    }
+
     public function test_none_does_not_create_home_and_explicit_home_preserves_legacy_identity(): void
     {
         $payload = [...$this->payload('brands'), 'category_id' => ''];
