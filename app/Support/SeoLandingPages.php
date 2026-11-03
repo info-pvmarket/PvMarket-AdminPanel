@@ -9,6 +9,7 @@ final class SeoLandingPages
         'all_categories' => ['label' => 'All Categories', 'path' => '/all-categories'],
         'brands' => ['label' => 'Brands', 'path' => '/brands'],
         'discount_center' => ['label' => 'Discount Center', 'path' => '/discount-center'],
+        'request_for_quote' => ['label' => 'Request for Quote', 'path' => '/request-for-quote'],
     ];
 
     public static function contains(?string $key): bool

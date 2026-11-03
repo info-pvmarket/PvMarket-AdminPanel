@@ -173,7 +173,7 @@ class SeoLandingPagesTest extends TestCase
             ->assertViewHas('categories', fn ($categories) =>
                 $categories->pluck('category_name')->all() === ['BOS', 'ESS', 'Inverters', 'PV Modules']);
         preg_match('/<select[^>]*id="category_id"[^>]*>(.*?)<\/select>/s', $response->getContent(), $matches);
-        $this->assertSame(9, preg_match_all('/<option\b/', $matches[1]));
+        $this->assertSame(6 + count(SeoLandingPages::PAGES), preg_match_all('/<option\b/', $matches[1]));
         foreach (SeoLandingPages::PAGES as $key => $page) {
             $this->assertSame(1, substr_count($matches[1], 'value="page:'.$key.'"'));
             $this->assertSame(1, substr_count($matches[1], $page['label']));
