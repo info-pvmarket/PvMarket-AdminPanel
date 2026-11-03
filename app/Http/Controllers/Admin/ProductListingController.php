@@ -545,9 +545,9 @@ class ProductListingController extends Controller
                 : round($price + ($price * $commission / 100), 2); // fallback calculation
 
             $slotsAsObjects[] = (object) [
-                'min_quantity'          => (int) $slot['min_quantity'],
+                'min_quantity'          => ProductListing::quantityInPieces((int) $slot['min_quantity'], $validated['sell_type'], $product),
                 'max_quantity'          => (isset($slot['max_quantity']) && $slot['max_quantity'] !== '')
-                    ? (int) $slot['max_quantity']
+                    ? ProductListing::quantityInPieces((int) $slot['max_quantity'], $validated['sell_type'], $product)
                     : null,
                 'price'                 => $price,
                 'commission_percentage' => $commission,
@@ -662,6 +662,8 @@ class ProductListingController extends Controller
             $product,
         );
 
+        $displaySlots = ProductListing::tierQuantitiesForDisplay($listing->slots ?? [], $selectedSellType, $product);
+
         return view('admin.product_listing.edit', compact(
             'listing',
             'sellTypes',
@@ -688,6 +690,7 @@ class ProductListingController extends Controller
             'selectedSellType',
             'displayTotalQuantity',
             'displayCurrentStock',
+            'displaySlots',
         ));
     }
     // ── Update ──────────────────────────────────────────────────────
@@ -753,7 +756,7 @@ class ProductListingController extends Controller
             $validated['sell_type'],
             $product,
         );
-        if ($newTotalQuantity === null) {
+        if ($newTotalQuantity === null || ProductListing::quantityMultiplier($validated['sell_type'], $product) === null) {
             throw ValidationException::withMessages([
                 'total_quantity' => 'The selected product is missing its pieces-per-pallet or pallets-per-container configuration.',
             ]);
@@ -807,9 +810,9 @@ class ProductListingController extends Controller
                 : round($price + ($price * $commission / 100), 2);
 
             $slotsAsObjects[] = (object) [
-                'min_quantity'          => (int) $slot['min_quantity'],
+                'min_quantity'          => ProductListing::quantityInPieces((int) $slot['min_quantity'], $validated['sell_type'], $product),
                 'max_quantity'          => (isset($slot['max_quantity']) && $slot['max_quantity'] !== '')
-                    ? (int) $slot['max_quantity']
+                    ? ProductListing::quantityInPieces((int) $slot['max_quantity'], $validated['sell_type'], $product)
                     : null,
                 'price'                 => $price,
                 'commission_percentage' => $commission,

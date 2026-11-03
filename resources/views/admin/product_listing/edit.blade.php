@@ -1136,11 +1136,11 @@
                             </div>
                             <div class="slot-form-row" style="grid-template-columns: 1fr 1fr 1fr 1fr; gap:12px;">
                                 <div class="form-group">
-                                    <label class="form-label">Min Qty <span class="req">*</span></label>
+                                    <label class="form-label">Min Qty (<span class="tier-quantity-unit">pcs</span>) <span class="req">*</span></label>
                                     <input type="number" id="slotMinQty" class="form-control" placeholder="e.g. 1" min="0" disabled>
                                 </div>
                                 <div class="form-group">
-    <label class="form-label">Max Qty</label>
+    <label class="form-label">Max Qty (<span class="tier-quantity-unit">pcs</span>)</label>
     <div style="display:flex; gap:8px; align-items:center; height:38px; padding:0 13px; border:1px solid var(--border); border-radius:9px; background:#fff;">
         <label style="font-size:.8rem; cursor:pointer; display:flex; align-items:center; gap:4px; white-space:nowrap;">
             <input type="radio" name="maxQtyType" value="specific" id="radioSpecific" disabled> Specific
@@ -1568,7 +1568,7 @@ function hasSpecificMaxQuantity(slot) {
 
 // Match the seller dashboard: legacy 0, null, and empty maximum values all
 // represent an open-ended "And More" tier.
-let slots = @json($listing->slots ?? []).map(slot => ({
+let slots = @json(old('slots', $displaySlots)).map(slot => ({
     ...slot,
     max_quantity: hasSpecificMaxQuantity(slot) ? Number(slot.max_quantity) : null,
 }));
@@ -1618,6 +1618,7 @@ function syncQuantityPresentation() {
         ? Number(quantity).toLocaleString() + ' ' + unit
         : '—';
     syncTotalQuantityLimit();
+    renderSlots();
 }
 
 document.getElementById('sellTypeSelect').addEventListener('change', function () {
@@ -1882,16 +1883,16 @@ function cancelSlot() {
 }
 
 function saveSlot() {
-    const minQty     = parseInt(document.getElementById('slotMinQty').value);
+    const minQty     = Number(document.getElementById('slotMinQty').value || NaN);
     const price      = parseFloat(document.getElementById('slotPrice').value);
     const commission = parseFloat(document.getElementById('slotCommission').value);
     const totalPrice = parseFloat(document.getElementById('slotTotalPrice').value);
     const maxType    = document.querySelector('input[name="maxQtyType"]:checked').value;
-    const maxQty     = maxType === 'specific' ? parseInt(document.getElementById('slotMaxQty').value) : null;
+    const maxQty     = maxType === 'specific' ? Number(document.getElementById('slotMaxQty').value || NaN) : null;
     const errEl      = document.getElementById('slotError');
 
-    if (isNaN(minQty) || minQty < 0) {
-        errEl.textContent = 'Please enter a valid minimum quantity.';
+    if (!Number.isInteger(minQty) || minQty < 0) {
+        errEl.textContent = 'Enter a whole minimum quantity in the selected selling unit.';
         errEl.style.display = 'block'; return;
     }
     if (isNaN(price) || price < 0) {
@@ -1902,8 +1903,8 @@ function saveSlot() {
         errEl.textContent = 'Please enter a valid commission percentage.';
         errEl.style.display = 'block'; return;
     }
-    if (maxType === 'specific' && (isNaN(maxQty) || maxQty <= minQty)) {
-        errEl.textContent = 'Max quantity must be greater than minimum.';
+    if (maxType === 'specific' && (!Number.isInteger(maxQty) || maxQty <= minQty)) {
+        errEl.textContent = 'Maximum must be a whole quantity greater than minimum in the selected selling unit.';
         errEl.style.display = 'block'; return;
     }
     const totalQuantity = Number(document.getElementById('totalQtyInput').value);
@@ -1945,6 +1946,8 @@ function deleteSlot(idx) {
 }
 
 function renderSlots() {
+    const unit = document.getElementById('totalQtyUnit').textContent;
+    document.querySelectorAll('.tier-quantity-unit').forEach(label => { label.textContent = unit; });
     const listEl   = document.getElementById('slotList');
     const inputsEl = document.getElementById('slotInputs');
 
@@ -1960,7 +1963,7 @@ function renderSlots() {
 
     slots.forEach((slot, i) => {
         const maxLabel = hasSpecificMaxQuantity(slot)
-            ? `${Number(slot.max_quantity).toLocaleString()} pcs`
+            ? `${Number(slot.max_quantity).toLocaleString()} ${unit}`
             : 'And More';
 
         const row = document.createElement('div');
@@ -1969,7 +1972,7 @@ function renderSlots() {
             <div style="display:flex;align-items:center;flex:1;">
                 <div class="slot-num">${i + 1}</div>
                 <div>
-                    <div style="font-weight:600;font-size:.83rem;">${slot.min_quantity.toLocaleString()} – ${maxLabel}</div>
+                    <div style="font-weight:600;font-size:.83rem;">${Number(slot.min_quantity).toLocaleString(undefined, { maximumFractionDigits: 10 })} ${unit} – ${maxLabel}</div>
                     <div style="font-size:.72rem;color:var(--muted);">Fixed range tier</div>
                 </div>
             </div>

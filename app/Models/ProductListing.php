@@ -158,6 +158,23 @@ public function warehouse()
         return $multiplier === null ? null : $displayQuantity * $multiplier;
     }
 
+    public static function tierQuantitiesForDisplay(array $slots, mixed $sellType, ?Product $product): array
+    {
+        $multiplier = self::quantityMultiplier($sellType, $product);
+
+        return array_map(function ($slot) use ($multiplier) {
+            $slot = (array) $slot;
+            foreach (['min_quantity', 'max_quantity'] as $field) {
+                if (isset($slot[$field]) && $slot[$field] !== '' && $multiplier !== null) {
+                    // Preserve inconsistent legacy values visibly; never truncate a partial pallet/container.
+                    $slot[$field] = $slot[$field] / $multiplier;
+                }
+            }
+
+            return $slot;
+        }, $slots);
+    }
+
     public static function sellTypeLabel(mixed $sellType): string
     {
         if (! is_string($sellType) && ! is_int($sellType) && ! is_float($sellType)) {
