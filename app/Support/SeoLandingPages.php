@@ -2,7 +2,7 @@
 
 namespace App\Support;
 
-/** Standalone Global pages managed by SEO Meta, not Static Pages. */
+/** Standalone market-scoped pages managed by SEO Meta, not Static Pages. */
 final class SeoLandingPages
 {
     public const PAGES = [

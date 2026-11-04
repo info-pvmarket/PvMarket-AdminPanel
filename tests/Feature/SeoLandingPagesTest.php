@@ -205,4 +205,51 @@ class SeoLandingPagesTest extends TestCase
         $this->assertNull($home->category_id);
         $this->assertSame('Updated legacy homepage', $home->meta_title);
     }
+    public function test_markets_keep_category_home_and_standalone_records_separate(): void
+    {
+        $markets = [];
+        foreach (['ae' => 'UAE', 'in' => 'India', 'ng' => 'Nigeria'] as $code => $name) {
+            $markets[$code] = \App\Models\Market::create(['code' => $code, 'name' => $name, 'is_active' => true]);
+        }
+        $category = MainMenu::create(['category_name' => 'PV Modules', 'slug' => 'pv-modules', 'is_active' => true]);
+        $scopes = ['home' => 'page:home', 'category' => (string) $category->id];
+        foreach (\App\Support\SeoLandingPages::PAGES as $key => $page) $scopes[$key] = 'page:'.$key;
+        foreach ($scopes as $key => $selection) {
+            $records = [];
+            foreach (['global' => null, ...$markets] as $code => $market) {
+                $payload = [...$this->payload('brands'), 'category_id' => $selection,
+                    'market_id' => $market ? (string) $market->id : null,
+                    'meta_title' => $code.' '.$key, 'canonical_url' => null];
+                $this->post(route('admin.seo-meta.store'), $payload)->assertSessionHasNoErrors()->assertRedirect();
+                $record = SeoMetaData::where('meta_title', $code.' '.$key)->firstOrFail();
+                $records[$code] = $record;
+                $this->assertSame($code, $record->market_code);
+                $this->get(route('admin.seo-meta.edit', $record->id))->assertOk()->assertSee($code.' '.$key);
+                $this->post(route('admin.seo-meta.store'), $payload)->assertSessionHasErrors();
+                unset($payload['category_id'], $payload['market_id']);
+                $payload['meta_title'] = $code.' updated '.$key;
+                $this->put(route('admin.seo-meta.update', $record->id), $payload)->assertSessionHasNoErrors()->assertRedirect();
+                $this->assertSame($code, $record->fresh()->market_code);
+            }
+            $this->delete(route('admin.seo-meta.destroy', $records['ae']->id))->assertRedirect();
+            foreach (['global', 'in', 'ng'] as $code) $this->assertTrue($records[$code]->fresh()->is_active);
+        }
+        $this->get(route('admin.seo-meta.index', ['market_id' => (string) $markets['in']->id]))->assertOk()
+            ->assertSee('in updated brands')->assertDontSee('ng updated brands');
+    }
+
+    public function test_invalid_market_never_silently_creates_global_and_global_alias_does_not_duplicate(): void
+    {
+        $inactive = \App\Models\Market::create(['code' => 'ae', 'name' => 'Inactive UAE', 'is_active' => false]);
+        foreach (['bad-id', (string) $inactive->id] as $id) {
+            $this->post(route('admin.seo-meta.store'), [...$this->payload('brands'), 'market_id' => $id])
+                ->assertSessionHasErrors('market_id');
+        }
+        $this->assertSame(0, SeoMetaData::count());
+        $global = \App\Models\Market::create(['code' => 'global', 'name' => 'Global', 'is_active' => true]);
+        $this->post(route('admin.seo-meta.store'), $this->payload('brands'))->assertSessionHasNoErrors();
+        $this->post(route('admin.seo-meta.store'), [...$this->payload('brands'), 'market_id' => (string) $global->id])->assertSessionHasErrors();
+        $this->assertSame(1, SeoMetaData::count());
+    }
+
 }

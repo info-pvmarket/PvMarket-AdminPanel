@@ -75,7 +75,7 @@
                         </option>
                     @endforeach
                 </select>
-                <span class="help-text">Leave empty for global pages like pv.market/</span>
+                <span class="help-text">Choose the market for this SEO record; leave empty for Global.</span>
             </div>
 
             <div class="form-group">
@@ -405,12 +405,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const marketSelect = document.getElementById('market_id');
     function updatePageSelection() {
         const standalone = categorySelect.value.startsWith('page:');
-        const homePage = categorySelect.value === 'page:home';
-        marketSelect.disabled = standalone && !homePage;
+        marketSelect.disabled = false;
         subCategorySelect.disabled = standalone || categorySelect.value === '';
         brandSelect.disabled = standalone;
         if (standalone) {
-            if (!homePage) marketSelect.value = '';
             subCategorySelect.value = '';
             brandSelect.value = '';
         }
@@ -426,7 +424,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const categoryId = categorySelect.value.startsWith('page:') ? '' : categorySelect.value;
         const subCategoryId = subCategorySelect.value;
 
-        let url = `{{ url('admin/seo-meta-brands') }}?`;
+        let url = `{{ url('admin/seo-meta-brands') }}?market_id=${encodeURIComponent(marketSelect.value)}&`;
         if (categoryId) url += `category_id=${categoryId}&`;
         if (subCategoryId) url += `sub_category_id=${subCategoryId}`;
 
@@ -445,6 +443,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             });
     }
+
+    marketSelect.addEventListener('change', function() {
+        brandSelect.innerHTML = '<option value="">None (All Brands)</option>';
+        loadBrands();
+    });
+    loadBrands();
 
     // Load sub categories when category changes
     categorySelect.addEventListener('change', function() {

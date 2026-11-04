@@ -45,12 +45,11 @@ class SeoMetaController extends Controller
 
         $query = SeoMetaData::with(['market', 'category', 'subCategory', 'brand', 'product'])
             ->where('is_active', true)
-            // Only these three Global page records belong here; other static pages
+            // Only supported standalone page records belong here; other static pages
             // remain exclusively managed by Static Pages.
             ->where(function ($q) {
                 $q->withoutStaticPages()->orWhere(function ($pages) {
-                    $pages->whereIn('page_key', array_keys(SeoLandingPages::PAGES))
-                        ->whereNull('market_id')->where('market_code', 'global');
+                    $pages->whereIn('page_key', array_keys(SeoLandingPages::PAGES));
                 });
             });
 
@@ -68,7 +67,11 @@ class SeoMetaController extends Controller
             if ($marketFilter === 'global') {
                 $query->whereNull('market_id');
             } else {
-                $query->where('market_id', $marketFilter);
+                $candidates = [$marketFilter];
+                if (preg_match('/^[a-f0-9]{24}$/i', $marketFilter)) {
+                    $candidates[] = new \MongoDB\BSON\ObjectId($marketFilter);
+                }
+                $query->whereIn('market_id', $candidates);
             }
         }
 
@@ -205,14 +208,16 @@ class SeoMetaController extends Controller
         }
 
         // Sanitize ObjectId fields to prevent "undefined" string errors
-        $marketId      = $this->sanitizeObjectId($request->market_id);
+        $marketId      = $this->resolveMarketId($request->market_id);
         $categoryId    = $this->sanitizeObjectId($request->category_id);
         $subCategoryId = $this->sanitizeObjectId($request->sub_category_id);
         $brandId       = $this->sanitizeObjectId($request->brand_id);
 
         // Check for duplicate entity combination
         $exists = $pageKey
-            ? SeoMetaData::where('page_key', $pageKey)->whereNull('market_id')->where('is_active', true)->exists()
+            ? SeoMetaData::where('page_key', $pageKey)->where('is_active', true)
+                ->when($marketId, fn ($query) => $query->whereIn('market_id', [$marketId, new \MongoDB\BSON\ObjectId($marketId)]),
+                    fn ($query) => $query->whereNull('market_id'))->exists()
             : SeoMetaData::forEntity(
             $marketId,
             $categoryId,
@@ -236,7 +241,7 @@ class SeoMetaController extends Controller
             'category_id'       => $categoryId,
             'sub_category_id'   => $subCategoryId,
             'brand_id'          => $brandId,
-            'market_code'       => ($pageKey || ($brandOnlyPage && !$marketId)) ? 'global' : $slugs['market_code'],
+            'market_code'       => $slugs['market_code'] ?? 'global',
             'category_slug'     => $slugs['category_slug'],
             'sub_category_slug' => $slugs['sub_category_slug'],
             'brand_slug'        => $slugs['brand_slug'],
@@ -397,7 +402,7 @@ class SeoMetaController extends Controller
 
         // Update main SEO meta and repair legacy blank slugs from entity names.
         $seoData = [
-			'market_code'       => ($seoMeta->page_key || (!$seoMeta->market_id && $seoMeta->market_code === 'global')) ? 'global' : $slugs['market_code'],
+			'market_code'       => $slugs['market_code'] ?? 'global',
 			'category_slug'     => $slugs['category_slug'],
 			'sub_category_slug' => $slugs['sub_category_slug'],
 			'brand_slug'        => $slugs['brand_slug'],
@@ -530,139 +535,92 @@ class SeoMetaController extends Controller
 
     public function getSubCategories(Request $request)
     {
-        $categoryId = $request->get('category_id');
-
-        if (!$categoryId) {
-            return response()->json([]);
-        }
-
-        try {
-            $objectId = new \MongoDB\BSON\ObjectId($categoryId);
-            $subCategories = SubMenu::availableForDropdown()
-                               ->where('category_id', $objectId)
-                               ->orderBy('sub_category_name')
-                               ->get(['_id', 'sub_category_name', 'slug'])
-                               ->map(function($item) {
-                                   return [
-                                       'id' => (string) $item->_id,
-                                       'sub_category_name' => $item->sub_category_name,
-                                       'slug' => $item->slug,
-                                   ];
-                               });
-
-            return response()->json($subCategories);
-        } catch (\Exception $e) {
-            return response()->json([]);
-        }
+        if (!$request->filled('category_id')) return response()->json([]);
+        $ids = $this->seoListingQuery($request)->pluck('sub_category_id')->filter()->all();
+        return response()->json(SubMenu::availableForDropdown()
+            ->whereIn('_id', $this->seoIdCandidates($ids))
+            ->orderBy('sub_category_name')->get()->map(fn ($item) => [
+                'id' => (string) $item->getKey(),
+                'sub_category_name' => $item->sub_category_name,
+                'slug' => $item->slug,
+            ]));
     }
 
     // ─── AJAX: GET BRANDS ───────────────────────────────────────────────────
 
     public function getBrands(Request $request)
     {
-        $categoryId    = $request->get('category_id');
-        $subCategoryId = $request->get('sub_category_id');
-
-        try {
-            // If both category and subcategory are selected, filter brands by active listings
-            if ($categoryId && $subCategoryId) {
-                $categoryObjectId = new \MongoDB\BSON\ObjectId($categoryId);
-                $subCategoryObjectId = new \MongoDB\BSON\ObjectId($subCategoryId);
-
-                // Get brand_ids from active listings in this category/subcategory
-                $listingQuery = ProductListing::where('is_active', true)
-                    ->where('main_category_id', $categoryObjectId)
-                    ->where('sub_category_id', $subCategoryObjectId);
-
-                // Get product_ids from listings
-                $productIds = $listingQuery->pluck('product_id')->unique()->filter()->toArray();
-
-                if (empty($productIds)) {
-                    return response()->json([]);
-                }
-
-                // Get brand_ids from products
-                $brandIds = Product::whereIn('_id', $productIds)
-                    ->pluck('brand_id')
-                    ->unique()
-                    ->filter()
-                    ->toArray();
-
-                if (empty($brandIds)) {
-                    return response()->json([]);
-                }
-
-                // Return brands with active listings
-                $brands = Brand::whereIn('_id', $brandIds)
-                    ->where('is_active', true)
-                    ->orderBy('name')
-                    ->get(['_id', 'name', 'slug']);
-
-                return response()->json($this->formatBrands($brands));
-            }
-
-            // If only category is selected (no subcategory), filter by category
-            if ($categoryId && !$subCategoryId) {
-                $categoryObjectId = new \MongoDB\BSON\ObjectId($categoryId);
-
-                $listingQuery = ProductListing::where('is_active', true)
-                    ->where('main_category_id', $categoryObjectId);
-
-                $productIds = $listingQuery->pluck('product_id')->unique()->filter()->toArray();
-
-                if (empty($productIds)) {
-                    // Return all active brands if no listings found
-                    $brands = Brand::where('is_active', true)
-                        ->orderBy('name')
-                        ->get(['_id', 'name', 'slug']);
-                    return response()->json($this->formatBrands($brands));
-                }
-
-                $brandIds = Product::whereIn('_id', $productIds)
-                    ->pluck('brand_id')
-                    ->unique()
-                    ->filter()
-                    ->toArray();
-
-                if (empty($brandIds)) {
-                    $brands = Brand::where('is_active', true)
-                        ->orderBy('name')
-                        ->get(['_id', 'name', 'slug']);
-                    return response()->json($this->formatBrands($brands));
-                }
-
-                $brands = Brand::whereIn('_id', $brandIds)
-                    ->where('is_active', true)
-                    ->orderBy('name')
-                    ->get(['_id', 'name', 'slug']);
-
-                return response()->json($this->formatBrands($brands));
-            }
-        } catch (\Exception $e) {
-            // If ObjectId conversion fails, return all brands
-        }
-
-        // If no category/subcategory selected, return all active brands
-        $brands = Brand::where('is_active', true)
-            ->orderBy('name')
-            ->get(['_id', 'name', 'slug']);
-
+        $query = $this->seoListingQuery($request);
+        $productIds = $query->pluck('product_id')->unique()->filter()->all();
+        $brandIds = Product::whereIn('_id', $this->seoIdCandidates($productIds))->pluck('brand_id')->unique()->filter()->all();
+        $brands = Brand::whereIn('_id', $this->seoIdCandidates($brandIds))->where('is_active', true)->orderBy('name')->get(['_id', 'name', 'slug']);
         return response()->json($this->formatBrands($brands));
+    }
+
+    private function seoIdCandidates(array $ids): array
+    {
+        $result = [];
+        foreach ($ids as $id) {
+            $value = (string) $id;
+            if (!preg_match('/^[a-f0-9]{24}$/i', $value)) continue;
+            $result[] = $value;
+            $result[] = new \MongoDB\BSON\ObjectId($value);
+        }
+        return $result;
+    }
+
+    private function seoListingQuery(Request $request)
+    {
+        $marketId = $this->resolveMarketId($request->get('market_id'));
+        $query = ProductListing::where('is_active', true);
+        foreach (['category_id' => 'main_category_id', 'sub_category_id' => 'sub_category_id'] as $input => $field) {
+            if ($request->filled($input)) {
+                $id = $this->sanitizeObjectId($request->get($input));
+                if (!$id) { $query->whereRaw(['_id' => ['$exists' => false]]); continue; }
+                $query->whereIn($field, [$id, new \MongoDB\BSON\ObjectId($id)]);
+            }
+        }
+        if ($marketId) {
+            $market = Market::find($marketId);
+            $code = strtolower(trim((string) $market->code));
+            $country = \App\Models\Country::where(function ($q) use ($code) {
+                foreach (['code', 'iso2', 'iso3'] as $field) {
+                    $q->orWhere($field, 'regexp', new \MongoDB\BSON\Regex('^'.preg_quote($code, '/').'$', 'i'));
+                }
+            })->first();
+            if (!$country) return $query->whereRaw(['_id' => ['$exists' => false]]);
+            $countryId = (string) $country->getKey();
+            $warehouseIds = \App\Models\Warehouse::whereIn('country', [$countryId, new \MongoDB\BSON\ObjectId($countryId)])->get()->map(fn ($warehouse) => (string) $warehouse->getKey())->all();
+            if (!$warehouseIds) return $query->whereRaw(['_id' => ['$exists' => false]]);
+            $query->whereIn('warehouse_id', $this->seoIdCandidates($warehouseIds));
+        }
+        return $query;
     }
 
     private function assertEditableRecord(SeoMetaData $record): void
     {
         if (empty($record->page_key)) return;
-        abort_unless(SeoLandingPages::contains($record->page_key)
-            && !$record->market_id && $record->market_code === 'global', 404);
+        abort_unless(SeoLandingPages::contains($record->page_key), 404);
+    }
+
+    private function resolveMarketId(?string $value): ?string
+    {
+        if ($value === null || $value === '') return null;
+        $id = $this->sanitizeObjectId($value);
+        $market = $id ? Market::where('_id', $id)->where('is_active', true)->first() : null;
+        if (!$market || !preg_match('/^(global|[a-z]{2})$/i', trim((string) $market->code))) {
+            throw ValidationException::withMessages(['market_id' => 'Select an active market.']);
+        }
+        // The named Global market and the empty Global choice are the same scope.
+        return strtolower(trim($market->code)) === 'global' ? null : $id;
     }
 
     private function validateLandingSelection(Request $request, ?string $pageKey): void
     {
         if (!SeoLandingPages::contains($pageKey)) return;
-        foreach (['market_id', 'category_id', 'sub_category_id', 'brand_id', 'product_id'] as $field) {
+        foreach (['category_id', 'sub_category_id', 'brand_id', 'product_id'] as $field) {
             if ($request->filled($field)) {
-                throw ValidationException::withMessages([$field => 'Standalone page SEO supports Global only and cannot select a category, subcategory, brand or product.']);
+                throw ValidationException::withMessages([$field => 'Standalone page SEO cannot select a category, subcategory, brand or product.']);
             }
         }
     }
