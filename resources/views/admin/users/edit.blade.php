@@ -1958,7 +1958,10 @@
                     </tbody>
                 </table>
             </div>
-            <div style="margin-top:16px;">{{ $createdProducts->links() }}</div>
+            <div style="margin-top:16px;">
+                <x-admin.pagination :paginator="$createdProducts" />
+                <p style="margin-top:8px;">Showing {{ $createdProducts->firstItem() }} to {{ $createdProducts->lastItem() }} of {{ $createdProducts->total() }} results</p>
+            </div>
         @else
             <div class="empty-card">
                 <div class="empty-icon">📦</div>
@@ -2028,7 +2031,10 @@
                     </tbody>
                 </table>
             </div>
-            <div style="margin-top:16px;">{{ $userWarehouses->links() }}</div>
+            <div style="margin-top:16px;">
+                <x-admin.pagination :paginator="$userWarehouses" />
+                <p style="margin-top:8px;">Showing {{ $userWarehouses->firstItem() }} to {{ $userWarehouses->lastItem() }} of {{ $userWarehouses->total() }} results</p>
+            </div>
         @else
             <div class="empty-card">
                 <div class="empty-icon">🏭</div>

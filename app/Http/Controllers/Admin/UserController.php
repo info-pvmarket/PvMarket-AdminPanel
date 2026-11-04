@@ -197,6 +197,7 @@ class UserController extends Controller
         $createdProducts = Product::whereIn('created_by', [$userId, (string) $userId])
             ->whereNull('deleted_at')
             ->orderBy('created_at', 'desc')
+            ->orderBy('_id', 'desc')
             ->paginate(10, ['*'], 'products_page')
             ->appends(array_merge($request->query(), ['active_tab' => 'products']));
 
@@ -204,6 +205,7 @@ class UserController extends Controller
         $userWarehouses = Warehouse::whereIn('user_id', [$userId, (string) $userId])
             ->whereNull('deleted_at')
             ->orderBy('created_at', 'desc')
+            ->orderBy('_id', 'desc')
             ->paginate(10, ['*'], 'warehouses_page')
             ->appends(array_merge($request->query(), ['active_tab' => 'warehouses']));
 
