@@ -532,21 +532,25 @@ class SeoMetaController extends Controller
         // Keep unrelated Static Pages records outside this screen.
         $this->assertEditableRecord($seoMeta);
 
-        // Soft delete - set is_active to false
-        $seoMeta->update(['is_active' => false]);
+        $canonicalUrl = $seoMeta->canonical_url;
 
-        // Also deactivate related records
+        // Hard delete - a soft-deleted (is_active=false) row still occupies its
+        // entity combination and blocks re-creating a fresh record for the same
+        // market/page/category via the duplicate check in store().
         if ($seoMeta->ogMeta) {
-            $seoMeta->ogMeta->update(['is_active' => false]);
+            SeoOGImage::where('og_meta_id', (string) $seoMeta->ogMeta->_id)->delete();
+            $seoMeta->ogMeta->delete();
         }
         if ($seoMeta->twitterMeta) {
-            $seoMeta->twitterMeta->update(['is_active' => false]);
+            SeoTwitterImage::where('twitter_meta_id', (string) $seoMeta->twitterMeta->_id)->delete();
+            $seoMeta->twitterMeta->delete();
         }
         if ($seoMeta->robotMeta) {
-            $seoMeta->robotMeta->update(['is_active' => false]);
+            $seoMeta->robotMeta->delete();
         }
+        $seoMeta->delete();
 
-        app(SeoCacheInvalidator::class)->invalidate($seoMeta->canonical_url);
+        app(SeoCacheInvalidator::class)->invalidate($canonicalUrl);
 
         return redirect()->route('admin.seo-meta.index')
                          ->with('success', 'SEO Meta deleted successfully.');
