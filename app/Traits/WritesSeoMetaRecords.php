@@ -162,6 +162,18 @@ trait WritesSeoMetaRecords
         $query = SeoMetaData::query();
 
         foreach ($identity as $field => $value) {
+            // The named Global market and the empty Global choice are the same
+            // scope (SeoMetaController::resolveMarketId() documents the same
+            // rule for market_id) - SEO Meta always persists market_code as the
+            // literal string "global" for that scope, so a lookup for "no
+            // market" must match that too, not just null/absent.
+            if ($field === 'market_code' && ($value === null || $value === '' || $value === 'global')) {
+                $query->where(function ($q) {
+                    $q->whereNull('market_code')->orWhere('market_code', '')->orWhere('market_code', 'global');
+                });
+                continue;
+            }
+
             if ($value === null || $value === '') {
                 // Absent dimensions must be absent on the record too, otherwise a
                 // global record would match a market-scoped lookup.

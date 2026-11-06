@@ -24,6 +24,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use App\Support\SeoLandingPages;
+use App\Support\SeoStaticPages;
 
 class SeoMetaController extends Controller
 {
@@ -32,6 +33,12 @@ class SeoMetaController extends Controller
     public function __construct(TranslationService $translator)
     {
         $this->translator = $translator;
+    }
+
+    /** Every page_key this screen manages: the 4 directory pages plus the 9 static pages. */
+    private function managedPageKeys(): array
+    {
+        return array_merge(array_keys(SeoLandingPages::PAGES), array_keys(SeoStaticPages::PAGES));
     }
 
     // ─── INDEX ───────────────────────────────────────────────────────────────
@@ -45,11 +52,10 @@ class SeoMetaController extends Controller
 
         $query = SeoMetaData::with(['market', 'category', 'subCategory', 'brand', 'product'])
             ->where('is_active', true)
-            // Only supported standalone page records belong here; other static pages
-            // remain exclusively managed by Static Pages.
+            // Entity records, plus the directory and static pages this screen manages.
             ->where(function ($q) {
                 $q->withoutStaticPages()->orWhere(function ($pages) {
-                    $pages->whereIn('page_key', array_keys(SeoLandingPages::PAGES));
+                    $pages->whereIn('page_key', $this->managedPageKeys());
                 });
             });
 
@@ -100,7 +106,7 @@ class SeoMetaController extends Controller
                           ->whereNull('product_id');
                     break;
                 case 'landing':
-                    $query->whereIn('page_key', array_keys(SeoLandingPages::PAGES));
+                    $query->whereIn('page_key', $this->managedPageKeys());
                     break;
                 case 'product':
                     $query->whereNotNull('product_id');
@@ -123,7 +129,8 @@ class SeoMetaController extends Controller
     public function create()
     {
         $markets     = Market::where('is_active', true)->orderBy('name')->get();
-        $landingSlugs = array_map(fn ($page) => trim($page['path'], '/'), SeoLandingPages::PAGES);
+        $landingSlugs = collect(array_merge(SeoLandingPages::PAGES, SeoStaticPages::PAGES))
+            ->pluck('path')->filter()->map(fn ($path) => trim($path, '/'))->filter()->all();
         // Navigation entries for standalone pages are not product categories.
         // Those pages already have explicit page:* options in the form.
         $categories  = MainMenu::where('is_active', true)->orderBy('category_name')->get()
@@ -149,11 +156,25 @@ class SeoMetaController extends Controller
         $homePage = $selection === 'page:home';
         $request->merge(['seo_category_selection' => $selection]);
         // Page choices share the Category control, but never become category IDs.
+        // Each prefix is its own namespace - "page:" only ever resolves a
+        // SeoLandingPages key, "staticpage:" only ever a SeoStaticPages one, so
+        // a key from the wrong family (e.g. "page:about") is rejected here
+        // rather than silently passing a generic "is this any known key" check.
         if (str_starts_with($selection, 'page:')) {
-            $request->merge(['page_key' => $homePage ? null : substr($selection, 5), 'category_id' => null]);
+            $pageKeyChoice = $homePage ? null : substr($selection, 5);
+            if (!$homePage && !SeoLandingPages::contains($pageKeyChoice)) {
+                throw ValidationException::withMessages(['page_key' => 'Select a valid standalone page.']);
+            }
+            $request->merge(['page_key' => $pageKeyChoice, 'category_id' => null]);
+        } elseif (str_starts_with($selection, 'staticpage:')) {
+            $pageKeyChoice = substr($selection, 11);
+            if (!SeoStaticPages::contains($pageKeyChoice)) {
+                throw ValidationException::withMessages(['page_key' => 'Select a valid static page.']);
+            }
+            $request->merge(['page_key' => $pageKeyChoice, 'category_id' => null]);
         }
         $request->validate([
-            'page_key'         => ['nullable', Rule::in(array_keys(SeoLandingPages::PAGES))],
+            'page_key'         => ['nullable', Rule::in($this->managedPageKeys())],
             'meta_title'       => 'required|string|max:255',
             'meta_description' => 'nullable|string|max:500',
             'meta_keywords'    => 'nullable|string|max:500',
@@ -357,7 +378,7 @@ class SeoMetaController extends Controller
     public function update(Request $request, string $id)
     {
         $request->validate([
-            'page_key'         => ['nullable', Rule::in(array_keys(SeoLandingPages::PAGES))],
+            'page_key'         => ['nullable', Rule::in($this->managedPageKeys())],
             'meta_title'       => 'required|string|max:255',
             'meta_description' => 'nullable|string|max:500',
             'meta_keywords'    => 'nullable|string|max:500',
@@ -600,7 +621,7 @@ class SeoMetaController extends Controller
     private function assertEditableRecord(SeoMetaData $record): void
     {
         if (empty($record->page_key)) return;
-        abort_unless(SeoLandingPages::contains($record->page_key), 404);
+        abort_unless(in_array($record->page_key, $this->managedPageKeys(), true), 404);
     }
 
     private function resolveMarketId(?string $value): ?string
@@ -617,7 +638,7 @@ class SeoMetaController extends Controller
 
     private function validateLandingSelection(Request $request, ?string $pageKey): void
     {
-        if (!SeoLandingPages::contains($pageKey)) return;
+        if (!in_array($pageKey, $this->managedPageKeys(), true)) return;
         foreach (['category_id', 'sub_category_id', 'brand_id', 'product_id'] as $field) {
             if ($request->filled($field)) {
                 throw ValidationException::withMessages([$field => 'Standalone page SEO cannot select a category, subcategory, brand or product.']);

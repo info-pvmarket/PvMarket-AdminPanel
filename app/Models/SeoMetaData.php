@@ -120,12 +120,14 @@ class SeoMetaData extends Model
     }
 
     /**
-     * Exclude records that belong to a static page.
+     * Exclude every page_key record (directory pages, static pages, and any
+     * other standalone page) from pure entity lookups.
      *
-     * Static page SEO lives in this same collection keyed by `page_key` and is
-     * edited under Static Pages, not on the SEO Meta screen. Those records carry
-     * no entity FKs, so without this they satisfy an all-null entity lookup -
-     * which made the Global Home duplicate guard fire against them.
+     * These records carry no entity FKs, so without this they'd satisfy an
+     * all-null entity lookup - which made the Global Home duplicate guard fire
+     * against them. This is unrelated to which admin screen manages a given
+     * page_key (see SeoLandingPages / SeoStaticPages / SeoMetaController::index()
+     * for that).
      */
     public function scopeWithoutStaticPages($query)
     {
@@ -143,8 +145,10 @@ class SeoMetaData extends Model
     // Scope for finding by entity combination
     public function scopeForEntity($query, $marketId = null, $categoryId = null, $subCategoryId = null, $brandId = null, $productId = null)
     {
-        // An entity lookup must never resolve to a static page's record.
-        $query->withoutStaticPages();
+        // An entity lookup must never resolve to a static page's record, nor to
+        // one a user has since deleted - a soft-deleted row at this same
+        // combination must not block (or be served for) a fresh one.
+        $query->withoutStaticPages()->where('is_active', true);
 
         foreach ([
             'market_id'       => $marketId,
@@ -177,6 +181,9 @@ class SeoMetaData extends Model
     {
         if (\App\Support\SeoLandingPages::contains($this->page_key)) {
             return \App\Support\SeoLandingPages::PAGES[$this->page_key]['label'];
+        }
+        if (\App\Support\SeoStaticPages::contains($this->page_key)) {
+            return \App\Support\SeoStaticPages::PAGES[$this->page_key]['label'];
         }
         if (!empty($this->page_key)) return 'Static Page';
         if ($this->product_id) return 'Product';

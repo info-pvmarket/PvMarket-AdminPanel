@@ -7,7 +7,6 @@ use App\Models\PageSection;
 use App\Models\PageSetting;
 use App\Models\Market;
 use App\Models\Country;
-use App\Models\SeoMetaData;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use MongoDB\BSON\ObjectId;
@@ -15,14 +14,14 @@ use App\Rules\RichTextImages;
 
 class PageSectionController extends Controller
 {
-    use \App\Traits\WritesSeoMetaRecords;
-
     /**
      * Static pages that can be edited here.
      *
-     * The keys double as the SEO `page_key` and as the /content-blocks `page`
-     * parameter, so they must match what the storefront asks for. See
-     * self::$pageRoutes for the storefront path each one maps to.
+     * This screen manages body content only - SEO (meta title, OG, Twitter,
+     * robots) for these same pages is edited under SEO Meta's "Static Pages"
+     * group (App\Support\SeoStaticPages), which must list the same keys.
+     * The keys also double as the /content-blocks `page` parameter, so they
+     * must match what the storefront asks for.
      */
     private array $pages = [
         'home'             => 'Homepage',
@@ -34,21 +33,6 @@ class PageSectionController extends Controller
         'privacy'          => 'Privacy Policy',
         'customer_support' => 'Customer Support',
         'faq'              => 'FAQ',
-    ];
-
-    /**
-     * Storefront path for each page key, used for the canonical hint in the
-     * form. `customer_support` has no storefront route yet.
-     */
-    private array $pageRoutes = [
-        'home'              => '/',
-        'about'             => '/about-us',
-        'contact'           => '/contact-us',
-        'terms'             => '/terms-and-conditions',
-        'delivery'          => '/delivery-and-return-policy',
-        'disclaimer'        => '/disclaimer',
-        'privacy'           => '/privacy-cookies-policy',
-        'faq'               => '/faq',
     ];
 
     /**
@@ -234,58 +218,7 @@ class PageSectionController extends Controller
             'isGlobal'  => $isGlobal,
             'country'   => $country,
             'countryId' => $countryId,
-
-            // SEO record for this page + market, or null when none exists yet.
-            'seoRecord'      => $this->findPageSeoRecord($page, $marketId),
-            'seoPreviewPath' => $this->pageRoutes[$page] ?? '/',
         ]);
-    }
-
-    /**
-     * Market code used to scope an SEO record, or null for the global record.
-     *
-     * Note this is deliberately different from `location_id`: page sections key
-     * off the Country _id, while seo_meta_data keys off the lowercase market
-     * code, the same way SeoMetaController::getEntitySlugs() does.
-     */
-    private function getMarketCodeFor(string $marketId): ?string
-    {
-        if ($this->isGlobal($marketId)) {
-            return null;
-        }
-
-        $market = Market::find($marketId);
-        $code = $market?->code;
-
-        return $code ? strtolower($code) : null;
-    }
-
-    /** The SEO record for a page + market, or null when none exists yet. */
-    private function findPageSeoRecord(string $page, string $marketId): ?SeoMetaData
-    {
-        return $this->findSeoMetaRecord([
-            'page_key'    => $page,
-            'market_code' => $this->getMarketCodeFor($marketId),
-        ]);
-    }
-
-    /** Create or update the SEO record for a page + market. */
-    private function savePageSeoRecord(Request $request, string $page, string $marketId): void
-    {
-        $marketCode = $this->getMarketCodeFor($marketId);
-
-        $extra = [];
-        if (!$this->isGlobal($marketId)) {
-            $market = Market::find($marketId);
-            if ($market) {
-                $extra['market_id'] = new ObjectId((string) $market->_id);
-            }
-        }
-
-        $this->saveSeoMetaRecord($request, [
-            'page_key'    => $page,
-            'market_code' => $marketCode,
-        ], $extra);
     }
 
     /**
@@ -295,10 +228,7 @@ class PageSectionController extends Controller
     {
         abort_unless(array_key_exists($page, $this->pages), 404);
 
-        $request->validate(
-            $this->seoMetaValidationRules() + ['sections.*.extra' => [new RichTextImages]],
-            $this->seoMetaValidationMessages()
-        );
+        $request->validate(['sections.*.extra' => [new RichTextImages]]);
 
         $isGlobal = $this->isGlobal($marketId);
         $countryId = null;
@@ -374,8 +304,6 @@ class PageSectionController extends Controller
         }
 
         // ── Publish flag ─────────────────────────────────────────────────────
-        // SEO now lives in seo_meta_data (see below) rather than the page_settings
-        // seo_* columns, which the API never exposed.
         if ($isGlobal) {
             $settingQuery = PageSetting::where('page', $page);
             $this->applyGlobalFilter($settingQuery);
@@ -396,9 +324,6 @@ class PageSectionController extends Controller
                 ['is_published' => $request->boolean('is_published')]
             );
         }
-
-        // ── SEO meta ─────────────────────────────────────────────────────────
-        $this->savePageSeoRecord($request, $page, $marketId);
 
         return redirect()->route('admin.page-sections.edit', [$marketId, $page])
                          ->with('success', $this->pages[$page] . ' updated successfully.');

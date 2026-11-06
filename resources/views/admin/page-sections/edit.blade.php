@@ -863,13 +863,8 @@
         </div>
     </div>
 
-    {{-- SEO tags: stored in seo_meta_data and served to the storefront by the
-         /seo-meta API. Replaces the old page_settings seo_* fields, which the
-         API never exposed. --}}
-    @include('admin.partials.seo-meta-full-fields', [
-        'seoRecord'      => $seoRecord,
-        'seoPreviewPath' => $seoPreviewPath,
-    ])
+    {{-- SEO (meta title, OG, Twitter, robots) for this page now lives only
+         under SEO Meta's "Static Pages" group, not here. --}}
 
     <div style="display:flex; gap:12px; margin-bottom:40px;">
         <button type="submit"

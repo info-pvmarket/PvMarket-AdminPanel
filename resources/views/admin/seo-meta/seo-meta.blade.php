@@ -82,16 +82,25 @@
                 <label class="form-label">Category</label>
                 <select name="category_id" id="category_id" class="form-input form-select">
                     <option value="">None</option>
-                    <option value="page:home" {{ old('seo_category_selection') === 'page:home' ? 'selected' : '' }}>Home Page</option>
-                    @foreach(\App\Support\SeoLandingPages::PAGES as $key => $page)
-                        <option value="page:{{ $key }}" {{ old('page_key') === $key || old('category_id') === 'page:'.$key ? 'selected' : '' }}>{{ $page['label'] }}</option>
-                    @endforeach
-                    @foreach($categories as $category)
-                        <option value="{{ $category->id }}" {{ old('category_id') == $category->id ? 'selected' : '' }}>
-                            {{ $category->category_name }}
-                        </option>
-                    @endforeach
+                    <optgroup label="Catalogue Pages">
+                        @foreach(\App\Support\SeoLandingPages::PAGES as $key => $page)
+                            <option value="page:{{ $key }}" {{ old('page_key') === $key || old('category_id') === 'page:'.$key ? 'selected' : '' }}>{{ $page['label'] }}</option>
+                        @endforeach
+                    </optgroup>
+                    <optgroup label="Site Pages">
+                        @foreach(\App\Support\SeoStaticPages::PAGES as $key => $page)
+                            <option value="staticpage:{{ $key }}" {{ old('page_key') === $key || old('category_id') === 'staticpage:'.$key ? 'selected' : '' }}>{{ $page['label'] }}</option>
+                        @endforeach
+                    </optgroup>
+                    <optgroup label="Product Categories">
+                        @foreach($categories as $category)
+                            <option value="{{ $category->id }}" {{ old('category_id') == $category->id ? 'selected' : '' }}>
+                                {{ $category->category_name }}
+                            </option>
+                        @endforeach
+                    </optgroup>
                 </select>
+                <span class="help-text">Pick <strong>Homepage</strong> under Site Pages to edit the page the site actually reads.</span>
             </div>
 
             <div class="form-group">
@@ -403,8 +412,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const subCategorySelect = document.getElementById('sub_category_id');
     const brandSelect = document.getElementById('brand_id');
     const marketSelect = document.getElementById('market_id');
+    // Both the standalone directory pages ("page:") and the static pages
+    // ("staticpage:") are page_key records with no category/subcategory/brand.
+    function isPageSelection(value) {
+        return value.startsWith('page:') || value.startsWith('staticpage:');
+    }
     function updatePageSelection() {
-        const standalone = categorySelect.value.startsWith('page:');
+        const standalone = isPageSelection(categorySelect.value);
         marketSelect.disabled = false;
         subCategorySelect.disabled = standalone || categorySelect.value === '';
         brandSelect.disabled = standalone;
@@ -420,8 +434,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to load brands based on category/subcategory
     function loadBrands() {
         const request = ++brandsRequest;
-        if (categorySelect.value.startsWith('page:')) return;
-        const categoryId = categorySelect.value.startsWith('page:') ? '' : categorySelect.value;
+        if (isPageSelection(categorySelect.value)) return;
+        const categoryId = isPageSelection(categorySelect.value) ? '' : categorySelect.value;
         const subCategoryId = subCategorySelect.value;
 
         let url = `{{ url('admin/seo-meta-brands') }}?market_id=${encodeURIComponent(marketSelect.value)}&`;
@@ -431,7 +445,7 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch(url)
             .then(response => response.json())
             .then(data => {
-                if (request !== brandsRequest || categorySelect.value.startsWith('page:')) return;
+                if (request !== brandsRequest || isPageSelection(categorySelect.value)) return;
                 const currentValue = brandSelect.value;
                 brandSelect.innerHTML = '<option value="">None (All Brands)</option>';
                 data.forEach(item => {
@@ -457,7 +471,7 @@ document.addEventListener('DOMContentLoaded', function() {
         brandSelect.value = '';
         updatePageSelection();
 
-        if (categoryId && !categoryId.startsWith('page:')) {
+        if (categoryId && !isPageSelection(categoryId)) {
             fetch(`{{ url('admin/seo-meta-sub-categories') }}?category_id=${categoryId}`)
                 .then(response => response.json())
                 .then(data => {

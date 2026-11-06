@@ -6,6 +6,7 @@ use App\Models\MainMenu;
 use App\Models\SeoMetaData;
 use App\Services\SeoCacheInvalidator;
 use App\Support\SeoLandingPages;
+use App\Support\SeoStaticPages;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -103,14 +104,19 @@ class SeoLandingPagesTest extends TestCase
             $this->post(route('admin.seo-meta.store'), [...$this->payload('brands'), 'category_id' => null, 'page_key' => 'brands', $field => '6ab3c281b4ea08bca90acd32'])
                 ->assertSessionHasErrors($field);
         }
+        // "about" is a real SeoStaticPages key now, but only reachable via the
+        // "staticpage:" prefix - submitting it through "page:" (the
+        // SeoLandingPages prefix) must still be rejected.
         $this->post(route('admin.seo-meta.store'), [...$this->payload('brands'), 'category_id' => 'page:about'])
             ->assertSessionHasErrors('page_key');
         $this->assertSame(0, SeoMetaData::count());
-        $static = SeoMetaData::create(['page_key' => 'about', 'is_active' => true, 'meta_title' => 'Static about']);
-        $this->get(route('admin.seo-meta.edit', $static->id))->assertNotFound();
-        $this->put(route('admin.seo-meta.update', $static->id), [...$this->payload('brands'), 'category_id' => null, 'page_key' => 'brands'])->assertSessionHasErrors('page_key');
-        $this->delete(route('admin.seo-meta.destroy', $static->id))->assertNotFound();
-        $this->get(route('admin.seo-meta.index'))->assertOk()->assertDontSee('Static about');
+        // A page_key this screen genuinely does not manage (neither list) stays
+        // completely outside it.
+        $unmanaged = SeoMetaData::create(['page_key' => 'unmanaged_page', 'is_active' => true, 'meta_title' => 'Unmanaged static page']);
+        $this->get(route('admin.seo-meta.edit', $unmanaged->id))->assertNotFound();
+        $this->put(route('admin.seo-meta.update', $unmanaged->id), [...$this->payload('brands'), 'category_id' => null, 'page_key' => 'brands'])->assertSessionHasErrors('page_key');
+        $this->delete(route('admin.seo-meta.destroy', $unmanaged->id))->assertNotFound();
+        $this->get(route('admin.seo-meta.index'))->assertOk()->assertDontSee('Unmanaged static page');
     }
 
     public function test_none_with_brand_saves_a_distinct_brand_only_record(): void
@@ -173,10 +179,18 @@ class SeoLandingPagesTest extends TestCase
             ->assertViewHas('categories', fn ($categories) =>
                 $categories->pluck('category_name')->all() === ['BOS', 'ESS', 'Inverters', 'PV Modules']);
         preg_match('/<select[^>]*id="category_id"[^>]*>(.*?)<\/select>/s', $response->getContent(), $matches);
-        $this->assertSame(6 + count(SeoLandingPages::PAGES), preg_match_all('/<option\b/', $matches[1]));
+        $this->assertSame(
+            5 + count(SeoLandingPages::PAGES) + count(SeoStaticPages::PAGES),
+            preg_match_all('/<option\b/', $matches[1])
+        );
         foreach (SeoLandingPages::PAGES as $key => $page) {
             $this->assertSame(1, substr_count($matches[1], 'value="page:'.$key.'"'));
             $this->assertSame(1, substr_count($matches[1], $page['label']));
+        }
+        foreach (SeoStaticPages::PAGES as $key => $page) {
+            $this->assertSame(1, substr_count($matches[1], 'value="staticpage:'.$key.'"'));
+            // Blade escapes the label (e.g. "Terms & Conditions" -> "Terms &amp; Conditions").
+            $this->assertSame(1, substr_count($matches[1], e($page['label'])));
         }
     }
 
