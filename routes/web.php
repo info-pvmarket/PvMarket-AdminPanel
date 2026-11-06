@@ -587,6 +587,7 @@ Route::middleware('auth')->group(function () {
     Route::prefix('admin/seo-meta')->name('admin.seo-meta.')->middleware('admin.permission:settings.seo_meta')->group(function () {
         Route::get('/', [SeoMetaController::class, 'index'])->name('index');
         Route::get('/create', [SeoMetaController::class, 'create'])->name('create');
+        Route::get('/check-duplicate', [SeoMetaController::class, 'checkDuplicate'])->name('check-duplicate');
         Route::post('/', [SeoMetaController::class, 'store'])->name('store');
         Route::get('/{id}/edit', [SeoMetaController::class, 'edit'])->name('edit');
         Route::put('/{id}', [SeoMetaController::class, 'update'])->name('update');

@@ -58,6 +58,8 @@
 <form method="POST" action="{{ route('admin.seo-meta.store') }}" enctype="multipart/form-data" id="seoMetaForm">
     @csrf
 
+    <div id="duplicateBanner" class="alert-info" style="display:none;"></div>
+
     {{-- Entity Selection Section --}}
     <div class="content-panel" style="margin-bottom:20px;">
         <div class="section-title">
@@ -413,6 +415,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const subCategorySelect = document.getElementById('sub_category_id');
     const brandSelect = document.getElementById('brand_id');
     const marketSelect = document.getElementById('market_id');
+    const duplicateBanner = document.getElementById('duplicateBanner');
     // Both the standalone directory pages ("page:") and the static pages
     // ("staticpage:") are page_key records with no category/subcategory/brand.
     function isPageSelection(value) {
@@ -430,7 +433,70 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     updatePageSelection();
     let brandsRequest = 0;
+    // Whether the currently-loaded Sub Category / Brand dropdowns have any
+    // options at all - lets evaluateDuplicateCheck() tell "nothing more
+    // specific to pick" apart from "hasn't picked the next level yet".
+    let subCategoryHasOptions = false;
+    let brandHasOptions = false;
 
+    function hideDuplicateBanner() {
+        if (duplicateBanner) duplicateBanner.style.display = 'none';
+    }
+
+    let duplicateCheckRequest = 0;
+    function checkDuplicateNow() {
+        const request = ++duplicateCheckRequest;
+        const params = new URLSearchParams({
+            selection: categorySelect.value,
+            market_id: marketSelect.value,
+            sub_category_id: subCategorySelect.value,
+            brand_id: brandSelect.value,
+        });
+        fetch(`{{ url('admin/seo-meta/check-duplicate') }}?${params.toString()}`)
+            .then(response => response.json())
+            .then(data => {
+                if (request !== duplicateCheckRequest || !duplicateBanner) return;
+                if (data.exists) {
+                    const title = data.title ? ` ("${String(data.title).replace(/</g, '&lt;')}")` : '';
+                    duplicateBanner.innerHTML = `SEO Meta already exists for this selection${title}. ` +
+                        `<a href="${data.edit_url}" style="font-weight:700; text-decoration:underline;">Edit it instead &rarr;</a>`;
+                    duplicateBanner.style.display = 'block';
+                } else {
+                    hideDuplicateBanner();
+                }
+            })
+            .catch(() => {});
+    }
+
+    // Only checks once the current selection has nothing more specific left
+    // to pick, so we never redirect/flag mid-drill-down (e.g. right after
+    // picking a Category that still has Sub Categories to choose from).
+    function evaluateDuplicateCheck() {
+        const categoryId = categorySelect.value;
+
+        if (isPageSelection(categoryId)) {
+            checkDuplicateNow();
+            return;
+        }
+        if (categoryId === '') {
+            // No category: a brand-only record is the only complete state.
+            if (brandSelect.value) {
+                checkDuplicateNow();
+            } else {
+                hideDuplicateBanner();
+            }
+            return;
+        }
+        if (subCategoryHasOptions && !subCategorySelect.value) {
+            hideDuplicateBanner(); // Category has Sub Categories, none picked yet.
+            return;
+        }
+        if (subCategorySelect.value && brandHasOptions && !brandSelect.value) {
+            hideDuplicateBanner(); // Sub Category has Brands, none picked yet.
+            return;
+        }
+        checkDuplicateNow();
+    }
 
     // Function to load brands based on category/subcategory
     function loadBrands() {
@@ -456,12 +522,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (item.id === currentValue) option.selected = true;
                     brandSelect.appendChild(option);
                 });
+                brandHasOptions = data.length > 0;
+                evaluateDuplicateCheck();
             });
     }
 
     marketSelect.addEventListener('change', function() {
         brandSelect.innerHTML = '<option value="">None (All Brands)</option>';
+        hideDuplicateBanner();
         loadBrands();
+        if (isPageSelection(categorySelect.value)) checkDuplicateNow();
     });
     loadBrands();
 
@@ -470,6 +540,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const categoryId = this.value;
         subCategorySelect.innerHTML = '<option value="">None</option>';
         brandSelect.value = '';
+        subCategoryHasOptions = false;
+        hideDuplicateBanner();
         updatePageSelection();
 
         if (categoryId && !isPageSelection(categoryId)) {
@@ -483,7 +555,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         option.textContent = item.sub_category_name;
                         subCategorySelect.appendChild(option);
                     });
+                    subCategoryHasOptions = data.length > 0;
+                    evaluateDuplicateCheck();
                 });
+        } else {
+            evaluateDuplicateCheck();
         }
 
         // Reload brands when category changes
@@ -492,7 +568,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Load brands when sub category changes
     subCategorySelect.addEventListener('change', function() {
+        hideDuplicateBanner();
         loadBrands();
+    });
+
+    brandSelect.addEventListener('change', function() {
+        evaluateDuplicateCheck();
     });
 });
 </script>

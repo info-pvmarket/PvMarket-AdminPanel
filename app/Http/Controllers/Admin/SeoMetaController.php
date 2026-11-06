@@ -235,17 +235,7 @@ class SeoMetaController extends Controller
         $brandId       = $this->sanitizeObjectId($request->brand_id);
 
         // Check for duplicate entity combination
-        $duplicate = $pageKey
-            ? SeoMetaData::where('page_key', $pageKey)->where('is_active', true)
-                ->when($marketId, fn ($query) => $query->whereIn('market_id', [$marketId, new \MongoDB\BSON\ObjectId($marketId)]),
-                    fn ($query) => $query->whereNull('market_id'))->first()
-            : SeoMetaData::forEntity(
-            $marketId,
-            $categoryId,
-            $subCategoryId,
-            $brandId,
-            null // product_id not used
-        )->first();
+        $duplicate = $this->findDuplicateSeoMeta($pageKey, $marketId, $categoryId, $subCategoryId, $brandId);
 
         if ($duplicate) {
             // Don't dead-end on a wall - take them straight to the existing record.
@@ -581,6 +571,64 @@ class SeoMetaController extends Controller
         $brandIds = Product::whereIn('_id', $this->seoIdCandidates($productIds))->pluck('brand_id')->unique()->filter()->all();
         $brands = Brand::whereIn('_id', $this->seoIdCandidates($brandIds))->where('is_active', true)->orderBy('name')->get(['_id', 'name', 'slug']);
         return response()->json($this->formatBrands($brands));
+    }
+
+    // ─── AJAX: CHECK DUPLICATE ──────────────────────────────────────────────
+    // Live version of store()'s duplicate check, called as the Create form's
+    // Market/Category/Sub Category/Brand selects change, so an existing
+    // record can be surfaced before the admin fills in the whole form.
+
+    public function checkDuplicate(Request $request)
+    {
+        $selection = (string) $request->input('selection', '');
+        $pageKey = null;
+        $categoryId = null;
+
+        if (str_starts_with($selection, 'page:')) {
+            $pageKey = substr($selection, 5);
+            if (!SeoLandingPages::contains($pageKey)) {
+                return response()->json(['exists' => false]);
+            }
+        } elseif (str_starts_with($selection, 'staticpage:')) {
+            $pageKey = substr($selection, 11);
+            if (!SeoStaticPages::contains($pageKey)) {
+                return response()->json(['exists' => false]);
+            }
+        } else {
+            $categoryId = $this->sanitizeObjectId($selection);
+        }
+
+        try {
+            $marketId = $this->resolveMarketId($request->input('market_id'));
+        } catch (ValidationException $e) {
+            return response()->json(['exists' => false]);
+        }
+
+        $subCategoryId = $pageKey ? null : $this->sanitizeObjectId($request->input('sub_category_id'));
+        $brandId       = $pageKey ? null : $this->sanitizeObjectId($request->input('brand_id'));
+
+        $duplicate = $this->findDuplicateSeoMeta($pageKey, $marketId, $categoryId, $subCategoryId, $brandId);
+
+        if (!$duplicate) {
+            return response()->json(['exists' => false]);
+        }
+
+        return response()->json([
+            'exists'   => true,
+            'edit_url' => route('admin.seo-meta.edit', $duplicate->id),
+            'title'    => $duplicate->meta_title,
+        ]);
+    }
+
+    // ─── PRIVATE: Find an existing record for an entity combination ────────
+
+    private function findDuplicateSeoMeta(?string $pageKey, ?string $marketId, ?string $categoryId, ?string $subCategoryId, ?string $brandId): ?SeoMetaData
+    {
+        return $pageKey
+            ? SeoMetaData::where('page_key', $pageKey)->where('is_active', true)
+                ->when($marketId, fn ($query) => $query->whereIn('market_id', [$marketId, new \MongoDB\BSON\ObjectId($marketId)]),
+                    fn ($query) => $query->whereNull('market_id'))->first()
+            : SeoMetaData::forEntity($marketId, $categoryId, $subCategoryId, $brandId, null)->first();
     }
 
     private function seoIdCandidates(array $ids): array
