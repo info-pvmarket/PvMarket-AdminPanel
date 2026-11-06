@@ -235,21 +235,22 @@ class SeoMetaController extends Controller
         $brandId       = $this->sanitizeObjectId($request->brand_id);
 
         // Check for duplicate entity combination
-        $exists = $pageKey
+        $duplicate = $pageKey
             ? SeoMetaData::where('page_key', $pageKey)->where('is_active', true)
                 ->when($marketId, fn ($query) => $query->whereIn('market_id', [$marketId, new \MongoDB\BSON\ObjectId($marketId)]),
-                    fn ($query) => $query->whereNull('market_id'))->exists()
+                    fn ($query) => $query->whereNull('market_id'))->first()
             : SeoMetaData::forEntity(
             $marketId,
             $categoryId,
             $subCategoryId,
             $brandId,
             null // product_id not used
-        )->exists();
+        )->first();
 
-        if ($exists) {
-            return back()->withErrors('SEO Meta already exists for this entity combination.')
-                         ->withInput();
+        if ($duplicate) {
+            // Don't dead-end on a wall - take them straight to the existing record.
+            return redirect()->route('admin.seo-meta.edit', $duplicate->id)
+                             ->with('info', 'SEO Meta already exists for this entity combination - showing the existing record so you can edit it directly.');
         }
 
         // Get slugs and market_code from related entities

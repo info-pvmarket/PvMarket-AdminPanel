@@ -30,6 +30,7 @@
     .btn-save:hover { background:#059669; }
     .btn-back { display:inline-flex; align-items:center; gap:7px; padding:9px 18px; background:var(--text); color:white; border-radius:8px; font-size:13.5px; font-weight:600; text-decoration:none; transition:background .15s; white-space:nowrap; border:1.5px solid var(--text); }
     .alert-error { padding:12px 16px; background:#FEE2E2; color:#991B1B; border:1px solid #FECACA; border-radius:8px; font-size:13.5px; margin-bottom:20px; }
+    .alert-info { padding:12px 16px; background:#F0F9FF; color:var(--primary-d); border:1px solid #BAE6FD; border-radius:8px; font-size:13.5px; font-weight:500; margin-bottom:20px; }
     .checkbox-group { display:flex; align-items:center; gap:10px; padding:8px 0; }
     .checkbox-group input[type="checkbox"] { width:18px; height:18px; cursor:pointer; }
     .checkbox-group label { font-size:13px; color:var(--text); cursor:pointer; }
@@ -528,6 +529,7 @@ document.addEventListener('DOMContentLoaded', function() {
     .btn-save:hover { background:#059669; }
     .btn-back { display:inline-flex; align-items:center; gap:7px; padding:9px 18px; background:var(--text); color:white; border-radius:8px; font-size:13.5px; font-weight:600; text-decoration:none; transition:background .15s; white-space:nowrap; border:1.5px solid var(--text); }
     .alert-error { padding:12px 16px; background:#FEE2E2; color:#991B1B; border:1px solid #FECACA; border-radius:8px; font-size:13.5px; margin-bottom:20px; }
+    .alert-info { padding:12px 16px; background:#F0F9FF; color:var(--primary-d); border:1px solid #BAE6FD; border-radius:8px; font-size:13.5px; font-weight:500; margin-bottom:20px; }
     .checkbox-group { display:flex; align-items:center; gap:10px; padding:8px 0; }
     .checkbox-group input[type="checkbox"] { width:18px; height:18px; cursor:pointer; }
     .checkbox-group label { font-size:13px; color:var(--text); cursor:pointer; }
@@ -555,6 +557,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
 @if($errors->any())
     <div class="alert-error">{{ $errors->first() }}</div>
+@endif
+
+@if(session('info'))
+    <div class="alert-info">{{ session('info') }}</div>
 @endif
 
 <form method="POST" action="{{ route('admin.seo-meta.update', $record->id) }}" enctype="multipart/form-data" id="seoMetaForm">
