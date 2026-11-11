@@ -445,6 +445,7 @@ Route::middleware('auth')->group(function () {
     // ══════════════════════════════════════════════════════════════════════
     Route::prefix('admin/leads')->name('admin.leads.')->middleware('admin.permission:leads.index')->group(function () {
         Route::get('/', [LeadController::class, 'index'])->name('index');
+        Route::get('/export', [LeadController::class, 'export'])->name('export');
         Route::get('/{id}/edit', [LeadController::class, 'edit'])->name('edit');
         Route::put('/{id}', [LeadController::class, 'update'])->name('update');
         Route::delete('/{id}', [LeadController::class, 'destroy'])->name('destroy');

@@ -21,6 +21,16 @@ class LeadController extends Controller
     // ── Leads Management Page ─────────────────────────────────────
     public function index(Request $request)
     {
+        $perPage = (int) $request->get('per_page', 10);
+        $leads = $this->leadsQuery($request)->paginate($perPage)->withQueryString();
+        $admins = $this->getAdminsForAssignment();
+        $leadListingInfoMap = $this->buildLeadListingInfoMap($leads->getCollection());
+
+        return view('admin.leads.index', compact('leads', 'admins', 'leadListingInfoMap'));
+    }
+
+    private function leadsQuery(Request $request)
+    {
         $query = LeadGeneration::with('assignedAdmin')->where('is_active', '!=', '0');
 
         // Filter by assigned admin
@@ -44,13 +54,56 @@ class LeadController extends Controller
             });
         }
 
-        $perPage = (int) $request->get('per_page', 10);
-        $leads   = $query->orderBy('created_at', 'desc')->paginate($perPage)->withQueryString();
+        return $query->orderBy('created_at', 'desc')->orderBy('_id', 'desc');
+    }
 
-        $admins = $this->getAdminsForAssignment();
-        $leadListingInfoMap = $this->buildLeadListingInfoMap($leads->getCollection());
+    public function export(Request $request)
+    {
+        $leads = $this->leadsQuery($request);
 
-        return view('admin.leads.index', compact('leads', 'admins', 'leadListingInfoMap'));
+        return response()->streamDownload(function () use ($leads) {
+            $output = fopen('php://output', 'w');
+            try {
+                fwrite($output, "\xEF\xBB\xBF");
+                fputcsv($output, [
+                    'Name', 'Email', 'Mobile', 'Country Code', 'Lead Type', 'Lead Details',
+                    'Lead From', 'Device', 'Status', 'Assigned Admin', 'Created Date',
+                ], escape: '');
+
+                foreach ($leads->lazy() as $lead) {
+                    $device = match ($lead->lead_device) {
+                        1 => 'Desktop',
+                        2 => 'Mobile',
+                        default => 'Unknown',
+                    };
+
+                    $row = [
+                        $lead->name,
+                        $lead->email,
+                        $lead->phone,
+                        $lead->country_code,
+                        $lead->lead_type_label,
+                        $lead->lead_data,
+                        $lead->lead_from,
+                        $device,
+                        $lead->status_label,
+                        $lead->assignedAdmin?->name,
+                        $lead->created_at?->format('Y-m-d'),
+                    ];
+                    fputcsv($output, array_map($this->csvCell(...), $row), escape: '');
+                }
+            } finally {
+                fclose($output);
+            }
+        }, 'leads.csv', ['Content-Type' => 'text/csv; charset=UTF-8', 'Cache-Control' => 'private, no-store']);
+    }
+
+    private function csvCell($value): string
+    {
+        $value = (string) $value;
+
+        // Lead submissions can contain text that spreadsheet apps interpret as a formula.
+        return preg_match('/^(?:\s*[=+@-]|[\t\r\n])/', $value) ? "'".$value : $value;
     }
 
     // ── Update lead status ────────────────────────────────────────

@@ -33,6 +33,7 @@
     text-decoration: none; transition: background .15s;
 }
 .btn-back:hover { background: #334155; color: white; }
+.btn-export { background: var(--primary); }
 
 /* Filter row */
 .filter-row {
@@ -211,7 +212,11 @@
             <option value="4"   {{ request('lead_type')=='4' ? 'selected':'' }}>Newsletter</option>
         </select>
     </div>
-    <a href="{{ url()->previous()  }}" class="btn-back">← Back</a>
+    <div style="display:flex; flex-wrap:wrap; gap:8px;">
+        <a href="{{ route('admin.leads.export', request()->only(['lead_type', 'search'])) }}"
+           class="btn-back btn-export">Export CSV</a>
+        <a href="{{ url()->previous() }}" class="btn-back">← Back</a>
+    </div>
 </div>
 
 @if(session('success'))
