@@ -242,7 +242,7 @@ class AdminListPresentationTest extends TestCase
         $this->assertContains('Sold Off', ProductListingCsvExporter::HEADERS);
         $this->assertContains('Created At', ProductListingCsvExporter::HEADERS);
         $this->assertContains('Updated At', ProductListingCsvExporter::HEADERS);
-        $this->assertStringContainsString('$product->brand_name ?? $listing->brand_name ?? \'\',', $exporter);
+        $this->assertStringContainsString('$brandName,', $exporter);
         $this->assertStringContainsString('$listing->discount_type ?? \'\',', $exporter);
         $this->assertStringContainsString("(\$listing->is_sold_off ?? false) ? 'Yes' : 'No',", $exporter);
         $this->assertStringContainsString('$this->formatDate($listing->created_at ?? null),', $exporter);
