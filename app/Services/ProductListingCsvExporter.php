@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Brand;
 use App\Models\Country;
 use App\Models\MainMenu;
 use App\Models\Product;
@@ -74,6 +75,16 @@ class ProductListingCsvExporter
 
         $productsMap = Product::whereIn('_id', $productIds)->get()
             ->keyBy(fn ($product) => (string) $product->_id);
+        $brandIds = $productsMap
+            ->filter(fn ($product) => trim((string) ($product->brand_name ?? '')) === '')
+            ->pluck('brand_id')
+            ->filter()
+            ->map(fn ($id) => (string) $id)
+            ->unique()
+            ->values();
+        $brandsMap = $brandIds->isEmpty()
+            ? collect()
+            : Brand::whereIn('_id', $brandIds)->get()->keyBy(fn ($brand) => (string) $brand->_id);
         $warehousesMap = Warehouse::whereIn('_id', $warehouseIds)->get()
             ->keyBy(fn ($warehouse) => (string) $warehouse->_id);
         $countryIds = $warehousesMap
@@ -98,6 +109,7 @@ class ProductListingCsvExporter
             function () use (
                 $listings,
                 $productsMap,
+                $brandsMap,
                 $warehousesMap,
                 $countriesMap,
                 $categoriesMap,
@@ -120,6 +132,14 @@ class ProductListingCsvExporter
                     }
 
                     $product = $productsMap->get($productId);
+                    $brandName = $product->brand_name ?? '';
+                    if (trim((string) $brandName) === '') {
+                        $brandName = $listing->brand_name ?? '';
+                    }
+                    if (trim((string) $brandName) === '') {
+                        $brand = $brandsMap->get((string) ($product->brand_id ?? ''));
+                        $brandName = $brand->name ?? '';
+                    }
                     $warehouse = $warehousesMap->get($warehouseId);
                     $category = $categoriesMap->get($categoryId);
                     $subCategory = $subCategoriesMap->get($subCategoryId);
@@ -142,7 +162,7 @@ class ProductListingCsvExporter
                         $createdUser->mobile ?? $createdUser->phone ?? '',
                         $product->sku_code ?? '',
                         $product->product_name ?? '',
-                        $product->brand_name ?? $listing->brand_name ?? '',
+                        $brandName,
                         $category->category_name ?? '',
                         $subCategory->sub_category_name ?? '',
                         $product->pieces_per_pallet ?? '',
