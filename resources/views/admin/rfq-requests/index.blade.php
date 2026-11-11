@@ -16,6 +16,7 @@
     .filter-group { display:flex; align-items:center; gap:12px; }
     .filter-select { padding:8px 30px 8px 12px; border:1.5px solid var(--border); border-radius:7px; font-family:inherit; font-size:13px; font-weight:500; color:var(--text); background:white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 10px center; -webkit-appearance:none; appearance:none; outline:none; cursor:pointer; }
     .filter-select:hover,.filter-select:focus { border-color:var(--primary); }
+    .export-button { padding:8px 12px; border-radius:7px; background:var(--primary-d); color:white; font-size:13px; font-weight:600; text-decoration:none; }
     .entries-group { display:flex; align-items:center; gap:7px; font-size:13.5px; color:var(--muted); font-weight:500; }
     .entries-select { padding:7px 26px 7px 10px; border:1.5px solid var(--border); border-radius:7px; font-family:inherit; font-size:13px; font-weight:600; color:var(--text); background:white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 7px center; -webkit-appearance:none; appearance:none; outline:none; cursor:pointer; }
     .entries-select:hover,.entries-select:focus { border-color:var(--primary); }
@@ -61,6 +62,8 @@
 
 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
     <h1 style="font-size:22px; font-weight:800; color:var(--text);">RFQ Requests</h1>
+    <a href="{{ route('admin.rfq-requests.export', request()->only(['search', 'status'])) }}"
+       class="export-button">Export CSV</a>
 </div>
 
 @if(session('success'))

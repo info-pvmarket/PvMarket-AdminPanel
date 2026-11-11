@@ -491,6 +491,7 @@ Route::middleware('auth')->group(function () {
     // ══════════════════════════════════════════════════════════════════════
     Route::prefix('admin/rfq-requests')->name('admin.rfq-requests.')->middleware('admin.permission:rfq_requests')->group(function () {
         Route::get('/', [RfqRequestController::class, 'index'])->name('index');
+        Route::get('/export', [RfqRequestController::class, 'export'])->name('export');
         Route::get('/{id}', [RfqRequestController::class, 'show'])->name('show');
         Route::post('/{id}/status', [RfqRequestController::class, 'updateStatus'])->name('update-status');
         Route::post('/{rfqId}/assign-admin', [RfqRequestController::class, 'assignAdmin'])->name('assign-admin');

@@ -17,6 +17,16 @@ class RfqRequestController extends Controller
      */
     public function index(Request $request)
     {
+        $records = $this->rfqQuery($request)->paginate($request->input('entries', 15))->withQueryString();
+
+        return view('admin.rfq-requests.index', [
+            'records' => $records,
+            'admins' => $this->getAdminsForAssignment(),
+        ]);
+    }
+
+    private function rfqQuery(Request $request)
+    {
         $query = RfqRequest::query();
 
         // Filter by assigned admin
@@ -37,15 +47,54 @@ class RfqRequestController extends Controller
             $query->where('status', $status);
         }
 
-        $perPage = $request->input('entries', 15);
-        $records = $query->orderBy('created_at', 'desc')->paginate($perPage)->withQueryString();
+        return $query->orderBy('created_at', 'desc')->orderBy('_id', 'desc');
+    }
 
-        $admins = $this->getAdminsForAssignment();
+    public function export(Request $request)
+    {
+        $records = $this->rfqQuery($request)->with('assignedAdmin');
 
-        return view('admin.rfq-requests.index', [
-            'records' => $records,
-            'admins' => $admins,
-        ]);
+        return response()->streamDownload(function () use ($records) {
+            $output = fopen('php://output', 'w');
+            try {
+                fwrite($output, "\xEF\xBB\xBF");
+                fputcsv($output, [
+                    'RFQ No', 'Company', 'Contact Person', 'Business Email', 'Phone', 'Items',
+                    'Country of Delivery', 'Destination', 'Delivery Date', 'Quote Needed By',
+                    'Status', 'Assigned Admin', 'Created Date',
+                ], escape: '');
+
+                foreach ($records->lazy() as $record) {
+                    $row = [
+                        $record->rfq_no,
+                        $record->company_name,
+                        $record->contact_person,
+                        $record->business_email,
+                        $record->phone,
+                        $record->total_items ?? count($record->items ?? []),
+                        $record->country_of_delivery,
+                        $record->destination,
+                        $record->delivery_date?->format('Y-m-d'),
+                        $record->quote_needed_by?->format('Y-m-d'),
+                        $record->status,
+                        $record->assignedAdmin?->name,
+                        $record->created_at?->format('Y-m-d'),
+                    ];
+
+                    fputcsv($output, array_map($this->csvCell(...), $row), escape: '');
+                }
+            } finally {
+                fclose($output);
+            }
+        }, 'rfq-requests.csv', ['Content-Type' => 'text/csv; charset=UTF-8', 'Cache-Control' => 'private, no-store']);
+    }
+
+    private function csvCell($value): string
+    {
+        $value = (string) $value;
+
+        // RFQ submissions can contain text that spreadsheet apps interpret as a formula.
+        return preg_match('/^(?:\s*[=+@-]|[\t\r\n])/', $value) ? "'".$value : $value;
     }
 
     /**
