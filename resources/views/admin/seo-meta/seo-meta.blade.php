@@ -439,11 +439,12 @@ document.addEventListener('DOMContentLoaded', function() {
     let subCategoryHasOptions = false;
     let brandHasOptions = false;
 
+    let duplicateCheckRequest = 0;
     function hideDuplicateBanner() {
+        ++duplicateCheckRequest;
         if (duplicateBanner) duplicateBanner.style.display = 'none';
     }
 
-    let duplicateCheckRequest = 0;
     function checkDuplicateNow() {
         const request = ++duplicateCheckRequest;
         const params = new URLSearchParams({

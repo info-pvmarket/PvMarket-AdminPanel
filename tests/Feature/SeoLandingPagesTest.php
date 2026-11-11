@@ -121,28 +121,39 @@ class SeoLandingPagesTest extends TestCase
 
     public function test_none_with_brand_saves_a_distinct_brand_only_record(): void
     {
-        $brand = \App\Models\Brand::create(['name' => 'JA Solar', 'slug' => 'ja-solar', 'is_active' => true]);
+        $brand = \App\Models\Brand::create(['name' => 'SMA', 'slug' => 'sma', 'is_active' => true]);
+        $category = MainMenu::create(['category_name' => 'Inverters', 'slug' => 'inverters', 'is_active' => true]);
         $this->post(route('admin.seo-meta.store'), $this->payload('brands'))->assertSessionHasNoErrors();
         $payload = [...$this->payload('brands'), 'category_id' => '', 'brand_id' => (string) $brand->id,
-            'meta_title' => 'JA Solar SEO', 'canonical_url' => 'https://pv.market/ja-solar'];
+            'meta_title' => 'SMA SEO', 'canonical_url' => 'https://pv.market/sma'];
+        $this->post(route('admin.seo-meta.store'), [
+            ...$payload, 'category_id' => (string) $category->id, 'meta_title' => 'SMA Inverters SEO',
+            'canonical_url' => 'https://pv.market/inverters/sma',
+        ])->assertSessionHasNoErrors();
+        $categoryRecord = SeoMetaData::forEntity(null, (string) $category->id, null, (string) $brand->id)->firstOrFail();
+        $this->getJson(route('admin.seo-meta.check-duplicate', ['brand_id' => (string) $brand->id]))
+            ->assertOk()->assertJsonPath('exists', false);
         $this->post(route('admin.seo-meta.store'), $payload)->assertSessionHasNoErrors();
         $record = SeoMetaData::forEntity(null, null, null, (string) $brand->id)->firstOrFail();
         $this->assertEmpty($record->page_key);
-        $this->assertSame('ja-solar', $record->brand_slug);
+        $this->assertSame('sma', $record->brand_slug);
         $this->assertSame('global', $record->market_code);
-        $this->assertSame('https://pv.market/ja-solar', $record->canonical_url);
-        $this->get(route('admin.seo-meta.edit', $record->id))->assertOk()->assertSee('JA Solar SEO');
+        $this->assertSame('https://pv.market/sma', $record->canonical_url);
+        $this->get(route('admin.seo-meta.edit', $record->id))->assertOk()->assertSee('SMA SEO');
+        $this->getJson(route('admin.seo-meta.check-duplicate', ['brand_id' => (string) $brand->id]))
+            ->assertOk()->assertJsonPath('edit_url', route('admin.seo-meta.edit', $record->id));
         $update = $payload;
         unset($update['category_id'], $update['brand_id']);
-        $update['page_header'] = 'JA Solar updated heading';
+        $update['page_header'] = 'SMA updated heading';
         $this->put(route('admin.seo-meta.update', $record->id), $update)->assertSessionHasNoErrors();
         $record->refresh();
         $this->assertSame('global', $record->market_code);
-        $this->assertSame('ja-solar', $record->brand_slug);
-        $this->assertSame('JA Solar updated heading', $record->page_header);
-        $this->post(route('admin.seo-meta.store'), $payload)->assertSessionHasErrors();
+        $this->assertSame('sma', $record->brand_slug);
+        $this->assertSame('SMA updated heading', $record->page_header);
+        $this->assertSame('SMA Inverters SEO', $categoryRecord->fresh()->meta_title);
+        $this->post(route('admin.seo-meta.store'), $payload)->assertRedirect(route('admin.seo-meta.edit', $record->id));
         $this->assertSame(1, SeoMetaData::where('page_key', 'brands')->count());
-        $this->assertSame(2, SeoMetaData::count());
+        $this->assertSame(3, SeoMetaData::count());
         $this->post(route('admin.seo-meta.store'), [...$payload, 'category_id' => 'page:all_categories'])->assertSessionHasErrors('brand_id');
         $this->post(route('admin.seo-meta.store'), [...$payload, 'category_id' => 'page:brands'])->assertSessionHasErrors('brand_id');
     }
