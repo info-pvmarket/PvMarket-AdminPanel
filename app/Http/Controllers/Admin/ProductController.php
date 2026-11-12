@@ -682,7 +682,11 @@ class ProductController extends Controller
             'product_name'    => $this->productNameRules((string) $product->_id),
             'category_id'     => 'required|string',
             'sub_category_id' => 'required|string',
-            'specific_value'  => 'required|string|max:255',
+            'specific_value'  => [
+                trim((string) $product->specific_value) !== '' ? 'required' : 'nullable',
+                'string',
+                'max:255',
+            ],
             'specific_value_unit_id' => ['nullable', 'string', 'regex:/^[a-fA-F0-9]{24}$/'],
         ]);
 

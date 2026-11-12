@@ -617,10 +617,13 @@ class AdminListPresentationTest extends TestCase
         $this->assertLessThan(strpos($view, '<div class="section-title">Product Details</div>'), strpos($view, '<div class="section-title">Product Badge</div>'));
         $this->assertStringContainsString('name="specific_value"', $view);
         $this->assertStringContainsString('name="specific_value_unit_id"', $view);
-        $this->assertStringContainsString('Specification <span>*</span>', $view);
+        $this->assertStringContainsString("Specification @if(\$badgeRequired)<span>*</span>@endif", $view);
+        $this->assertStringContainsString('@required($badgeRequired)', $view);
+        $this->assertStringContainsString("\$mode === 'create' || trim((string) (\$record->specific_value ?? '')) !== ''", $view);
         $this->assertStringContainsString('<label class="form-label">Unit</label>', $view);
         $this->assertStringContainsString("Unit::where('is_active', true)->orderBy('unit_name')->get()", $controller);
         $this->assertStringContainsString("'specific_value' => 'required|string|max:255'", $controller);
+        $this->assertStringContainsString("trim((string) \$product->specific_value) !== '' ? 'required' : 'nullable'", $controller);
         $this->assertSame(2, substr_count($controller, "'specific_value' => trim((string) \$request->input('specific_value'))"));
         $this->assertStringContainsString("'specific_value_unit_id' => ['nullable'", $controller);
         $this->assertStringContainsString("'specific_value'", $model);

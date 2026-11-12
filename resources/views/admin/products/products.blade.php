@@ -392,13 +392,16 @@ document.addEventListener('DOMContentLoaded', function () {
         <div id="section-badge">
             <div class="form-grid-2">
                 <div class="form-group">
-                    <label class="form-label">Specification <span>*</span></label>
+                    @php
+                        $badgeRequired = $mode === 'create' || trim((string) ($record->specific_value ?? '')) !== '';
+                    @endphp
+                    <label class="form-label">Specification @if($badgeRequired)<span>*</span>@endif</label>
                     <input type="text"
                            name="specific_value"
                            class="form-input"
                            placeholder="e.g. 580"
                            value="{{ old('specific_value', $record->specific_value ?? '') }}"
-                           required/>
+                           @required($badgeRequired)/>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Unit</label>
