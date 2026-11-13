@@ -170,8 +170,12 @@
             @endif
             @if($user->hasAdminPermission('settings.seo_meta'))
             <a href="{{ route('admin.seo-meta.index') }}"
-               class="nav-sub-item {{ request()->routeIs('admin.seo-meta.*') ? 'active' : '' }}">
+               class="nav-sub-item {{ request()->routeIs('admin.seo-meta.*') && !request()->routeIs('admin.seo-meta.sitemap.*') ? 'active' : '' }}">
                SEO Meta
+            </a>
+            <a href="{{ route('admin.seo-meta.sitemap.index') }}"
+               class="nav-sub-item {{ request()->routeIs('admin.seo-meta.sitemap.*') ? 'active' : '' }}">
+               Import XML
             </a>
             @endif
         </div>

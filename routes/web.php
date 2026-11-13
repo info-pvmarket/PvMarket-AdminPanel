@@ -53,6 +53,8 @@ Route::get('/', function () {
 });
 
 // ── Guest only routes ───────────────────────────────────────────────────
+Route::get('/public-sitemap-entries', [\App\Http\Controllers\Admin\SitemapImportController::class, 'published']);
+
 Route::middleware('guest')->group(function () {
     Route::get('/admin/login', [AuthController::class, 'showLogin'])->name('admin.login.page');
     Route::post('/admin/login', [AuthController::class, 'login'])->name('admin.login');
@@ -589,6 +591,8 @@ Route::middleware('auth')->group(function () {
     // SEO META MANAGEMENT
     // ══════════════════════════════════════════════════════════════════════
     Route::prefix('admin/seo-meta')->name('admin.seo-meta.')->middleware('admin.permission:settings.seo_meta')->group(function () {
+        Route::get('/import-xml', [\App\Http\Controllers\Admin\SitemapImportController::class, 'index'])->name('sitemap.index');
+        Route::post('/import-xml', [\App\Http\Controllers\Admin\SitemapImportController::class, 'store'])->name('sitemap.store');
         Route::get('/', [SeoMetaController::class, 'index'])->name('index');
         Route::get('/create', [SeoMetaController::class, 'create'])->name('create');
         Route::get('/check-duplicate', [SeoMetaController::class, 'checkDuplicate'])->name('check-duplicate');
