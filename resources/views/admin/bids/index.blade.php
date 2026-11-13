@@ -211,9 +211,12 @@
 @section('content')
 
 {{-- Header --}}
-<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:12px;">
     <h1 style="font-size:22px; font-weight:800; color:var(--text);">Bid/Fair Price Requests</h1>
-    <a href="{{ route('admin.dashboard') }}" class="btn-back">← Back</a>
+    <div style="display:flex; align-items:center; gap:8px; margin-left:auto;">
+        <button type="submit" form="bidImportForm" class="btn-back">Import File</button>
+        <a href="{{ route('admin.dashboard') }}" class="btn-back">← Back</a>
+    </div>
 </div>
 
 
@@ -221,12 +224,11 @@
     <div class="alert-success">✓ {{ session('success') }}</div>
 @endif
 
-<form action="{{ route('admin.bids.import') }}" method="POST" enctype="multipart/form-data" class="controls-bar">
+<form id="bidImportForm" action="{{ route('admin.bids.import') }}" method="POST" enctype="multipart/form-data" class="controls-bar">
     @csrf
     <div class="search-wrap">
         <label for="bidCsv">Bid/Fair CSV file</label>
         <input id="bidCsv" name="bid_csv" type="file" accept=".csv,text/csv" required>
-        <button type="submit" class="btn-back">Import File</button>
     </div>
     <a href="{{ route('admin.bids.import.template') }}">Download CSV template</a>
 </form>
