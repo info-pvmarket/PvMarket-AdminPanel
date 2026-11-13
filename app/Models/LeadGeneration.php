@@ -57,6 +57,11 @@ class LeadGeneration extends Model
         };
     }
 
+    public function scopePending($query)
+    {
+        return $query->where(fn ($status) => $status->whereIn('status', [0, '0'])->orWhereNull('status'));
+    }
+
     public function assignedAdmin()
     {
         return $this->belongsTo(\App\Models\User::class, 'assigned_admin_id', '_id');

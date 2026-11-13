@@ -221,8 +221,24 @@
     <div class="alert-success">✓ {{ session('success') }}</div>
 @endif
 
+<form action="{{ route('admin.bids.import') }}" method="POST" enctype="multipart/form-data" class="controls-bar">
+    @csrf
+    <div class="search-wrap">
+        <label for="bidCsv">Bid/Fair CSV file</label>
+        <input id="bidCsv" name="bid_csv" type="file" accept=".csv,text/csv" required>
+        <button type="submit" class="btn-back">Import File</button>
+    </div>
+    <a href="{{ route('admin.bids.import.template') }}">Download CSV template</a>
+</form>
+@error('bid_csv')
+    <p role="alert">{{ $message }}</p>
+@enderror
+
 {{-- Controls --}}
 <div class="controls-bar">
+    @if(request('status') === '0')
+        <a href="{{ route('admin.bids.index', request()->only(['request_type', 'search', 'per_page'])) }}">Showing pending requests &middot; View all statuses</a>
+    @endif
     <div class="search-wrap">
         <span class="search-label">Search:</span>
         <input type="text" class="search-input" id="searchInput"
@@ -438,10 +454,16 @@
 
 @section('scripts')
 <script>
-const CSRF    = document.querySelector('meta[name="csrf-token"]').content;
+const bidCsrf = document.querySelector('meta[name="csrf-token"]').content;
 let currentId = null;
 
-const bidsData = @json($bidsJson);
+const bidsData = {{ Illuminate\Support\Js::from($bidsJson) }};
+
+function escapeBidText(value) {
+    const text = document.createElement('span');
+    text.textContent = value ?? '';
+    return text.innerHTML;
+}
 
 // ── Open detail modal ──
 function openDetail(id) {
@@ -450,14 +472,14 @@ function openDetail(id) {
     if (!bid) return;
 
     document.getElementById('modalContent').innerHTML = `
-        <div class="modal-row"><span class="modal-label">Request ID</span><span class="modal-value">${bid.unique_id}</span></div>
-        <div class="modal-row"><span class="modal-label">Product</span><span class="modal-value">${bid.product_name}</span></div>
-        <div class="modal-row"><span class="modal-label">Company</span><span class="modal-value">${bid.company_name}</span></div>
-        <div class="modal-row"><span class="modal-label">Quantity</span><span class="modal-value">${bid.selected_pcs_qty} ${bid.quantity_unit}</span></div>
-        <div class="modal-row"><span class="modal-label">Bid Price/Piece</span><span class="modal-value">${bid.bid_price_per_piece} ${bid.purchased_currency}</span></div>
-        <div class="modal-row"><span class="modal-label">Final Price/Piece</span><span class="modal-value">${bid.final_price_per_pcs}</span></div>
-        <div class="modal-row"><span class="modal-label">Request Type</span><span class="modal-value">${bid.request_type}</span></div>
-        <div class="modal-row"><span class="modal-label">Lead Time</span><span class="modal-value">${bid.lead_time} Weeks</span></div>
+        <div class="modal-row"><span class="modal-label">Request ID</span><span class="modal-value">${escapeBidText(bid.unique_id)}</span></div>
+        <div class="modal-row"><span class="modal-label">Product</span><span class="modal-value">${escapeBidText(bid.product_name)}</span></div>
+        <div class="modal-row"><span class="modal-label">Company</span><span class="modal-value">${escapeBidText(bid.company_name)}</span></div>
+        <div class="modal-row"><span class="modal-label">Quantity</span><span class="modal-value">${escapeBidText(bid.selected_pcs_qty)} ${escapeBidText(bid.quantity_unit)}</span></div>
+        <div class="modal-row"><span class="modal-label">Bid Price/Piece</span><span class="modal-value">${escapeBidText(bid.bid_price_per_piece)} ${escapeBidText(bid.purchased_currency)}</span></div>
+        <div class="modal-row"><span class="modal-label">Final Price/Piece</span><span class="modal-value">${escapeBidText(bid.final_price_per_pcs)}</span></div>
+        <div class="modal-row"><span class="modal-label">Request Type</span><span class="modal-value">${escapeBidText(bid.request_type)}</span></div>
+        <div class="modal-row"><span class="modal-label">Lead Time</span><span class="modal-value">${escapeBidText(bid.lead_time)} Weeks</span></div>
         <div class="modal-row">
             <span class="modal-label">Update Status</span>
             <select class="modal-status-select" id="modalStatusSelect">
@@ -485,7 +507,7 @@ async function saveStatus() {
     try {
         const res  = await fetch(`/admin/bids/${currentId}/status`, {
             method:  'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': bidCsrf },
             body:    JSON.stringify({ status: parseInt(status) }),
         });
         const data = await res.json();
@@ -512,7 +534,7 @@ async function deleteBid(id, btn) {
     try {
         const res  = await fetch(`/admin/bids/${id}`, {
             method:  'DELETE',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': bidCsrf },
         });
         const data = await res.json();
         if (data.success) {

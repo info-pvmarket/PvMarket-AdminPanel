@@ -37,6 +37,16 @@ class BidRequest extends Model
         'assigned_admin_id',
     ];
 
+    public function scopeVisible($query)
+    {
+        return $query->where(fn ($active) => $active->where('is_active', 1)->orWhereNull('is_active'));
+    }
+
+    public function scopePending($query)
+    {
+        return $query->where(fn ($status) => $status->whereIn('status', [0, '0'])->orWhereNull('status'));
+    }
+
     protected $casts = [
         'product_id'        => AsObjectId::class,
         'company_id'        => AsObjectId::class,

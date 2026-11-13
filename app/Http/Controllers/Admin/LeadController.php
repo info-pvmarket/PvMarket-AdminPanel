@@ -36,6 +36,10 @@ class LeadController extends Controller
         // Filter by assigned admin
         $this->filterByAssignedAdmin($query);
 
+        if ($request->input('status') === 'pending') {
+            $query->pending();
+        }
+
         // Filter by lead type (All / Book Free / Spot Price / etc.)
         if ($request->filled('lead_type') && $request->lead_type !== 'all') {
             $query->where('lead_type', (int)$request->lead_type);

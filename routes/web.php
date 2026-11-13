@@ -480,6 +480,8 @@ Route::middleware('auth')->group(function () {
     // ══════════════════════════════════════════════════════════════════════
     Route::prefix('admin/bids')->name('admin.bids.')->middleware('admin.permission:bids')->group(function () {
         Route::get('/', [BidRequestController::class, 'index'])->name('index');
+        Route::get('/import/template', [BidRequestController::class, 'importTemplate'])->name('import.template');
+        Route::post('/import', [BidRequestController::class, 'import'])->name('import');
         Route::get('/{id}', [BidRequestController::class, 'show'])->name('show');
         Route::post('/{id}/status', [BidRequestController::class, 'updateStatus'])->name('update-status');
         Route::post('/{bidId}/assign-admin', [BidRequestController::class, 'assignAdmin'])->name('assign-admin');

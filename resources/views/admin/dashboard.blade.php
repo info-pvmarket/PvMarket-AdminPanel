@@ -174,6 +174,18 @@
     </a>
 </div>
 
+@if($requestCards)
+<div class="pending-grid">
+    @foreach($requestCards as $card)
+    <a href="{{ $card['url'] }}" class="pending-card info">
+        <div class="stat-label">{{ $card['label'] }}</div>
+        <div class="pending-value info">{{ number_format($card['count']) }}</div>
+        <span class="pending-link info">View Pending →</span>
+    </a>
+    @endforeach
+</div>
+@endif
+
 {{-- Tables Grid --}}
 <div class="tables-grid">
     {{-- Latest Users --}}
@@ -316,6 +328,7 @@
         @endif
     </div>
 
+    @if(auth()->user()->hasAdminPermission('bids'))
     {{-- Latest Bid/Fair Requests --}}
     <div class="table-card" onclick="window.location='{{ route('admin.bids.index') }}'">
         <div class="table-header">
@@ -371,6 +384,9 @@
         @endif
     </div>
 
+    @endif
+
+    @if(auth()->user()->hasAdminPermission('rfq_requests'))
     {{-- Latest RFQ Requests --}}
     <div class="table-card" onclick="window.location='{{ route('admin.rfq-requests.index') }}'">
         <div class="table-header">
@@ -412,5 +428,6 @@
         </table>
         @endif
     </div>
+    @endif
 </div>
 @endsection

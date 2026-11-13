@@ -8,6 +8,7 @@ use App\Models\ProductListing;
 use App\Models\User;
 use App\Models\Order;
 use App\Models\BidRequest;
+use App\Models\LeadGeneration;
 use App\Models\RfqRequest;
 use App\Models\InventoryTransaction;
 use App\Models\Role;
@@ -114,20 +115,44 @@ class DashboardController extends Controller
             ->get(['_id', 'listing_id', 'user_id', 'transaction_type', 'quantity', 'created_at']);
 
         // ── Latest 5 Bid/Fair Price Requests ────────────────────────────
-        $latestBidRequestsQuery = BidRequest::query();
+        $latestBidRequestsQuery = BidRequest::visible();
         $this->filterByAssignedAdmin($latestBidRequestsQuery);
-        $latestBidRequests = $latestBidRequestsQuery->orderBy('created_at', 'desc')
+        $latestBidRequests = (clone $latestBidRequestsQuery)->orderBy('created_at', 'desc')
             ->limit(5)
             ->get(['_id', 'unique_id', 'product_name', 'company_name', 'request_type', 'status', 'created_at']);
 
         // ── Latest 5 RFQ Requests ───────────────────────────────────────
         $latestRfqRequestsQuery = RfqRequest::query();
         $this->filterByAssignedAdmin($latestRfqRequestsQuery);
-        $latestRfqRequests = $latestRfqRequestsQuery->orderBy('created_at', 'desc')
+        $latestRfqRequests = (clone $latestRfqRequestsQuery)->orderBy('created_at', 'desc')
             ->limit(5)
             ->get(['_id', 'rfq_no', 'company_name', 'contact_person', 'total_items', 'status', 'created_at']);
 
+        $requestCards = [];
+        if ($admin->hasAdminPermission('rfq_requests')) {
+            $requestCards[] = [
+                'label' => 'Pending RFQs',
+                'count' => (clone $latestRfqRequestsQuery)->reorder()->where('status', 'pending')->count(),
+                'url' => route('admin.rfq-requests.index', ['status' => 'pending']),
+            ];
+        }
+        if ($admin->hasAdminPermission('leads.index')) {
+            $requestCards[] = [
+                'label' => 'Pending Leads',
+                'count' => $this->filterByAssignedAdmin(LeadGeneration::where('is_active', '!=', '0')->pending())->count(),
+                'url' => route('admin.leads.index', ['status' => 'pending']),
+            ];
+        }
+        if ($admin->hasAdminPermission('bids')) {
+            $requestCards[] = [
+                'label' => 'Pending Bid/Fair Requests',
+                'count' => (clone $latestBidRequestsQuery)->reorder()->pending()->count(),
+                'url' => route('admin.bids.index', ['status' => '0']),
+            ];
+        }
+
         return view('admin.dashboard', [
+            'requestCards' => $requestCards,
             'listingsCount' => $listingsCount,
             'realTimePricingsCount' => $realTimePricingsCount,
             'productsCount' => $productsCount,

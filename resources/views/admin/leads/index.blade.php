@@ -213,7 +213,7 @@
         </select>
     </div>
     <div style="display:flex; flex-wrap:wrap; gap:8px;">
-        <a href="{{ route('admin.leads.export', request()->only(['lead_type', 'search'])) }}"
+        <a href="{{ route('admin.leads.export', request()->only(['lead_type', 'search', 'status'])) }}"
            class="btn-back btn-export">Export CSV</a>
         <a href="{{ url()->previous() }}" class="btn-back">← Back</a>
     </div>
@@ -227,6 +227,9 @@
 
 {{-- Controls --}}
 <div class="controls-bar">
+    @if(request('status') === 'pending')
+        <a href="{{ route('admin.leads.index', request()->only(['lead_type', 'search', 'per_page'])) }}">Showing pending leads · View all statuses</a>
+    @endif
     <div class="search-wrap">
         <span class="search-label">Search:</span>
         <input type="text" class="search-input" id="searchInput"
