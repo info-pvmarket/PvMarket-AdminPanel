@@ -820,21 +820,25 @@ class ProductController extends Controller
     // ── Verify ────────────────────────────────────────
     public function verify($id)
     {
-        Product::findOrFail($id)->update([
+        $product = Product::findOrFail($id);
+        $product->update([
             'verification_status' => 'verified',
             'is_active'            => true,
             'updated_by'          => Auth::user()->name,
         ]);
+        app(\App\Services\UserNotifier::class)->productReviewed($product, true);
         return redirect()->route('admin.products.index')->with('success', 'Product verified.');
     }
 
     // ── Reject ────────────────────────────────────────
     public function reject($id)
     {
-        Product::findOrFail($id)->update([
+        $product = Product::findOrFail($id);
+        $product->update([
             'verification_status' => 'rejected',
             'updated_by'          => Auth::user()->name,
         ]);
+        app(\App\Services\UserNotifier::class)->productReviewed($product, false);
         return redirect()->route('admin.products.index')->with('success', 'Product rejected.');
     }
 

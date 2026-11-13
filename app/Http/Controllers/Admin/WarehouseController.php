@@ -176,11 +176,13 @@ class WarehouseController extends Controller
     // ── Mark As Paid ──────────────────────────────────
     public function markAsPaid($id)
     {
-        Warehouse::findOrFail($id)->update([
+        $warehouse = Warehouse::findOrFail($id);
+        $warehouse->update([
             'is_paid'        => true,
             'payment_status' => 'paid',
             'updated_by'     => Auth::user()->name,
         ]);
+        app(\App\Services\UserNotifier::class)->warehousePaid($warehouse);
 
         return redirect()->route('admin.warehouses.index')
                          ->with('success', 'Warehouse marked as paid.');

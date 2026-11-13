@@ -187,11 +187,15 @@ $admins = $this->getAdminsForAssignment();
         $request->validate(['status' => 'required|integer|min:0|max:3']);
 
         $bid = BidRequest::findOrFail($id);
+        $oldStatus = (int) $bid->status;
         $bid->update([
             'status'       => $request->status,
             'updated_by'   => auth()->id(),
             'completed_at' => $request->status == 3 ? now() : $bid->completed_at,
         ]);
+        if ((int) $request->status !== $oldStatus) {
+            app(\App\Services\UserNotifier::class)->bidStatusChanged($bid);
+        }
 
         return response()->json(['success' => true, 'status' => $request->status]);
     }

@@ -927,6 +927,7 @@ class ProductListingController extends Controller
     {
         $listing = ProductListing::findOrFail($id);
         $listing->update(['is_paid' => true]);
+        app(\App\Services\UserNotifier::class)->listingPaymentApproved($listing);
 
         return back()->with('success', 'Payment approved successfully.');
     }
@@ -941,6 +942,7 @@ class ProductListingController extends Controller
             'approved_at'         => now(),
             'approved_by'         => new \MongoDB\BSON\ObjectId(Auth::id()),
         ]);
+        app(\App\Services\UserNotifier::class)->listingReviewed($listing, true);
 
         return back()->with('success', 'Listing verified successfully.');
     }

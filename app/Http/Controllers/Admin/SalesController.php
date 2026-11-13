@@ -161,6 +161,7 @@ class SalesController extends Controller
     {
         $order = Order::findOrFail($id);
         $order->update(['payment_verified' => 1]);
+        app(\App\Services\UserNotifier::class)->orderPaymentVerified($order);
 
         return response()->json(['success' => true, 'message' => 'Payment marked as verified.']);
     }
@@ -242,6 +243,9 @@ class SalesController extends Controller
             'order_status' => $newStatus,
             'updated_by'   => auth()->id(),
         ]);
+        if ($newStatus !== $oldStatus) {
+            app(\App\Services\UserNotifier::class)->orderStatusChanged($order, $newStatus);
+        }
 
         return response()->json(['success' => true]);
     }

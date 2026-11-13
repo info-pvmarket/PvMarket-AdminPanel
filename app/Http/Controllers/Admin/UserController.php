@@ -837,6 +837,7 @@ public function assignAdmin(Request $request, $userId)
     {
         $listing = ProductListing::findOrFail($listingId);
         $listing->update(['is_paid' => true]);
+        app(\App\Services\UserNotifier::class)->listingPaymentApproved($listing);
 
         // Preserve listing filters
         $params = array_merge(
@@ -859,6 +860,7 @@ public function assignAdmin(Request $request, $userId)
             'approved_at' => now(),
             'approved_by' => new \MongoDB\BSON\ObjectId(Auth::id()),
         ]);
+        app(\App\Services\UserNotifier::class)->listingReviewed($listing, true);
 
         // Preserve listing filters
         $params = array_merge(
@@ -880,6 +882,7 @@ public function assignAdmin(Request $request, $userId)
             'verification_status' => 'rejected',
             'is_active' => false,
         ]);
+        app(\App\Services\UserNotifier::class)->listingReviewed($listing, false);
 
         // Preserve listing filters
         $params = array_merge(
@@ -907,6 +910,7 @@ public function assignAdmin(Request $request, $userId)
             'is_active' => true,
             'updated_by' => Auth::user()->name,
         ]);
+        app(\App\Services\UserNotifier::class)->productReviewed($product, true);
 
         return redirect()->route('admin.users.edit', [
             'id' => $userId,
@@ -931,6 +935,7 @@ public function assignAdmin(Request $request, $userId)
             'payment_status' => 'paid',
             'updated_by' => Auth::user()->name,
         ]);
+        app(\App\Services\UserNotifier::class)->warehousePaid($warehouse);
 
         return redirect()->route('admin.users.edit', [
             'id' => $userId,
