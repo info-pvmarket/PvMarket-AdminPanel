@@ -163,6 +163,10 @@
                class="nav-sub-item {{ request()->routeIs('admin.setup.markets.*') ? 'active' : '' }}">
                Markets
             </a>
+            <a href="{{ route('admin.setup.regions.index') }}"
+               class="nav-sub-item {{ request()->routeIs('admin.setup.regions.*') ? 'active' : '' }}">
+               Regions
+            </a>
             <a href="{{ route('admin.setup.currencies.index') }}"
                class="nav-sub-item {{ request()->routeIs('admin.setup.currencies.*') ? 'active' : '' }}">
                Currencies

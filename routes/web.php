@@ -39,6 +39,7 @@ use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\LocationController;
 use App\Http\Controllers\Admin\RfqRequestController;
 use App\Http\Controllers\Admin\MarketController;
+use App\Http\Controllers\Admin\RegionController;
 use App\Http\Controllers\Admin\CurrencyController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\SeoMetaController;
@@ -283,6 +284,15 @@ Route::middleware('auth')->group(function () {
     // ══════════════════════════════════════════════════════════════════════
     // SETTINGS - Markets
     // ══════════════════════════════════════════════════════════════════════
+    Route::prefix('admin/setup/regions')->name('admin.setup.regions.')->middleware('admin.permission:settings.markets')->group(function () {
+        Route::get('/', [RegionController::class, 'index'])->name('index');
+        Route::get('/create', [RegionController::class, 'create'])->name('create');
+        Route::post('/', [RegionController::class, 'store'])->name('store');
+        Route::get('/{code}/edit', [RegionController::class, 'edit'])->name('edit');
+        Route::put('/{code}', [RegionController::class, 'update'])->name('update');
+        Route::delete('/{code}', [RegionController::class, 'destroy'])->name('destroy');
+    });
+
     Route::prefix('admin/setup/markets')->name('admin.setup.markets.')->middleware('admin.permission:settings.markets')->group(function () {
         Route::get('/', [MarketController::class, 'index'])->name('index');
         Route::get('/create', [MarketController::class, 'create'])->name('create');
