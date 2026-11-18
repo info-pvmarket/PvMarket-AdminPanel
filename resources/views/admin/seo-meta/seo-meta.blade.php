@@ -69,16 +69,11 @@
 
         <div class="form-grid-4">
             <div class="form-group">
-                <label class="form-label">Market</label>
+                <label class="form-label">Global / Region / Country</label>
                 <select name="market_id" id="market_id" class="form-input form-select">
-                    <option value="">Global (No Market)</option>
-                    @foreach($markets as $market)
-                        <option value="{{ $market->id }}" {{ old('market_id') == $market->id ? 'selected' : '' }}>
-                            {{ $market->name }} ({{ $market->code }})
-                        </option>
-                    @endforeach
+                    <x-admin.scope-options :selected="old('market_id', '')" />
                 </select>
-                <span class="help-text">Choose the market for this SEO record; leave empty for Global.</span>
+                <span class="help-text">Choose Global, a region, or a country for this SEO record.</span>
             </div>
 
             <div class="form-group">
@@ -660,7 +655,9 @@ document.addEventListener('DOMContentLoaded', function() {
             <span class="entity-badge">
                 <strong>Type:</strong> {{ $record->page_type }}
             </span>
-            @if($record->market)
+            @if($record->region_code)
+                <span class="entity-badge">Region: {{ \App\Support\StorefrontScopes::regions()[$record->region_code]['name'] ?? $record->region_code }}</span>
+            @elseif($record->market)
                 <span class="entity-badge">
                     <strong>Market:</strong> {{ $record->market->name }} ({{ $record->market->code }})
                 </span>
@@ -1137,12 +1134,7 @@ function markForDeletion(type, imageId, btn) {
             <form method="GET" action="{{ route('admin.seo-meta.index') }}" style="display:flex; gap:10px;">
                 <select name="market_id" class="filter-select" onchange="this.form.submit()">
                     <option value="">All Markets</option>
-                    <option value="global" {{ request('market_id') == 'global' ? 'selected' : '' }}>Global</option>
-                    @foreach($markets as $market)
-                        <option value="{{ $market->id }}" {{ request('market_id') == $market->id ? 'selected' : '' }}>
-                            {{ $market->name }} ({{ $market->code }})
-                        </option>
-                    @endforeach
+                    <x-admin.scope-options :selected="request('market_id')" global-value="global" />
                 </select>
 
                 <select name="type" class="filter-select" onchange="this.form.submit()">
@@ -1190,7 +1182,9 @@ function markForDeletion(type, imageId, btn) {
                     {{ $records->firstItem() + $index }}
                 </td>
                 <td>
-                    @if($record->market)
+                    @if($record->region_code)
+                <span class="entity-badge">Region: {{ \App\Support\StorefrontScopes::regions()[$record->region_code]['name'] ?? $record->region_code }}</span>
+            @elseif($record->market)
                         <span class="location-badge">{{ $record->market->code }}</span>
                     @else
                         <span class="location-badge" style="background:#DCFCE7; color:#166534;">Global</span>

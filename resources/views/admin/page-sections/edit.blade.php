@@ -2,6 +2,13 @@
 @extends('layouts.admin')
 @section('title', $pageLabel . ' – ' . ($isGlobal ? 'Global' : ($country->name ?? $market->name)) . ' – Page Sections')
 @section('content')
+<div style="margin-bottom:16px;max-width:360px">
+<label for="page-scope">Global / Regions / Countries</label>
+<select id="page-scope" class="form-input" onchange="window.location.href = @js(url('admin/page-sections')) + '/' + encodeURIComponent(this.value)">
+<x-admin.scope-options :selected="$marketId" global-value="global" />
+</select>
+</div>
+
 
 {{-- Quill CSS --}}
 <link rel="stylesheet" href="https://cdn.quilljs.com/1.3.7/quill.snow.css">

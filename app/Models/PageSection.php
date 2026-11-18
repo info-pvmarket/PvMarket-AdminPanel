@@ -12,6 +12,7 @@ class PageSection extends Model
     protected $collection = 'page_sections';
 
     protected $fillable = [
+        'region_code',
         'page',         // home | about | contact | terms | privacy | faq
         'section',      // hero | features | stats | cta | content
         'title',

@@ -1,6 +1,13 @@
 @extends('layouts.admin')
 @section('title', ($isGlobal ? 'Global' : ($country->name ?? $market->name)) . ' - Page Sections')
 @section('content')
+<div style="margin-bottom:16px;max-width:360px">
+<label for="page-scope">Global / Regions / Countries</label>
+<select id="page-scope" class="form-input" onchange="window.location.href = @js(url('admin/page-sections')) + '/' + encodeURIComponent(this.value)">
+<x-admin.scope-options :selected="$marketId" global-value="global" />
+</select>
+</div>
+
 <style>
     .btn-back {
         display: inline-flex;
@@ -230,18 +237,7 @@
             <label>Source</label>
             <select name="source_market_id" class="copy-select" required>
                 <option value="">Select a source to copy from...</option>
-                @if(!$isGlobal)
-                <option value="global">🌍 Global (Default Content)</option>
-                @endif
-                @foreach($markets as $m)
-                    @if($isGlobal || $m->id !== $market->id)
-                        @php
-                            $mData = $marketData[$m->id] ?? null;
-                            $mCountry = $mData['country'] ?? null;
-                        @endphp
-                        <option value="{{ $m->id }}">{{ $mCountry->name ?? $m->name }}</option>
-                    @endif
-                @endforeach
+                <x-admin.scope-options global-value="global" />
             </select>
         </div>
         <button type="submit" class="copy-btn">Copy All Pages</button>

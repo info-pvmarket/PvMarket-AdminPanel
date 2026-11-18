@@ -9,6 +9,7 @@ class PageSetting extends Model
     protected $collection = 'page_settings';
 
     protected $fillable = [
+        'region_code',
         'page',
         'location_id',
         'seo_title',

@@ -78,7 +78,7 @@ class SeoLandingPagesTest extends TestCase
             $this->assertSame('Social title', $record->ogMeta->og_title);
             $this->assertSame('X title', $record->twitterMeta->twitter_title);
             $this->assertTrue($record->robotMeta->index);
-            $this->post(route('admin.seo-meta.store'), $payload)->assertSessionHasErrors();
+            $this->post(route('admin.seo-meta.store'), $payload)->assertRedirect(route('admin.seo-meta.edit', $record->id));
             $this->assertSame(1, SeoMetaData::where('page_key', $key)->count());
             $payload['page_header'] = 'Updated heading';
             unset($payload['category_id']);
@@ -93,7 +93,7 @@ class SeoLandingPagesTest extends TestCase
             $this->get(route('admin.seo-meta.index', ['type' => 'landing']))->assertOk()->assertSee('Saved '.$key)->assertDontSee('Existing home');
             $this->get(route('admin.seo-meta.index', ['type' => 'home']))->assertOk()->assertSee('Existing home')->assertDontSee('Saved '.$key);
             $this->delete(route('admin.seo-meta.destroy', $record->id))->assertRedirect();
-            $this->assertFalse($record->fresh()->is_active);
+            $this->assertNull($record->fresh());
         }
         $this->assertSame('Existing home', $home->fresh()->meta_title);
     }
@@ -217,7 +217,7 @@ class SeoLandingPagesTest extends TestCase
         }
         $this->assertSame(0, SeoMetaData::count());
         $home = SeoMetaData::create(['meta_title' => 'Legacy homepage', 'is_active' => true]);
-        $this->post(route('admin.seo-meta.store'), [...$payload, 'category_id' => 'page:home'])->assertSessionHasErrors();
+        $this->post(route('admin.seo-meta.store'), [...$payload, 'category_id' => 'page:home'])->assertRedirect(route('admin.seo-meta.edit', $home->id));
         $this->assertSame(1, SeoMetaData::count());
         $this->get(route('admin.seo-meta.edit', $home->id))->assertOk()
             ->assertViewHas('record', fn ($record) => $record->meta_title === 'Legacy homepage');
@@ -250,7 +250,7 @@ class SeoLandingPagesTest extends TestCase
                 $records[$code] = $record;
                 $this->assertSame($code, $record->market_code);
                 $this->get(route('admin.seo-meta.edit', $record->id))->assertOk()->assertSee($code.' '.$key);
-                $this->post(route('admin.seo-meta.store'), $payload)->assertSessionHasErrors();
+                $this->post(route('admin.seo-meta.store'), $payload)->assertRedirect(route('admin.seo-meta.edit', $record->id));
                 unset($payload['category_id'], $payload['market_id']);
                 $payload['meta_title'] = $code.' updated '.$key;
                 $this->put(route('admin.seo-meta.update', $record->id), $payload)->assertSessionHasNoErrors()->assertRedirect();
@@ -273,7 +273,7 @@ class SeoLandingPagesTest extends TestCase
         $this->assertSame(0, SeoMetaData::count());
         $global = \App\Models\Market::create(['code' => 'global', 'name' => 'Global', 'is_active' => true]);
         $this->post(route('admin.seo-meta.store'), $this->payload('brands'))->assertSessionHasNoErrors();
-        $this->post(route('admin.seo-meta.store'), [...$this->payload('brands'), 'market_id' => (string) $global->id])->assertSessionHasErrors();
+        $this->post(route('admin.seo-meta.store'), [...$this->payload('brands'), 'market_id' => (string) $global->id])->assertRedirect(route('admin.seo-meta.edit', SeoMetaData::where('page_key','brands')->firstOrFail()->id));
         $this->assertSame(1, SeoMetaData::count());
     }
 

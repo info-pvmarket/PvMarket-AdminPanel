@@ -106,6 +106,17 @@
     <a href="{{ route('admin.dashboard') }}" class="btn-back">Back</a>
 </div>
 
+<label for="content-scope">Global, Regions and Countries</label>
+<select id="content-scope" class="form-input" onchange="if(this.value) window.location.href = @js(url('admin/page-sections')) + '/' + encodeURIComponent(this.value)">
+    <option value="">Select content scope...</option>
+    <x-admin.scope-options global-value="global" />
+</select>
+<div class="section-label">Regions</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:20px;margin-bottom:24px">
+@foreach(\App\Support\StorefrontScopes::options()['Regions'] as $value => $label)
+<a class="market-card" href="{{ route('admin.page-sections.pages', $value) }}"><span class="market-name">{{ $label }}</span><span>Regional page content</span></a>
+@endforeach
+</div>
 <p style="color:var(--muted); margin-bottom:24px; font-size:14px;">
     Select Global for default content, or a specific market to manage market-specific page content.
 </p>
@@ -127,7 +138,7 @@
 @if($markets->isNotEmpty())
 <div class="section-label">Market-Specific Content</div>
 <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:20px;">
-    @foreach($markets as $market)
+    @foreach($markets->reject(fn($m) => strtolower($m->code) === 'global') as $market)
         @php
             $data = $marketData[$market->id] ?? null;
             $country = $data['country'] ?? null;

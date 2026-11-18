@@ -40,7 +40,7 @@ class PageSectionController extends Controller
      */
     private function isGlobal(?string $marketId): bool
     {
-        return $marketId === null || $marketId === 'global';
+        return $marketId === null || $marketId === 'global' || (!str_starts_with($marketId, 'region:') && strtolower((string)Market::find($marketId)?->code) === 'global');
     }
 
     /**
@@ -50,6 +50,8 @@ class PageSectionController extends Controller
      */
     private function getCountryIdFromMarket(string $marketId): ?ObjectId
     {
+        $region = \App\Support\StorefrontScopes::region($marketId);
+        if ($region) return null;
         $market = Market::find($marketId);
         if (!$market || !$market->code) {
             return null;
@@ -68,6 +70,8 @@ class PageSectionController extends Controller
      */
     private function getMarketInfo(string $marketId): array
     {
+        $region = \App\Support\StorefrontScopes::region($marketId);
+        if ($region) return ['market'=>(object)['id'=>$marketId, 'name'=>$region['name'], 'code'=>$region['code']], 'country'=>null, 'countryId'=>null];
         $market = Market::find($marketId);
         $country = null;
         $countryId = null;
@@ -79,6 +83,7 @@ class PageSectionController extends Controller
             }
         }
 
+        abort_unless($market && $countryId, 404);
         return [
             'market'    => $market,
             'country'   => $country,
@@ -91,10 +96,33 @@ class PageSectionController extends Controller
      */
     private function applyGlobalFilter($query)
     {
-        return $query->where(function ($q) {
+        return $query->whereNull('region_code')->where(function ($q) {
             $q->whereNull('location_id')
               ->orWhereRaw(['location_id' => ['$exists' => false]]);
         });
+    }
+
+    private function applyScope($query, string $selection)
+    {
+        $region = \App\Support\StorefrontScopes::region($selection);
+        if ($region) return $query->where('region_code', $region['code'])->whereNull('location_id');
+        if ($this->isGlobal($selection)) return $this->applyGlobalFilter($query);
+        $info = $this->getMarketInfo($selection);
+        return $query->whereNull('region_code')->where('location_id', $info['countryId']);
+    }
+
+    private function deleteUnsharedAsset(string $path, PageSection $section): void
+    {
+        $shared = PageSection::where('_id', '!=', $section->getKey())->where(function ($query) use ($path) {
+            $query->where('image', $path)->orWhere('extra.items.logo', $path);
+        })->exists();
+        if (!$shared) Storage::disk('public')->delete($path);
+    }
+
+    private function scopeIdentity(string $selection): array
+    {
+        $region = \App\Support\StorefrontScopes::region($selection);
+        return ['region_code'=>$region['code'] ?? null, 'location_id'=>$region || $this->isGlobal($selection) ? null : $this->getMarketInfo($selection)['countryId']];
     }
 
     /**
@@ -189,24 +217,11 @@ class PageSectionController extends Controller
 
         // Build query for sections - use countryId as location_id
         $sectionsQuery = PageSection::where('page', $page);
-        if ($isGlobal) {
-            $this->applyGlobalFilter($sectionsQuery);
-        } else {
-            $sectionsQuery->where('location_id', $countryId);
-        }
+        $this->applyScope($sectionsQuery, $marketId);
         $sections = $sectionsQuery->orderBy('order')->get();
 
-        // For settings
-        if ($isGlobal) {
-            $settingQuery = PageSetting::where('page', $page);
-            $this->applyGlobalFilter($settingQuery);
-            $setting = $settingQuery->first() ?? new PageSetting(['page' => $page, 'location_id' => null]);
-        } else {
-            $setting = PageSetting::firstOrNew([
-                'page'        => $page,
-                'location_id' => $countryId,
-            ]);
-        }
+        $setting = $this->applyScope(PageSetting::where('page', $page), $marketId)->first()
+            ?? new PageSetting(['page'=>$page] + $this->scopeIdentity($marketId));
 
         return view('admin.page-sections.edit', [
             'market'    => $market,
@@ -240,7 +255,7 @@ class PageSectionController extends Controller
         if ($request->has('sections')) {
             foreach ($request->sections as $sectionId => $data) {
 
-                $section = PageSection::find($sectionId);
+                $section = $this->applyScope(PageSection::where('page', $page), $marketId)->where('_id', $sectionId)->first();
                 if (!$section) continue;
 
                 // ── Build extra, starting from what's already stored ──────────
@@ -261,7 +276,7 @@ class PageSectionController extends Controller
                                 // Delete old logo if one existed
                                 $oldLogo = $extra['items'][$i]['logo'] ?? null;
                                 if ($oldLogo) {
-                                    Storage::disk('public')->delete($oldLogo);
+                                    $this->deleteUnsharedAsset($oldLogo, $section);
                                 }
                                 // Store new file
                                 $incoming['items'][$i]['logo'] = $request
@@ -292,7 +307,7 @@ class PageSectionController extends Controller
                 // ── Handle the single section-level image (non-logos) ─────────
                 if ($request->hasFile("sections.{$sectionId}.image")) {
                     if ($section->image) {
-                        Storage::disk('public')->delete($section->image);
+                        $this->deleteUnsharedAsset($section->image, $section);
                     }
                     $update['image'] = $request
                         ->file("sections.{$sectionId}.image")
@@ -303,27 +318,9 @@ class PageSectionController extends Controller
             }
         }
 
-        // ── Publish flag ─────────────────────────────────────────────────────
-        if ($isGlobal) {
-            $settingQuery = PageSetting::where('page', $page);
-            $this->applyGlobalFilter($settingQuery);
-            $setting = $settingQuery->first();
-
-            if ($setting) {
-                $setting->update(['is_published' => $request->boolean('is_published')]);
-            } else {
-                PageSetting::create([
-                    'page'         => $page,
-                    'location_id'  => null,
-                    'is_published' => $request->boolean('is_published'),
-                ]);
-            }
-        } else {
-            PageSetting::updateOrCreate(
-                ['page' => $page, 'location_id' => $countryId],
-                ['is_published' => $request->boolean('is_published')]
-            );
-        }
+        $setting = $this->applyScope(PageSetting::where('page', $page), $marketId)->first();
+        if ($setting) $setting->update(['is_published'=>$request->boolean('is_published')]);
+        else PageSetting::create(['page'=>$page, 'is_published'=>$request->boolean('is_published')] + $this->scopeIdentity($marketId));
 
         return redirect()->route('admin.page-sections.edit', [$marketId, $page])
                          ->with('success', $this->pages[$page] . ' updated successfully.');
@@ -339,85 +336,22 @@ class PageSectionController extends Controller
             'source_market_id' => 'required|string',
         ]);
 
-        $isGlobal = $this->isGlobal($marketId);
-        $targetCountryId = null;
-        $targetName = 'Global';
-
-        if (!$isGlobal) {
-            $info = $this->getMarketInfo($marketId);
-            $targetCountryId = $info['countryId'];
-            $targetName = $info['country']->name ?? $info['market']->name ?? 'Unknown';
-        }
-
-        $sourceMarketId = $request->source_market_id;
-        $sourceIsGlobal = $this->isGlobal($sourceMarketId);
-        $sourceCountryId = null;
-        $sourceName = 'Global';
-
-        if (!$sourceIsGlobal) {
-            $sourceInfo = $this->getMarketInfo($sourceMarketId);
-            $sourceCountryId = $sourceInfo['countryId'];
-            $sourceName = $sourceInfo['country']->name ?? $sourceInfo['market']->name ?? 'Unknown';
-        }
-
-        // Get all sections from source
-        $sourceQuery = PageSection::query();
-        if ($sourceIsGlobal) {
-            $this->applyGlobalFilter($sourceQuery);
-        } else {
-            $sourceQuery->where('location_id', $sourceCountryId);
-        }
-        $sourceSections = $sourceQuery->get();
-
-        if ($sourceSections->isEmpty()) {
-            return redirect()->route('admin.page-sections.pages', $marketId)
-                             ->with('error', 'No sections found in ' . $sourceName . ' to copy.');
-        }
-
-        // Delete existing sections for target (using country_id as location_id)
-        if ($isGlobal) {
-            $deleteQuery = PageSection::query();
-            $this->applyGlobalFilter($deleteQuery);
-            $deleteQuery->delete();
-        } else {
-            PageSection::where('location_id', $targetCountryId)->delete();
-        }
-
-        // Copy sections with country_id as location_id
-        foreach ($sourceSections as $sourceSection) {
-            $data = $sourceSection->toArray();
+        $source = $request->source_market_id;
+        $targetIdentity = $this->scopeIdentity($marketId);
+        $sourceIdentity = $this->scopeIdentity($source);
+        if ($sourceIdentity == $targetIdentity) return back()->with('error', 'Choose a different source.');
+        $sections = $this->applyScope(PageSection::query(), $source)->get();
+        if ($sections->isEmpty()) return back()->with('error', 'No source sections to copy.');
+        $settings = $this->applyScope(PageSetting::query(), $source)->get();
+        $this->applyScope(PageSection::query(), $marketId)->delete();
+        $this->applyScope(PageSetting::query(), $marketId)->delete();
+        foreach ([$sections, $settings] as $records) foreach ($records as $record) {
+            $data = $record->toArray();
             unset($data['_id'], $data['id'], $data['created_at'], $data['updated_at']);
-            $data['location_id'] = $isGlobal ? null : $targetCountryId;
-            PageSection::create($data);
+            $data = array_merge($data, $targetIdentity);
+            $copy = $record instanceof PageSection ? new PageSection() : new PageSetting();
+            $copy->forceFill($data)->save();
         }
-
-        // Copy page settings as well
-        $settingsQuery = PageSetting::query();
-        if ($sourceIsGlobal) {
-            $this->applyGlobalFilter($settingsQuery);
-        } else {
-            $settingsQuery->where('location_id', $sourceCountryId);
-        }
-        $sourceSettings = $settingsQuery->get();
-
-        if ($isGlobal) {
-            $deleteSettingsQuery = PageSetting::query();
-            $this->applyGlobalFilter($deleteSettingsQuery);
-            $deleteSettingsQuery->delete();
-        } else {
-            PageSetting::where('location_id', $targetCountryId)->delete();
-        }
-
-        foreach ($sourceSettings as $sourceSetting) {
-            $data = $sourceSetting->toArray();
-            unset($data['_id'], $data['id'], $data['created_at'], $data['updated_at']);
-            $data['location_id'] = $isGlobal ? null : $targetCountryId;
-            PageSetting::create($data);
-        }
-
-        $copiedCount = $sourceSections->count();
-
-        return redirect()->route('admin.page-sections.pages', $marketId)
-                         ->with('success', "Copied {$copiedCount} sections from {$sourceName} to {$targetName}.");
+        return redirect()->route('admin.page-sections.pages', $marketId)->with('success', 'Page sections and publishing settings copied.');
     }
 }

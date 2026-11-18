@@ -16,6 +16,7 @@ class SeoMetaData extends Model
     protected $collection = 'seo_meta_data';
 
     protected $fillable = [
+        'region_code',
         'market_id',
         'category_id',
         'sub_category_id',
@@ -111,7 +112,7 @@ class SeoMetaData extends Model
     public function getUniqueKeyAttribute(): string
     {
         return implode('|', [
-            $this->market_id ?? 'null',
+            $this->region_code ? 'region:'.$this->region_code : ($this->market_id ?? 'null'),
             $this->category_id ?? 'null',
             $this->sub_category_id ?? 'null',
             $this->brand_id ?? 'null',
@@ -143,12 +144,12 @@ class SeoMetaData extends Model
     }
 
     // Scope for finding by entity combination
-    public function scopeForEntity($query, $marketId = null, $categoryId = null, $subCategoryId = null, $brandId = null, $productId = null)
+    public function scopeForEntity($query, $marketId = null, $categoryId = null, $subCategoryId = null, $brandId = null, $productId = null, $regionCode = null)
     {
         // An entity lookup must never resolve to a static page's record, nor to
         // one a user has since deleted - a soft-deleted row at this same
         // combination must not block (or be served for) a fresh one.
-        $query->withoutStaticPages()->where('is_active', true);
+        $query->withoutStaticPages()->where('is_active', true)->where('region_code', $regionCode);
 
         foreach ([
             'market_id'       => $marketId,
@@ -190,6 +191,7 @@ class SeoMetaData extends Model
         if ($this->brand_id) return 'Brand';
         if ($this->sub_category_id) return 'Sub Category';
         if ($this->category_id) return 'Category';
+        if ($this->region_code) return 'Region Home';
         if ($this->market_id) return 'Market Home';
         return 'Global Home';
     }

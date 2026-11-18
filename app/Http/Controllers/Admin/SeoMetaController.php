@@ -29,6 +29,7 @@ use App\Support\SeoStaticPages;
 class SeoMetaController extends Controller
 {
     protected TranslationService $translator;
+    private ?string $regionCode = null;
 
     public function __construct(TranslationService $translator)
     {
@@ -70,14 +71,17 @@ class SeoMetaController extends Controller
 
         // Market filter
         if ($marketFilter) {
-            if ($marketFilter === 'global') {
-                $query->whereNull('market_id');
+            if (str_starts_with($marketFilter, 'region:')) {
+                $region = \App\Support\StorefrontScopes::region($marketFilter);
+                $query->where('region_code', $region['code']);
+            } elseif ($marketFilter === 'global') {
+                $query->whereNull('market_id')->whereNull('region_code');
             } else {
                 $candidates = [$marketFilter];
                 if (preg_match('/^[a-f0-9]{24}$/i', $marketFilter)) {
                     $candidates[] = new \MongoDB\BSON\ObjectId($marketFilter);
                 }
-                $query->whereIn('market_id', $candidates);
+                $query->whereNull('region_code')->whereIn('market_id', $candidates);
             }
         }
 
@@ -250,6 +254,7 @@ class SeoMetaController extends Controller
         $seoData = [
             'page_key'          => $pageKey,
             'market_id'         => $marketId,
+            'region_code'       => $this->regionCode,
             'category_id'       => $categoryId,
             'sub_category_id'   => $subCategoryId,
             'brand_id'          => $brandId,
@@ -266,7 +271,7 @@ class SeoMetaController extends Controller
             'bottom_description'=> $request->bottom_description,
             'faqs'              => $this->cleanContentRows($request->input('faqs', []), ['question', 'answer']),
             'internal_links'    => $this->cleanContentRows($request->input('internal_links', []), ['title', 'url']),
-            'canonical_url'     => $request->canonical_url,
+            'canonical_url'     => $this->regionalCanonical($request->canonical_url, $pageKey, $slugs),
             'is_active'         => true,
             'created_by'        => Auth::id(),
         ];
@@ -405,6 +410,7 @@ class SeoMetaController extends Controller
         // Keep unrelated Static Pages records outside this screen.
         $this->assertEditableRecord($seoMeta);
 
+        $this->regionCode = $seoMeta->region_code ?: null;
         $slugs = $this->getEntitySlugs(
             $seoMeta->market_id ? (string) $seoMeta->market_id : null,
             $seoMeta->category_id ? (string) $seoMeta->category_id : null,
@@ -427,7 +433,7 @@ class SeoMetaController extends Controller
             'bottom_description'=> $request->bottom_description,
             'faqs'              => $this->cleanContentRows($request->input('faqs', []), ['question', 'answer']),
             'internal_links'    => $this->cleanContentRows($request->input('internal_links', []), ['title', 'url']),
-            'canonical_url'     => $request->canonical_url,
+            'canonical_url'     => $this->regionalCanonical($request->canonical_url, $seoMeta->page_key, $slugs),
             'updated_by'        => Auth::id(),
         ];
 
@@ -624,11 +630,11 @@ class SeoMetaController extends Controller
 
     private function findDuplicateSeoMeta(?string $pageKey, ?string $marketId, ?string $categoryId, ?string $subCategoryId, ?string $brandId): ?SeoMetaData
     {
-        return $pageKey
-            ? SeoMetaData::where('page_key', $pageKey)->where('is_active', true)
-                ->when($marketId, fn ($query) => $query->whereIn('market_id', [$marketId, new \MongoDB\BSON\ObjectId($marketId)]),
-                    fn ($query) => $query->whereNull('market_id'))->first()
-            : SeoMetaData::forEntity($marketId, $categoryId, $subCategoryId, $brandId, null)->first();
+        $query = $pageKey
+            ? SeoMetaData::where('page_key', $pageKey)->where('is_active', true)->where('region_code', $this->regionCode)
+                ->when($marketId, fn($q)=>$q->whereIn('market_id', [$marketId, new \MongoDB\BSON\ObjectId($marketId)]), fn($q)=>$q->whereNull('market_id'))
+            : SeoMetaData::forEntity($marketId, $categoryId, $subCategoryId, $brandId, null, $this->regionCode);
+        return $query->first();
     }
 
     private function seoIdCandidates(array $ids): array
@@ -653,6 +659,16 @@ class SeoMetaController extends Controller
                 if (!$id) { $query->whereRaw(['_id' => ['$exists' => false]]); continue; }
                 $query->whereIn($field, [$id, new \MongoDB\BSON\ObjectId($id)]);
             }
+        }
+        if ($this->regionCode) {
+            $codes = \App\Support\StorefrontScopes::regions()[$this->regionCode]['countries'];
+            $countries = \App\Models\Country::where(function($q) use ($codes) {
+                foreach ($codes as $code) foreach (['code','iso2'] as $field) $q->orWhere($field, 'regexp', new \MongoDB\BSON\Regex('^'.preg_quote($code, '/').'$', 'i'));
+            })->get()->map(fn($c)=>(string)$c->getKey())->all();
+            $ids = $this->seoIdCandidates($countries);
+            $warehouses = $ids ? \App\Models\Warehouse::whereIn('country', $ids)->get()->map(fn($w)=>(string)$w->getKey())->all() : [];
+            if (!$warehouses) return $query->whereRaw(['_id'=>['$exists'=>false]]);
+            $query->whereIn('warehouse_id', $this->seoIdCandidates($warehouses));
         }
         if ($marketId) {
             $market = Market::find($marketId);
@@ -679,7 +695,9 @@ class SeoMetaController extends Controller
 
     private function resolveMarketId(?string $value): ?string
     {
-        if ($value === null || $value === '') return null;
+        $region = \App\Support\StorefrontScopes::region($value);
+        $this->regionCode = $region['code'] ?? null;
+        if ($region || $value === null || $value === '' || $value === 'global') return null;
         $id = $this->sanitizeObjectId($value);
         $market = $id ? Market::where('_id', $id)->where('is_active', true)->first() : null;
         if (!$market || !preg_match('/^(global|[a-z]{2})$/i', trim((string) $market->code))) {
@@ -811,10 +829,25 @@ class SeoMetaController extends Controller
     // ─── PRIVATE: Get Entity Slugs ─────────────────────────────────────────────
     // Returns all entity slugs and market code in lowercase
 
+    private function regionalCanonical(?string $canonical, ?string $pageKey, array $slugs): ?string
+    {
+        if (!$this->regionCode || filled($canonical)) return $canonical;
+        $region = \App\Support\StorefrontScopes::regions()[$this->regionCode] ?? null;
+        if (!$region) return null;
+        if ($pageKey) {
+            $path = SeoLandingPages::PAGES[$pageKey]['path'] ?? SeoStaticPages::PAGES[$pageKey]['path'] ?? null;
+            if (!$path) return null;
+        } else {
+            $segments = array_filter([$slugs['category_slug'], $slugs['sub_category_slug'], $slugs['brand_slug']]);
+            $path = $segments ? '/'.implode('/', $segments) : '/';
+        }
+        return 'https://pv.market'.$region['path'].($path === '/' ? '' : $path);
+    }
+
     private function getEntitySlugs(?string $marketId, ?string $categoryId, ?string $subCategoryId, ?string $brandId): array
     {
         $slugs = [
-            'market_code'       => null,
+            'market_code'       => $this->regionCode ? 'region:'.$this->regionCode : null,
             'category_slug'     => null,
             'sub_category_slug' => null,
             'brand_slug'        => null,
