@@ -1757,12 +1757,14 @@ function validatePriceTiersAgainstTotalQuantity() {
     const totalQuantity = Number(document.getElementById('totalQtyInput').value);
     const errorElement = document.getElementById('tierQuantityError');
     const hasInvalidTier = !document.getElementById('toggleSoldOff').checked && Number.isFinite(totalQuantity) && slots.some(slot =>
+        slot._quantity_error || Number(slot.min_quantity) < 1 || !Number.isInteger(Number(slot.min_quantity)) ||
+        (hasSpecificMaxQuantity(slot) && !Number.isInteger(Number(slot.max_quantity))) ||
         Number(slot.min_quantity) > totalQuantity ||
         (hasSpecificMaxQuantity(slot) && Number(slot.max_quantity) > totalQuantity)
     );
 
     if (hasInvalidTier) {
-        errorElement.textContent = 'Each price tier quantity must be less than or equal to the total quantity.';
+        errorElement.textContent = 'Review tier quantities and packing: tiers must contain whole selling units within the available stock.';
         errorElement.style.display = 'block';
         errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return false;
@@ -1891,7 +1893,7 @@ function saveSlot() {
     const maxQty     = maxType === 'specific' ? Number(document.getElementById('slotMaxQty').value || NaN) : null;
     const errEl      = document.getElementById('slotError');
 
-    if (!Number.isInteger(minQty) || minQty < 0) {
+    if (!Number.isInteger(minQty) || minQty < 1) {
         errEl.textContent = 'Enter a whole minimum quantity in the selected selling unit.';
         errEl.style.display = 'block'; return;
     }
@@ -1973,7 +1975,7 @@ function renderSlots() {
                 <div class="slot-num">${i + 1}</div>
                 <div>
                     <div style="font-weight:600;font-size:.83rem;">${Number(slot.min_quantity).toLocaleString(undefined, { maximumFractionDigits: 10 })} ${unit} – ${maxLabel}</div>
-                    <div style="font-size:.72rem;color:var(--muted);">Fixed range tier</div>
+                    <div style="font-size:.72rem;color:var(--muted);">${slot._quantity_error || slot._quantity_note || (hasSpecificMaxQuantity(slot) ? 'Fixed range tier' : 'Open-ended tier')}</div>
                 </div>
             </div>
             <div style="text-align:right;margin-right:12px;">

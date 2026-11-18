@@ -92,4 +92,19 @@ class ProductListingTest extends TestCase
         $this->assertSame('N/A', ProductListing::sellTypeLabel([]));
         $this->assertSame('N/A', ProductListing::sellTypeLabel(new \stdClass()));
     }
+    public function test_tiers_show_whole_orderable_units_and_flag_invalid_ranges(): void
+    {
+        $product = new \App\Models\Product(['pieces_per_pallet'=>36, 'pallets_per_container'=>26]);
+        foreach ([1, 936] as $minimum) {
+            $slot = ProductListing::tierQuantitiesForDisplay([['min_quantity'=>$minimum,'max_quantity'=>0]], 'sell by container', $product)[0];
+            $this->assertSame(1, $slot['min_quantity']);
+        }
+        $invalid = ProductListing::tierQuantitiesForDisplay([['min_quantity'=>1,'max_quantity'=>35]], 'sell by pallets', $product)[0];
+        $this->assertArrayHasKey('_quantity_error', $invalid);
+        $missing = ProductListing::tierQuantitiesForDisplay([['min_quantity'=>1]], 'sell by container', null)[0];
+        $this->assertArrayHasKey('_quantity_error', $missing);
+        $normal = ProductListing::tierQuantitiesForDisplay([['min_quantity'=>1872,'max_quantity'=>3744]], 'sell by container', $product)[0];
+        $this->assertSame(2, $normal['min_quantity']);
+        $this->assertSame(4, $normal['max_quantity']);
+    }
 }

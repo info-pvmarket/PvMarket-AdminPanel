@@ -164,13 +164,23 @@ public function warehouse()
 
         return array_map(function ($slot) use ($multiplier) {
             $slot = (array) $slot;
-            foreach (['min_quantity', 'max_quantity'] as $field) {
-                if (isset($slot[$field]) && $slot[$field] !== '' && $multiplier !== null) {
-                    // Preserve inconsistent legacy values visibly; never truncate a partial pallet/container.
-                    $slot[$field] = $slot[$field] / $multiplier;
-                }
+            if ($multiplier === null) {
+                $slot['_quantity_error'] = 'Product packing details are missing. Set them before editing these tiers.';
+                return $slot;
             }
-
+            $storedMin = (float) ($slot['min_quantity'] ?? 0);
+            $slot['min_quantity'] = max(1, (int) ceil($storedMin / $multiplier));
+            if (isset($slot['max_quantity']) && (float) $slot['max_quantity'] > 0) {
+                $storedMax = (float) $slot['max_quantity'];
+                $wholeMax = (int) floor($storedMax / $multiplier);
+                if ($wholeMax < $slot['min_quantity']) {
+                    $slot['max_quantity'] = $storedMax / $multiplier;
+                    $slot['_quantity_error'] = 'This stored piece range contains no whole selling unit. Edit the tier before saving.';
+                } else $slot['max_quantity'] = $wholeMax;
+            }
+            if ($storedMin > 0 && fmod($storedMin, $multiplier) !== 0.0) {
+                $slot['_quantity_note'] = 'Stored minimum: '.$storedMin.' pcs. Showing the first valid whole selling unit; saving normalizes this threshold.';
+            }
             return $slot;
         }, $slots);
     }

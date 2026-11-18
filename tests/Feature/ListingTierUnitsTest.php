@@ -88,11 +88,12 @@ class ListingTierUnitsTest extends TestCase
         }
     }
 
-    public function test_legacy_partial_pallet_is_not_silently_truncated(): void
+    public function test_legacy_partial_pallet_shows_first_orderable_unit_with_original_threshold_note(): void
     {
         $product = new Product(['pieces_per_pallet' => 36, 'pallets_per_container' => 26]);
         $display = ProductListing::tierQuantitiesForDisplay([['min_quantity' => 31, 'max_quantity' => null]], 'sell by pallets', $product);
-        $this->assertEqualsWithDelta(31 / 36, $display[0]['min_quantity'], 0.00000001);
+        $this->assertSame(1, $display[0]['min_quantity']);
+        $this->assertStringContainsString('31 pcs', $display[0]['_quantity_note']);
         $this->assertNull($display[0]['max_quantity']);
     }
 }
