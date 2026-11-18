@@ -705,7 +705,8 @@ class ProductListingController extends Controller
         $isSoldOff = $request->boolean('is_sold_off', false);
         // Sold Off clears current stock; inventory history retains the old amount.
         if ($isSoldOff) {
-            $request->merge(['total_quantity' => 0]);
+            $request->merge(['total_quantity' => 0, 'lead_time' => max(0, (int)$listing->lead_time)]);
+            $request->request->remove('slots');
         }
         $priceTierQuantityRules = $isSoldOff
             ? [] : [new PriceTierQuantityAtMostTotal((int) $request->input('total_quantity'))];
@@ -718,7 +719,7 @@ class ProductListingController extends Controller
             'slug'        => 'nullable|string|max:255',
             'total_quantity'                   => ['required', 'integer', $isSoldOff ? 'min:0' : 'min:1', new ListingTotalQuantityLimit((string) $request->input('sell_type'))],
             'inventory_notes'                  => 'nullable|string|max:500',
-            'lead_time'                        => 'required|integer|min:1',
+            'lead_time'                        => $isSoldOff ? 'required|integer|min:0' : 'required|integer|min:1',
             'is_on_hold'                       => 'nullable|boolean',
             'is_solar_listing'                 => 'nullable|boolean',
             'solar_tier'                       => 'nullable|required_if:is_solar_listing,1|in:premium,recommended,value',
@@ -726,7 +727,7 @@ class ProductListingController extends Controller
             'solar_grid_types.*'               => 'in:on-grid,off-grid,hybrid',
             'solar_phase_types'                => 'nullable|required_if:is_solar_listing,1|array|min:1',
             'solar_phase_types.*'              => 'in:single,three',
-            'slots'                            => 'required|array|min:1',
+            'slots'                            => $isSoldOff ? 'exclude' : 'required|array|min:1',
             'slots.*.min_quantity'             => ['required', 'integer', 'min:0', ...$priceTierQuantityRules],
             'slots.*.max_quantity'             => ['nullable', 'integer', 'min:1', ...$priceTierQuantityRules],
             'slots.*.price'                    => 'required|numeric|min:0',
@@ -756,7 +757,7 @@ class ProductListingController extends Controller
             $validated['sell_type'],
             $product,
         );
-        if ($newTotalQuantity === null || ProductListing::quantityMultiplier($validated['sell_type'], $product) === null) {
+        if (! $isSoldOff && ($newTotalQuantity === null || ProductListing::quantityMultiplier($validated['sell_type'], $product) === null)) {
             throw ValidationException::withMessages([
                 'total_quantity' => 'The selected product is missing its pieces-per-pallet or pallets-per-container configuration.',
             ]);
@@ -800,7 +801,7 @@ class ProductListingController extends Controller
 
         // Convert max_quantity: empty string → null
         $slotsAsObjects = [];
-        foreach ($validated['slots'] as $slot) {
+        foreach (($validated['slots'] ?? []) as $slot) {
             $price      = (float) $slot['price'];
             $commission = isset($slot['commission_percentage']) && $slot['commission_percentage'] !== ''
                 ? (float) $slot['commission_percentage']
@@ -819,7 +820,7 @@ class ProductListingController extends Controller
                 'total_price'           => $totalPrice,
             ];
         }
-        $validated['slots'] = $slotsAsObjects;
+        $validated['slots'] = $isSoldOff ? $oldSlots : $slotsAsObjects;
         // Remove images from validated — stored separately
         unset($validated['images']);
 

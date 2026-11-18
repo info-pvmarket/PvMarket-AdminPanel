@@ -1060,7 +1060,7 @@
                             <label class="form-label">Lead Time <span class="req">*</span></label>
                             <div class="input-suffix">
                                 <input type="number" name="lead_time" class="form-control"
-                                       value="{{ $listing->lead_time }}" min="1" required>
+                                       value="{{ $listing->lead_time }}" min="1" required id="leadTimeInput" data-configured-lead-time="{{ $listing->lead_time }}">
                                 <span class="suffix-label">weeks</span>
                             </div>
                         </div>
@@ -1699,6 +1699,14 @@ function syncSoldOffQuantity() {
     const quantity = document.getElementById('totalQtyInput');
     quantity.readOnly = soldOff;
     quantity.min = soldOff ? '0' : '1';
+    const leadTime = document.getElementById('leadTimeInput');
+    if (soldOff && !leadTime.readOnly) leadTime.dataset.configuredLeadTime = leadTime.value;
+    leadTime.value = soldOff ? '0' : leadTime.dataset.configuredLeadTime;
+    leadTime.min = soldOff ? '0' : '1';
+    leadTime.readOnly = soldOff;
+    if (soldOff) cancelSlot();
+    document.querySelectorAll('.btn-add-slot').forEach(button => { button.disabled = soldOff; });
+    renderSlots();
     if (soldOff) quantity.value = '0';
     // Clearing Sold Off never restores the previous quantity: restock explicitly.
     syncQuantityPresentation();
@@ -1865,6 +1873,7 @@ function setSlotEditorInputsEnabled(enabled) {
 }
 
 function showSlotForm() {
+    if (document.getElementById('toggleSoldOff').checked) return;
     document.getElementById('slotFormBox').style.display = 'block';
     setSlotEditorInputsEnabled(true);
     document.getElementById('slotMinQty').value = '';
@@ -1963,8 +1972,10 @@ function renderSlots() {
         return;
     }
 
+    const soldOff = document.getElementById('toggleSoldOff').checked;
     slots.forEach((slot, i) => {
-        const maxLabel = hasSpecificMaxQuantity(slot)
+        const shown = soldOff ? { min_quantity: 0, max_quantity: 0, price: 0, commission_percentage: 0, total_price: 0 } : slot;
+        const maxLabel = soldOff ? `0 ${unit}` : hasSpecificMaxQuantity(slot)
             ? `${Number(slot.max_quantity).toLocaleString()} ${unit}`
             : 'And More';
 
@@ -1974,17 +1985,17 @@ function renderSlots() {
             <div style="display:flex;align-items:center;flex:1;">
                 <div class="slot-num">${i + 1}</div>
                 <div>
-                    <div style="font-weight:600;font-size:.83rem;">${Number(slot.min_quantity).toLocaleString(undefined, { maximumFractionDigits: 10 })} ${unit} – ${maxLabel}</div>
-                    <div style="font-size:.72rem;color:var(--muted);">${slot._quantity_error || slot._quantity_note || (hasSpecificMaxQuantity(slot) ? 'Fixed range tier' : 'Open-ended tier')}</div>
+                    <div style="font-weight:600;font-size:.83rem;">${Number(shown.min_quantity).toLocaleString(undefined, { maximumFractionDigits: 10 })} ${unit} – ${maxLabel}</div>
+                    <div style="font-size:.72rem;color:var(--muted);">${soldOff ? 'Sold off — saved settings retained for restocking' : slot._quantity_error || slot._quantity_note || (hasSpecificMaxQuantity(slot) ? 'Fixed range tier' : 'Open-ended tier')}</div>
                 </div>
             </div>
             <div style="text-align:right;margin-right:12px;">
-                <div class="slot-price-tag">${Number(slot.price).toFixed(2)} <span style="font-size:.7rem;color:var(--muted);font-weight:400;">+ ${slot.commission_percentage ?? 0}%</span></div>
-                <div class="slot-price-sub">Total: <strong style="color:var(--blue);">${Number(slot.total_price ?? slot.price).toFixed(2)}</strong> / pc</div>
+                <div class="slot-price-tag">${Number(shown.price).toFixed(2)} <span style="font-size:.7rem;color:var(--muted);font-weight:400;">+ ${shown.commission_percentage ?? 0}%</span></div>
+                <div class="slot-price-sub">Total: <strong style="color:var(--blue);">${Number(shown.total_price ?? shown.price).toFixed(2)}</strong> / pc</div>
             </div>
             <div style="display:flex;gap:4px;">
-                <button type="button" class="btn-icon-sm" onclick="editSlot(${i})" title="Edit">✏️</button>
-                <button type="button" class="btn-icon-sm" onclick="deleteSlot(${i})" title="Delete">🗑️</button>
+                <button type="button" class="btn-icon-sm" ${soldOff ? 'disabled' : ''} onclick="editSlot(${i})" title="Edit">✏️</button>
+                <button type="button" class="btn-icon-sm" ${soldOff ? 'disabled' : ''} onclick="deleteSlot(${i})" title="Delete">🗑️</button>
             </div>
         `;
         listEl.appendChild(row);

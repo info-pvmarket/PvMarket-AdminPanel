@@ -6,7 +6,7 @@ use Tests\TestCase;
 
 class ProductListingLeadTimeValidationTest extends TestCase
 {
-    public function test_create_and_update_require_a_lead_time_of_at_least_one(): void
+    public function test_available_offers_require_positive_lead_time_with_a_sold_off_exception(): void
     {
         $controller = file_get_contents(
             dirname(__DIR__, 2).'/app/Http/Controllers/Admin/ProductListingController.php'
@@ -18,7 +18,8 @@ class ProductListingLeadTimeValidationTest extends TestCase
             dirname(__DIR__, 2).'/resources/views/admin/product_listing/edit.blade.php'
         );
 
-        $this->assertSame(2, substr_count($controller, "'lead_time'                        => 'required|integer|min:1'"));
+        $this->assertStringContainsString("'lead_time'                        => 'required|integer|min:1'", $controller);
+        $this->assertStringContainsString("'lead_time'                        => \$isSoldOff ? 'required|integer|min:0' : 'required|integer|min:1'", $controller);
         $this->assertStringContainsString('name="lead_time"', $createView);
         $this->assertStringContainsString('min="1" required', $createView);
         $this->assertStringContainsString('name="lead_time"', $editView);

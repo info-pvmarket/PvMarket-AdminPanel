@@ -26,6 +26,9 @@ class ListingTierUnitsTest extends TestCase
         ], 'session.driver' => 'array']);
         DB::purge('mongodb');
         Http::preventStrayRequests();
+        $translator=\Mockery::mock(\App\Services\TranslationService::class)->makePartial();
+        $translator->shouldReceive('translateText')->andReturnUsing(fn($text)=>$text);
+        $this->app->instance(\App\Services\TranslationService::class,$translator);
         Mail::fake();
         $this->withoutMiddleware([\Illuminate\Auth\Middleware\Authenticate::class, \App\Http\Middleware\CheckAdminPermission::class]);
         $user = \Mockery::mock(User::class)->makePartial();
@@ -95,5 +98,27 @@ class ListingTierUnitsTest extends TestCase
         $this->assertSame(1, $display[0]['min_quantity']);
         $this->assertStringContainsString('31 pcs', $display[0]['_quantity_note']);
         $this->assertNull($display[0]['max_quantity']);
+    }
+    public function test_sold_off_ignores_zeroed_configuration_and_requires_explicit_restock(): void
+    {
+        $product=Product::create(['product_name'=>'Sold off control','pieces_per_pallet'=>36,'pallets_per_container'=>26]);
+        $tiers=[['min_quantity'=>36,'max_quantity'=>null,'price'=>100,'commission_percentage'=>3,'total_price'=>103]];
+        $listing=ProductListing::create(['product_id'=>$product->getKey(),'user_id'=>new \MongoDB\BSON\ObjectId(),'warehouse_id'=>new \MongoDB\BSON\ObjectId(),'total_quantity'=>360,'lead_time'=>3,'sell_type'=>'sell by pallets','slots'=>$tiers,'currency_id'=>'USD']);
+        $payload=['product_id'=>(string)$product->getKey(),'main_category_id'=>(string)new \MongoDB\BSON\ObjectId(),'sub_category_id'=>(string)new \MongoDB\BSON\ObjectId(),'warehouse_id'=>(string)new \MongoDB\BSON\ObjectId(),'incoterm_id'=>(string)new \MongoDB\BSON\ObjectId(),'currency_id'=>'USD','sell_type'=>'sell by pallets','total_quantity'=>10,'lead_time'=>0,'is_sold_off'=>1,'slots'=>[['min_quantity'=>0,'max_quantity'=>0,'price'=>0,'commission_percentage'=>0,'total_price'=>0]]];
+        for($save=0;$save<2;$save++) {
+            $this->put(route('product_listing.update',$listing->id),$payload)->assertSessionHasNoErrors()->assertRedirect();
+            $listing->refresh();
+            $this->assertSame(0,$listing->total_quantity);
+            $this->assertSame(3,$listing->lead_time);
+            $this->assertEquals(36,data_get($listing->slots,'0.min_quantity'));
+            $this->assertEquals(100,data_get($listing->slots,'0.price'));
+            $this->assertEquals(103,data_get($listing->slots,'0.total_price'));
+        }
+        $payload['is_sold_off']=0;$payload['total_quantity']=0;$payload['slots']=[['min_quantity'=>1,'price'=>100]];
+        $this->put(route('product_listing.update',$listing->id),$payload)->assertSessionHasErrors(['total_quantity','lead_time']);
+        $payload['total_quantity']=5;$payload['lead_time']=2;$payload['inventory_notes']='Explicit restock';
+        $this->put(route('product_listing.update',$listing->id),$payload)->assertSessionHasNoErrors()->assertRedirect();
+        $this->assertSame(180,$listing->fresh()->total_quantity);
+        $this->assertSame(2,$listing->fresh()->lead_time);
     }
 }
