@@ -135,14 +135,13 @@ jobs:
           for line in p.read_text().splitlines():
               if re.search(r'password|token|secret|private.key|docker login',line,re.I):continue
               print(line)
-          print('CONTAINERS')
-          print(subprocess.check_output(['docker','ps','-a','--format','{{.Names}} {{.Status}} {{.Image}}'],text=True))
-          for name in ['pv-market-new-dev-admin-1','pv-market-new-prod-admin-1']:
-              r=subprocess.run(['docker','inspect','--format','{{json .State}}',name],capture_output=True,text=True)
-              print(name,r.stdout)
-              r=subprocess.run(['docker','logs','--tail','80',name],capture_output=True,text=True)
-              for line in (r.stdout+r.stderr).splitlines():
-                  if re.search(r'password|token|secret|mongodb:|redis:|Authorization|cookie',line,re.I):continue
-                  if re.search(r'error|exception|fatal|permission|failed|migrat|ready|started',line,re.I): print(line[:600])
+          print('ALLOWED COMMANDS')
+          r=subprocess.run(['sudo','-n','-l'],capture_output=True,text=True);print(r.stdout+r.stderr)
+          for file in ['/opt/pv-market-new/compose.yaml','/opt/pv-market-new/Caddyfile']:
+              print('CONFIG',file)
+              try:
+                  for line in pathlib.Path(file).read_text().splitlines():
+                      if re.search(r'password|token|secret|mongodb:|redis:|Authorization|cookie',line,re.I):continue
+                      print(line)
+              except OSError as e: print(type(e).__name__)
           PY
-
