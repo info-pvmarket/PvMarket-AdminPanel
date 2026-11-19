@@ -130,22 +130,10 @@ jobs:
           chmod 600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
           ssh -o BatchMode=yes -o IdentitiesOnly=yes "$DEPLOY_USER@$DEPLOY_HOST" "python3 -" <<'PY'
           import subprocess,pathlib,re,json
-          print('DEPLOY SCRIPT')
-          p=pathlib.Path('/usr/local/sbin/pv-market-new-deploy')
-          for line in p.read_text().splitlines():
-              if re.search(r'password|token|secret|private.key|docker login',line,re.I):continue
-              print(line)
-          print('ALLOWED COMMANDS')
-          r=subprocess.run(['sudo','-n','-l'],capture_output=True,text=True);print(r.stdout+r.stderr)
-          for file in ['/opt/pv-market-new/caddy/Caddyfile','/usr/local/sbin/pv-market-new-status','/usr/local/sbin/pv-market-new-caddy-retry','/usr/local/sbin/pv-market-new-infra-apply']:
-              print('CONFIG',file)
-              try:
-                  for line in pathlib.Path(file).read_text().splitlines():
-                      if re.search(r'password|token|secret|mongodb:|redis:|Authorization|cookie',line,re.I):continue
-                      print(line)
-              except OSError as e: print(type(e).__name__)
-          print('STATUS')
-          r=subprocess.run(['sudo','-n','/usr/local/sbin/pv-market-new-status'],capture_output=True,text=True,timeout=60)
-          for line in (r.stdout+r.stderr).splitlines():
-              if not re.search(r'password|token|secret|mongodb:|redis:|Authorization|cookie',line,re.I):print(line[:800])
+          for host,path in [('admin.dev.pv.market','/up'),('admin.dev-new.pv.market','/up'),('admin.pv.market','/up'),('dev.pv.market','/'),('pv.market','/')]:
+              for local in [False,True]:
+                  args=['curl','--silent','--show-error','--max-time','12','--output','/dev/null','--write-out','%{http_code}']
+                  if local:args+=['--resolve',host+':443:127.0.0.1']
+                  r=subprocess.run(args+['https://'+host+path],capture_output=True,text=True)
+                  print(host,'local' if local else 'public','exit',r.returncode,'http',r.stdout,'error',r.stderr[:250])
           PY
