@@ -141,4 +141,44 @@ class RegionalContentScopesTest extends TestCase
         }
         $this->assertArrayHasKey('north-america',\App\Support\StorefrontScopes::regions());
     }
+
+    public function test_existing_configured_regions_are_persisted_for_all_selectors(): void
+    {
+        $collection = DB::connection('mongodb')->getCollection('stock_regions');
+        $collection->deleteMany([]);
+        $migration = require database_path('migrations/2026_11_19_000001_persist_existing_storefront_regions.php');
+        $migration->up();
+        $migration->up();
+        $this->assertSame(6, $collection->countDocuments());
+        $options = \App\Support\StorefrontScopes::options(true)['Regions'];
+        foreach (config('stock_regions') as $code => $countries) {
+            $this->assertArrayHasKey('region:'.$code, $options);
+            $this->assertSame($code, \App\Support\BannerScopes::identity('region:'.$code)['region_code']);
+            $this->assertSame(explode(' ', $countries), \App\Support\StorefrontScopes::region('region:'.$code, true)['countries']);
+        }
+        foreach (['sliders', 'advertisements'] as $resource) {
+            $response = $this->get(route('admin.setup.'.$resource.'.create'))->assertOk();
+            foreach (array_keys(config('stock_regions')) as $code) $response->assertSee('value="region:'.$code.'"', false);
+        }
+    }
+
+    public function test_region_backfill_preserves_edits_disabled_and_deleted_regions(): void
+    {
+        $collection = DB::connection('mongodb')->getCollection('stock_regions');
+        $collection->updateOne(['_id'=>'europe'], ['$set'=>['name'=>'Edited Europe', 'countries'=>['DE'], 'is_active'=>false]]);
+        $collection->insertOne(['_id'=>'africa', 'name'=>'Removed Africa', 'countries'=>['NG'], 'is_active'=>true, 'is_deleted'=>true]);
+        $migration = require database_path('migrations/2026_11_19_000001_persist_existing_storefront_regions.php');
+        $migration->up();
+        $migration->up();
+        $europe = $collection->findOne(['_id'=>'europe']);
+        $this->assertSame('Edited Europe', $europe['name']);
+        $this->assertSame(['DE'], (array)$europe['countries']);
+        $this->assertFalse($europe['is_active']);
+        $this->assertTrue($collection->findOne(['_id'=>'africa'])['is_deleted']);
+        $options = \App\Support\StorefrontScopes::options(true)['Regions'];
+        $this->assertArrayNotHasKey('region:europe', $options);
+        $this->assertArrayNotHasKey('region:africa', $options);
+        $migration->down();
+        $this->assertSame(6, $collection->countDocuments());
+    }
 }
