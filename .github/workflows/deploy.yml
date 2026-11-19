@@ -128,7 +128,7 @@ jobs:
           printf '%s\n' "$SSH_PRIVATE_KEY" > "$HOME/.ssh/id_ed25519"
           printf '%s\n' "$SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
           chmod 600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
-          ssh -o BatchMode=yes -o IdentitiesOnly=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo python3 -" <<'PY'
+          ssh -o BatchMode=yes -o IdentitiesOnly=yes "$DEPLOY_USER@$DEPLOY_HOST" "python3 -" <<'PY'
           import subprocess,pathlib,re,json
           print('DEPLOY SCRIPT')
           p=pathlib.Path('/usr/local/sbin/pv-market-new-deploy')
@@ -145,3 +145,4 @@ jobs:
                   if re.search(r'password|token|secret|mongodb:|redis:|Authorization|cookie',line,re.I):continue
                   if re.search(r'error|exception|fatal|permission|failed|migrat|ready|started',line,re.I): print(line[:600])
           PY
+
