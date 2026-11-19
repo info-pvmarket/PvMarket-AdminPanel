@@ -29,7 +29,7 @@ class SliderController extends ResourceController
     public function store(Request $request)
     {
         $request->validate([
-    'sliders.*.location_id' => 'required',
+    'sliders.*.location_id' => 'required|string',
     'sliders'                 => 'required|array|min:1',
     'sliders.*.name'          => 'required|string|max:255',
     'sliders.*.slider_type'   => 'required|string|in:top,advertisement',
@@ -38,6 +38,10 @@ class SliderController extends ResourceController
     'sliders.*.image'         => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
 ]);
 
+        $identities = [];
+        foreach ($request->sliders as $i => $data) {
+            $identities[$i] = \App\Support\BannerScopes::identity($data['location_id'], 'sliders.'.$i.'.location_id');
+        }
         $sortStart   = Slider::count();
         $sliderType  = $request->input('slider_type');
 
@@ -56,6 +60,7 @@ class SliderController extends ResourceController
                 $row['image'] = $request->file("sliders.{$i}.image")->store('sliders', 'public');
             }
 
+            $row = array_merge($row, $identities[$i]);
             $row = $this->attachTranslations($row, new Slider());
             Slider::create($row);
         }
@@ -85,6 +90,7 @@ class SliderController extends ResourceController
     'location_id'
 ]);
 
+        $data = array_merge($data, \App\Support\BannerScopes::identity((string)$request->location_id));
         if ($request->hasFile('image')) {
             if ($slider->image) Storage::disk('public')->delete($slider->image);
             $data['image'] = $request->file('image')->store('sliders', 'public');

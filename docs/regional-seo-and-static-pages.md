@@ -1,6 +1,6 @@
 # Regional SEO and Static Pages
 
-Both admin flows use Global / Regions / Countries choices sourced from the existing region configuration, including custom regions and disabled/deleted overrides. The existing named Global market is treated as the Global scope.
+SEO Meta uses Global / Regions / Countries choices. Its Regions list includes only active, non-deleted database records in `stock_regions` that contain countries; built-in configuration alone never adds an SEO option. Static Pages retains its existing configured regions and database overrides. The existing named Global market is treated as the Global scope.
 
 ## SEO Meta
 

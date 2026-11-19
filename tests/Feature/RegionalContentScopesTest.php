@@ -30,6 +30,12 @@ class RegionalContentScopesTest extends TestCase
         if (!is_dir($views)) mkdir($views, 0777, true);
         config(['view.compiled'=>$views]);
         Http::preventStrayRequests();
+        $translator=\Mockery::mock(\App\Services\TranslationService::class)->makePartial();
+        $translator->shouldReceive('translateText')->andReturnUsing(fn($text)=>$text);
+        $this->app->instance(\App\Services\TranslationService::class,$translator);
+        foreach (['europe'=>['FR'],'asia'=>['IN']] as $code=>$countries) {
+            DB::connection('mongodb')->getCollection('stock_regions')->insertOne(['_id'=>$code,'name'=>ucfirst($code),'countries'=>$countries,'is_active'=>true]);
+        }
         $this->withoutMiddleware([\Illuminate\Auth\Middleware\Authenticate::class, \App\Http\Middleware\CheckAdminPermission::class]);
         $user = \Mockery::mock(\App\Models\User::class)->makePartial();
         $user->shouldReceive('hasAdminPermission')->andReturn(true);
@@ -110,5 +116,29 @@ class RegionalContentScopesTest extends TestCase
         $this->get(route('admin.page-sections.edit', ['global','home']))->assertOk()->assertSee('Global hero')->assertDontSee('europe hero');
         $this->post(route('admin.page-sections.copy-from', 'region:europe'), ['source_market_id'=>'region:europe'])->assertSessionHas('error');
         $this->assertSame('europe hero', \App\Models\PageSection::where('region_code','europe')->firstOrFail()->title);
+    }
+    public function test_seo_regions_only_include_eligible_database_records(): void
+    {
+        $collection=DB::connection('mongodb')->getCollection('stock_regions');
+        $collection->deleteMany([]);
+        $this->assertSame([], \App\Support\StorefrontScopes::options(true)['Regions']);
+        $collection->insertMany([
+            ['_id'=>'europe','name'=>'Europe from database','countries'=>['FR'],'is_active'=>true],
+            ['_id'=>'gulf','name'=>'Gulf','countries'=>['AE'],'is_active'=>true],
+            ['_id'=>'africa','name'=>'Africa','countries'=>['NG'],'is_active'=>false],
+            ['_id'=>'asia','name'=>'Asia','countries'=>['IN'],'is_active'=>true,'is_deleted'=>true],
+            ['_id'=>'oceania','name'=>'Oceania','countries'=>[],'is_active'=>true],
+        ]);
+        $options=\App\Support\StorefrontScopes::options(true)['Regions'];
+        $this->assertSame(['region:europe'=>'Europe from database','region:gulf'=>'Gulf'],$options);
+        $this->assertSame('/europe',\App\Support\StorefrontScopes::region('region:europe',true)['path']);
+        $this->assertSame('/region/gulf',\App\Support\StorefrontScopes::region('region:gulf',true)['path']);
+        $response=$this->get(route('admin.seo-meta.create'))->assertOk();
+        $response->assertSee('value="region:europe"',false)->assertSee('value="region:gulf"',false);
+        foreach (['north-america','south-america','africa','asia','oceania'] as $code) {
+            $response->assertDontSee('value="region:'.$code.'"',false);
+            $this->post(route('admin.seo-meta.store'),$this->regionPayload('region:'.$code,'Invalid'))->assertSessionHasErrors('market_id');
+        }
+        $this->assertArrayHasKey('north-america',\App\Support\StorefrontScopes::regions());
     }
 }

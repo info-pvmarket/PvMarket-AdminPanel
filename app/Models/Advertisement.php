@@ -9,6 +9,7 @@ class Advertisement extends Model {
     protected $connection = 'mongodb';
     protected $collection = 'advertisements';
     protected $fillable = [
+        'region_code',
     'title',
     'alt_tag',
     'image',

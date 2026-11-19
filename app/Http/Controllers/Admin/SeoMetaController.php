@@ -72,7 +72,7 @@ class SeoMetaController extends Controller
         // Market filter
         if ($marketFilter) {
             if (str_starts_with($marketFilter, 'region:')) {
-                $region = \App\Support\StorefrontScopes::region($marketFilter);
+                $region = \App\Support\StorefrontScopes::region($marketFilter, true);
                 $query->where('region_code', $region['code']);
             } elseif ($marketFilter === 'global') {
                 $query->whereNull('market_id')->whereNull('region_code');
@@ -661,7 +661,7 @@ class SeoMetaController extends Controller
             }
         }
         if ($this->regionCode) {
-            $codes = \App\Support\StorefrontScopes::regions()[$this->regionCode]['countries'];
+            $codes = \App\Support\StorefrontScopes::regions(true)[$this->regionCode]['countries'];
             $countries = \App\Models\Country::where(function($q) use ($codes) {
                 foreach ($codes as $code) foreach (['code','iso2'] as $field) $q->orWhere($field, 'regexp', new \MongoDB\BSON\Regex('^'.preg_quote($code, '/').'$', 'i'));
             })->get()->map(fn($c)=>(string)$c->getKey())->all();
@@ -695,7 +695,7 @@ class SeoMetaController extends Controller
 
     private function resolveMarketId(?string $value): ?string
     {
-        $region = \App\Support\StorefrontScopes::region($value);
+        $region = \App\Support\StorefrontScopes::region($value, true);
         $this->regionCode = $region['code'] ?? null;
         if ($region || $value === null || $value === '' || $value === 'global') return null;
         $id = $this->sanitizeObjectId($value);
@@ -832,7 +832,7 @@ class SeoMetaController extends Controller
     private function regionalCanonical(?string $canonical, ?string $pageKey, array $slugs): ?string
     {
         if (!$this->regionCode || filled($canonical)) return $canonical;
-        $region = \App\Support\StorefrontScopes::regions()[$this->regionCode] ?? null;
+        $region = \App\Support\StorefrontScopes::regions(true)[$this->regionCode] ?? null;
         if (!$region) return null;
         if ($pageKey) {
             $path = SeoLandingPages::PAGES[$pageKey]['path'] ?? SeoStaticPages::PAGES[$pageKey]['path'] ?? null;

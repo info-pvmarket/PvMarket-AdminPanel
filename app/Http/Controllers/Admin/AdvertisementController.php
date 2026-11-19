@@ -18,7 +18,7 @@ class AdvertisementController extends ResourceController
 
     protected array $rules = [
     'title'         => 'required|string|max:255',
-    'location_id'   => 'required',
+    'location_id'   => 'required|string',
     'alt_tag'       => 'nullable|string|max:255',
     'redirect_link' => 'nullable|url',
     'image'         => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
@@ -35,7 +35,7 @@ class AdvertisementController extends ResourceController
     public function store(Request $request)
     {
         $request->validate($this->rules);
-        $data = $request->only($this->fields);
+        $data = array_merge($request->only($this->fields), \App\Support\BannerScopes::identity((string)$request->location_id));
         if ($request->hasFile('image') && $request->file('image')->isValid()) {
             $file = $request->file('image');
             $extension = $file->getClientOriginalExtension() ?: 'jpg';
@@ -54,7 +54,7 @@ class AdvertisementController extends ResourceController
     {
         $ad = Advertisement::findOrFail($id);
         $request->validate($this->rules);
-        $data = $request->only($this->fields);
+        $data = array_merge($request->only($this->fields), \App\Support\BannerScopes::identity((string)$request->location_id));
         if ($request->hasFile('image') && $request->file('image')->isValid()) {
             if ($ad->image) Storage::disk('public')->delete($ad->image);
             $file = $request->file('image');

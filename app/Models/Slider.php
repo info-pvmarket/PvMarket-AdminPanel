@@ -14,6 +14,7 @@ class Slider extends Model
     protected $collection = 'sliders';
 
     protected $fillable = [
+        'region_code',
         'name',
         'image',
         'alt_tag',

@@ -51,7 +51,7 @@
         }
     @endphp
 
-    {{ $market->name ?? '-' }}
+    {{ $ad->region_code ? (\App\Support\StorefrontScopes::regions(true)[$ad->region_code]['name'] ?? $ad->region_code) : ($market->name ?? ($ad->location_id ? '-' : 'Global')) }}
 </td>
             <td>
                 @if($ad->redirect_link)
@@ -151,7 +151,7 @@
         </div>
         <div class="form-group">
     <label class="form-label">
-        Market <span>*</span>
+        Global / Region / Country <span>*</span>
     </label>
 
     <select
@@ -159,13 +159,7 @@
         class="form-input"
         required
     >
-        <option value="">Select Market</option>
-
-        @foreach($markets as $market)
-            <option value="{{ (string)$market->_id }}">
-                {{ $market->name }}@if($market->code) ({{ strtoupper($market->code) }}) @endif
-            </option>
-        @endforeach
+        <x-admin.scope-options global-value="global" :database-regions-only="true" />
     </select>
 </div>
         <div class="form-group">
@@ -199,11 +193,11 @@
         </div>
         <div class="form-group">
     <label class="form-label">
-        Market <span>*</span>
+        Global / Region / Country <span>*</span>
     </label>
 
     @php
-        $selectedMarketId = (string) old('location_id', $record->location_id);
+        $selectedMarketId = (string) old('location_id', $record->region_code ? 'region:'.$record->region_code : ($record->location_id ?? 'global'));
         if (!$markets->contains(fn($market) => (string) $market->_id === $selectedMarketId) && $record->location_id) {
             $legacyLocation = \App\Models\Location::find($record->location_id);
             $matchedMarket = $legacyLocation
@@ -213,6 +207,7 @@
                 $selectedMarketId = (string) $matchedMarket->_id;
             }
         }
+        if (strtolower((string)($markets->first(fn($market)=>(string)$market->_id === $selectedMarketId)?->code ?? '')) === 'global') $selectedMarketId = 'global';
     @endphp
 
     <select
@@ -220,16 +215,7 @@
         class="form-input"
         required
     >
-        <option value="">Select Market</option>
-
-        @foreach($markets as $market)
-            <option
-                value="{{ (string)$market->_id }}"
-                {{ $selectedMarketId === (string)$market->_id ? 'selected' : '' }}
-            >
-                {{ $market->name }}@if($market->code) ({{ strtoupper($market->code) }}) @endif
-            </option>
-        @endforeach
+        <x-admin.scope-options global-value="global" :database-regions-only="true" :selected="$selectedMarketId" />
     </select>
 </div>
         <div class="form-group">

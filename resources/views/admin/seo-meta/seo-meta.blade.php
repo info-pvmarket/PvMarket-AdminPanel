@@ -71,7 +71,7 @@
             <div class="form-group">
                 <label class="form-label">Global / Region / Country</label>
                 <select name="market_id" id="market_id" class="form-input form-select">
-                    <x-admin.scope-options :selected="old('market_id', '')" />
+                    <x-admin.scope-options :database-regions-only="true" :selected="old('market_id', '')" />
                 </select>
                 <span class="help-text">Choose Global, a region, or a country for this SEO record.</span>
             </div>
@@ -656,7 +656,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <strong>Type:</strong> {{ $record->page_type }}
             </span>
             @if($record->region_code)
-                <span class="entity-badge">Region: {{ \App\Support\StorefrontScopes::regions()[$record->region_code]['name'] ?? $record->region_code }}</span>
+                <span class="entity-badge">Region: {{ \App\Support\StorefrontScopes::regions(true)[$record->region_code]['name'] ?? $record->region_code }}</span>
             @elseif($record->market)
                 <span class="entity-badge">
                     <strong>Market:</strong> {{ $record->market->name }} ({{ $record->market->code }})
@@ -1134,7 +1134,7 @@ function markForDeletion(type, imageId, btn) {
             <form method="GET" action="{{ route('admin.seo-meta.index') }}" style="display:flex; gap:10px;">
                 <select name="market_id" class="filter-select" onchange="this.form.submit()">
                     <option value="">All Markets</option>
-                    <x-admin.scope-options :selected="request('market_id')" global-value="global" />
+                    <x-admin.scope-options :database-regions-only="true" :selected="request('market_id')" global-value="global" />
                 </select>
 
                 <select name="type" class="filter-select" onchange="this.form.submit()">
@@ -1183,7 +1183,7 @@ function markForDeletion(type, imageId, btn) {
                 </td>
                 <td>
                     @if($record->region_code)
-                <span class="entity-badge">Region: {{ \App\Support\StorefrontScopes::regions()[$record->region_code]['name'] ?? $record->region_code }}</span>
+                <span class="entity-badge">Region: {{ \App\Support\StorefrontScopes::regions(true)[$record->region_code]['name'] ?? $record->region_code }}</span>
             @elseif($record->market)
                         <span class="location-badge">{{ $record->market->code }}</span>
                     @else
