@@ -6,6 +6,10 @@ on:
       - main
   workflow_dispatch:
     inputs:
+      diagnostics_only:
+        description: Inspect deployment health without deploying
+        type: boolean
+        default: false
       production_only:
         description: Deploy only to production
         required: false
@@ -25,6 +29,7 @@ env:
 
 jobs:
   test:
+    if: ${{ !inputs.diagnostics_only }}
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -106,3 +111,37 @@ jobs:
             deploy dev
           fi
           deploy prod
+
+  diagnostics:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.diagnostics_only }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect deployment health
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_SSH_KNOWN_HOSTS }}
+          DEPLOY_HOST: ${{ secrets.HETZNER_SSH_HOST }}
+          DEPLOY_USER: ${{ secrets.HETZNER_SSH_USER }}
+        shell: bash
+        run: |
+          install -m 700 -d "$HOME/.ssh"
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+          ssh -o BatchMode=yes -o IdentitiesOnly=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo python3 -" <<'PY'
+          import subprocess,pathlib,re,json
+          print('DEPLOY SCRIPT')
+          p=pathlib.Path('/usr/local/sbin/pv-market-new-deploy')
+          for line in p.read_text().splitlines():
+              if re.search(r'password|token|secret|private.key|docker login',line,re.I):continue
+              print(line)
+          print('CONTAINERS')
+          print(subprocess.check_output(['docker','ps','-a','--format','{{.Names}} {{.Status}} {{.Image}}'],text=True))
+          for name in ['pv-market-new-dev-admin-1','pv-market-new-prod-admin-1']:
+              r=subprocess.run(['docker','inspect','--format','{{json .State}}',name],capture_output=True,text=True)
+              print(name,r.stdout)
+              r=subprocess.run(['docker','logs','--tail','80',name],capture_output=True,text=True)
+              for line in (r.stdout+r.stderr).splitlines():
+                  if re.search(r'password|token|secret|mongodb:|redis:|Authorization|cookie',line,re.I):continue
+                  if re.search(r'error|exception|fatal|permission|failed|migrat|ready|started',line,re.I): print(line[:600])
+          PY
