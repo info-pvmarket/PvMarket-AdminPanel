@@ -574,7 +574,7 @@
             <line x1="7" y1="7" x2="7.01" y2="7"/>
         </svg>
         <h3>No Coupons Yet</h3>
-        <p>Click <strong>Add +</strong> to create your first coupon.</p>
+        <p>Click <strong>Add</strong> to create your first coupon.</p>
     </div>
     @endforelse
 </div>

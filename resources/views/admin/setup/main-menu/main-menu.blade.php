@@ -343,7 +343,7 @@ function renumberRows() {
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
         </svg>
-        Add +
+        Add
     </a>
 </div>
 
@@ -468,7 +468,7 @@ function renumberRows() {
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                             <path d="M4 6h16M4 12h16M4 18h7"/>
                         </svg>
-                        <p>No menus yet. Click <strong>Add +</strong> to create one.</p>
+                        <p>No menus yet. Click <strong>Add</strong> to create one.</p>
                     </div>
                 </td>
             </tr>

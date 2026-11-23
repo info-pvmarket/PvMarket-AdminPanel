@@ -931,7 +931,7 @@ function renderDetailsTable(options, savedMap) {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
             </svg>
-            Add +
+            Add
         </a>
     </div>
 </div>
@@ -1189,7 +1189,7 @@ function renderDetailsTable(options, savedMap) {
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
                         </svg>
-                        <p>No products yet. Click <strong>Add +</strong> to create one.</p>
+                        <p>No products yet. Click <strong>Add</strong> to create one.</p>
                     </div>
                 </td>
             </tr>

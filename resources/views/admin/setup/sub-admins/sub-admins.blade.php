@@ -473,7 +473,7 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
             </svg>
-            Add +
+            Add
         </a>
 
     </div>
@@ -575,7 +575,7 @@
                             <circle cx="9" cy="7" r="4"/>
                             <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
                         </svg>
-                        <p>No sub admins yet. Click <strong>Add +</strong> to create one.</p>
+                        <p>No sub admins yet. Click <strong>Add</strong> to create one.</p>
                     </div>
                 </td>
             </tr>

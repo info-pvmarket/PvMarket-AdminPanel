@@ -304,7 +304,7 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
         </svg>
-        Add +
+        Add
     </a>
 </div>
 
@@ -418,7 +418,7 @@
                             <line x1="8"  y1="2" x2="8"  y2="6"/>
                             <line x1="3"  y1="10" x2="21" y2="10"/>
                         </svg>
-                        <p>No events yet. Click <strong>Add +</strong> to create one.</p>
+                        <p>No events yet. Click <strong>Add</strong> to create one.</p>
                     </div>
                 </td>
             </tr>
