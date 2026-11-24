@@ -630,6 +630,11 @@ const TM_PAGES = [
         { id: 'schedules',        label: 'Schedules' },
         { id: 'users',            label: 'User Management' },
     ]},
+    { group: 'SEO', items: [
+        { id: 'seo-meta',         label: 'SEO Meta (page headers and meta tags)' },
+        { id: 'seo-open-graph',   label: 'SEO Open Graph' },
+        { id: 'seo-twitter',      label: 'SEO Twitter' },
+    ]},
 ];
 
 function openTranslateModal(code, name) {
