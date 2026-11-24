@@ -215,6 +215,15 @@ class TranslatePageJobTest extends TestCase
         }
     }
 
+    public function test_seo_collections_can_be_translated(): void
+    {
+        $this->assertSame(\App\Models\SeoMetaData::class, TranslatePageJob::PAGE_MODELS['seo-meta']);
+        $this->assertSame(\App\Models\SeoOGMetaData::class, TranslatePageJob::PAGE_MODELS['seo-open-graph']);
+        $this->assertSame(\App\Models\SeoTwitterMetaData::class, TranslatePageJob::PAGE_MODELS['seo-twitter']);
+        $this->assertContains('page_header', (new \App\Models\SeoMetaData)->translatable);
+        $this->assertContains('short_description', (new \App\Models\SeoMetaData)->translatable);
+    }
+
     public function test_non_translatable_workflow_pages_are_not_queued(): void
     {
         $this->assertNotContains('sales', TranslatePageJob::supportedPages());

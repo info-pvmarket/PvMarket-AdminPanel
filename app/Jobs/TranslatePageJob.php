@@ -85,6 +85,11 @@ class TranslatePageJob implements ShouldQueue
         'bids'             => \App\Models\BidRequest::class,
         'schedules'        => \App\Models\Schedule::class,
         'users'            => \App\Models\User::class,
+        // SEO copy served by /seo-meta: page headers, short descriptions and meta
+        // tags (e.g. the Discount Center heading), plus Open Graph and Twitter titles
+        'seo-meta'         => \App\Models\SeoMetaData::class,
+        'seo-open-graph'   => \App\Models\SeoOGMetaData::class,
+        'seo-twitter'      => \App\Models\SeoTwitterMetaData::class,
     ];
 
     public function __construct(
