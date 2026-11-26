@@ -36,10 +36,19 @@ class SeoMetaController extends Controller
         $this->translator = $translator;
     }
 
+    /** The Homepage's page_key. Its records are listed under Type "Home", not "Standalone Pages". */
+    private const HOME_PAGE_KEY = 'home';
+
     /** Every page_key this screen manages: the 4 directory pages plus the 9 static pages. */
     private function managedPageKeys(): array
     {
         return array_merge(array_keys(SeoLandingPages::PAGES), array_keys(SeoStaticPages::PAGES));
+    }
+
+    /** page_keys listed under Type "Standalone Pages": every managed page except the Homepage. */
+    private function standalonePageKeys(): array
+    {
+        return array_values(array_diff($this->managedPageKeys(), [self::HOME_PAGE_KEY]));
     }
 
     // ─── INDEX ───────────────────────────────────────────────────────────────
@@ -47,6 +56,19 @@ class SeoMetaController extends Controller
     public function index(Request $request)
     {
         $entries = (int) $request->get('entries', 10);
+        $records = $this->indexQuery($request)->latest()->paginate($entries)->withQueryString();
+        $markets = Market::where('is_active', true)->orderBy('name')->get();
+
+        return view('admin.seo-meta.seo-meta', [
+            'mode'    => 'index',
+            'records' => $records,
+            'markets' => $markets,
+        ]);
+    }
+
+    /** The list query for the current search, market and type filters. */
+    private function indexQuery(Request $request)
+    {
         $search  = $request->get('search');
         $marketFilter = $request->get('market_id');
         $typeFilter = $request->get('type');
@@ -89,10 +111,17 @@ class SeoMetaController extends Controller
         if ($typeFilter) {
             switch ($typeFilter) {
                 case 'home':
-                    $query->withoutStaticPages()->whereNull('category_id')
-                          ->whereNull('sub_category_id')
-                          ->whereNull('brand_id')
-                          ->whereNull('product_id');
+                    // The Homepage is stored with page_key "home" (the record the site
+                    // reads); an older home record has no page_key and no entity.
+                    $query->where(function ($home) {
+                        $home->where('page_key', self::HOME_PAGE_KEY)
+                             ->orWhere(function ($legacy) {
+                                 $legacy->withoutStaticPages()->whereNull('category_id')
+                                        ->whereNull('sub_category_id')
+                                        ->whereNull('brand_id')
+                                        ->whereNull('product_id');
+                             });
+                    });
                     break;
                 case 'category':
                     $query->whereNotNull('category_id')
@@ -110,7 +139,8 @@ class SeoMetaController extends Controller
                           ->whereNull('product_id');
                     break;
                 case 'landing':
-                    $query->whereIn('page_key', $this->managedPageKeys());
+                    // Every managed page except the Homepage, which is under "Home".
+                    $query->whereIn('page_key', $this->standalonePageKeys());
                     break;
                 case 'product':
                     $query->whereNotNull('product_id');
@@ -118,14 +148,7 @@ class SeoMetaController extends Controller
             }
         }
 
-        $records = $query->latest()->paginate($entries)->withQueryString();
-        $markets = Market::where('is_active', true)->orderBy('name')->get();
-
-        return view('admin.seo-meta.seo-meta', [
-            'mode'    => 'index',
-            'records' => $records,
-            'markets' => $markets,
-        ]);
+        return $query;
     }
 
     // ─── CREATE ──────────────────────────────────────────────────────────────

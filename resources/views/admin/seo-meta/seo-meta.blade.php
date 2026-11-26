@@ -80,6 +80,10 @@
                 <label class="form-label">Category</label>
                 <select name="category_id" id="category_id" class="form-input form-select">
                     <option value="">None</option>
+                    {{-- The Homepage has its own group; it is not a Standalone Page. Its stored key stays "home". --}}
+                    <optgroup label="Home">
+                        <option value="staticpage:home" {{ old('page_key') === 'home' || old('category_id') === 'staticpage:home' ? 'selected' : '' }}>{{ \App\Support\SeoStaticPages::PAGES['home']['label'] }}</option>
+                    </optgroup>
                     <optgroup label="Catalogue Pages">
                         @foreach(\App\Support\SeoLandingPages::PAGES as $key => $page)
                             <option value="page:{{ $key }}" {{ old('page_key') === $key || old('category_id') === 'page:'.$key ? 'selected' : '' }}>{{ $page['label'] }}</option>
@@ -87,6 +91,7 @@
                     </optgroup>
                     <optgroup label="Site Pages">
                         @foreach(\App\Support\SeoStaticPages::PAGES as $key => $page)
+                            @continue($key === 'home')
                             <option value="staticpage:{{ $key }}" {{ old('page_key') === $key || old('category_id') === 'staticpage:'.$key ? 'selected' : '' }}>{{ $page['label'] }}</option>
                         @endforeach
                     </optgroup>
@@ -98,7 +103,7 @@
                         @endforeach
                     </optgroup>
                 </select>
-                <span class="help-text">Pick <strong>Homepage</strong> under Site Pages to edit the page the site actually reads.</span>
+                <span class="help-text">Pick <strong>Homepage</strong> under Home to edit the page the site actually reads.</span>
             </div>
 
             <div class="form-group">
@@ -1069,6 +1074,7 @@ function markForDeletion(type, imageId, btn) {
     .page-type-badge.subcategory { background:#E0E7FF; color:#3730A3; }
     .page-type-badge.brand { background:#FEF3C7; color:#92400E; }
     .page-type-badge.product { background:#FCE7F3; color:#9D174D; }
+    .page-type-badge.page { background:#E2E8F0; color:#334155; }
     .location-badge { display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:600; background:#F5F3FF; color:#7C3AED; }
     .meta-preview { max-width:300px; }
     .meta-title { font-weight:600; color:var(--text); font-size:13px; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -1192,13 +1198,15 @@ function markForDeletion(type, imageId, btn) {
                 </td>
                 <td>
                     @php
+                        // Homepages (Global, market, region) share the "home" style; the other
+                        // catalogue and site pages get their own, so only a Homepage looks like one.
                         $typeClass = match($record->page_type) {
-                            'Global Home', 'Market Home' => 'home',
+                            'Homepage', 'Global Home', 'Market Home', 'Region Home' => 'home',
                             'Category' => 'category',
                             'Sub Category' => 'subcategory',
                             'Brand' => 'brand',
                             'Product' => 'product',
-                            default => 'home'
+                            default => 'page'
                         };
                     @endphp
                     <span class="page-type-badge {{ $typeClass }}">{{ $record->page_type }}</span>
