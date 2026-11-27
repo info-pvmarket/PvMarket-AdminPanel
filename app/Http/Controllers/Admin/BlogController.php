@@ -14,6 +14,7 @@ use MongoDB\BSON\Regex;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Log;
 use App\Jobs\TranslateBlogJob;
+use App\Support\BlogCoverImage;
 
 class BlogController extends Controller
 {
@@ -413,20 +414,29 @@ class BlogController extends Controller
             ];
         }
 
-        $filename = time() . '_' . $file->getClientOriginalName();
-        $path     = $file->storeAs('blogs', $filename, 'r2');
+        // A large cover is shrunk to 1600 px first, so the storefront can resize it within
+        // its time limit; small covers and anything that cannot be shrunk are stored as-is.
+        $shrunk = BlogCoverImage::shrink($file);
+
+        if ($shrunk) {
+            $filename = time() . '_' . $shrunk['filename'];
+            $path     = Storage::disk('r2')->put('blogs/' . $filename, $shrunk['contents']) ? 'blogs/' . $filename : false;
+        } else {
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $path     = $file->storeAs('blogs', $filename, 'r2');
+        }
 
         abort_unless(is_string($path) && $path !== '', 503, 'Image upload failed. Please try again.');
 
         return [
             'disk'          => 'r2',
-            'size'          => $file->getSize(),
+            'size'          => $shrunk['size'] ?? $file->getSize(),
             'uploaded_at'   => now()->toISOString(),
             'filename'      => $filename,
             'original_name' => $file->getClientOriginalName(),
             'path'          => $path,
             'url'           => Storage::disk('r2')->url($path),
-            'mime_type'     => $file->getMimeType(),
+            'mime_type'     => $shrunk['mime'] ?? $file->getMimeType(),
             'alt'           => $alt ?? '',
         ];
     }
